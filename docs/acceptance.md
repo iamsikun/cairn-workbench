@@ -7,7 +7,7 @@ artifact, not just code presence. Private activation and M4 are outside this goa
 | --- | --- | --- |
 | M0 | Passed reference acceptance | 24 tests, lint, strict typing, 13 isolation checks |
 | M1 | Passed reference acceptance | 48 tests, installed worker protocols, both isolation profiles |
-| M2 | Pending | Bibliography, context, receipts, continuity demonstration |
+| M2 | Mechanics implemented; manual semantic gate pending | Separate-session continuity evaluation chosen by owner |
 | M3 | Pending | Domain workflows, restore, installed release, complete audit |
 
 The brief's hard gates will be mapped to named tests as implementation proceeds.
@@ -27,11 +27,11 @@ and **13 process-level isolation checks passed**.
   operations were denied. No Docker socket, host home, or forwarded credentials existed.
 
 These checks cover a defined threat corpus. They do not prove semantic truth, universal
-container security, or private-runtime readiness. M1–M3 remain required.
+container security, or private-runtime readiness.
 
 M1 core evidence: **44 cumulative tests passed**, Ruff passed, strict mypy passed
 (29 source files), using the isolated development profile with public source mounted.
-The updated installed image still needs its full acceptance run before closing M1.
+The later installed M1 acceptance run below supersedes this initial core run.
 
 | Requirement | Current named evidence |
 | --- | --- |
@@ -61,7 +61,30 @@ The user selected a **manual agent session** for M2's separate-agent continuity 
 Prepare its synthetic pack and verification procedure; do not spawn a subagent or claim
 that deterministic tests satisfy that semantic gate.
 
-Next work: implement M2 bibliography,
-project context and receipt workflows; implement M3 domain templates/calculations, grant
-audits, full restore/release packaging, all required documentation, and a full requirement
-audit. Private activation remains separate and is currently explicitly denied.
+M2 installed reference evidence from `bash scripts/check.sh`: **64 cumulative tests
+passed**, Ruff passed, strict mypy passed (38 files), and both processing profiles passed
+all 13 isolation probes. Installed packet, text-extraction, bibliography-extraction, and
+receipt-extraction trials passed. The synthetic manual-handoff generator also completed
+inside the installed development image. The new workflow covers:
+
+| Requirement | Named evidence |
+| --- | --- |
+| Stable library IDs/citation keys; unknown dates; item-level deduplication | `test_bibliography_ids_dates_coverage_and_item_dedup` |
+| Ambiguous or malformed import produces no capture | `test_bibliography_invalid_export_writes_nothing` (three cases) |
+| Receipt approval preserves draft status; explicit adoption needs exact owner apply | `test_session_receipt_requires_explicit_adoption_and_context_preserves_evidence` |
+| Roles preserved; fabricated citations and claimed authority rejected | `test_receipt_roles_fabricated_reference_and_claimed_authority` |
+| No denied-domain titles/IDs/content or unsupported derived conclusion | `test_context_scope_filters_titles_ids_and_denied_evidence` |
+| Bounded packs omit whole items, retaining evidence locators | `test_context_budget_omits_whole_items_and_keeps_locators` |
+| Current, stale, and unverified repository states | `test_repository_binding_flags_changed_or_unverifiable_context` |
+| Review diff matches exact candidate bytes | `test_review_diff_tamper_is_rejected` |
+| CLI scoped context and explicit save | `test_cli_research_context_and_save` |
+
+`scripts/prepare_continuity.py` executed the synthetic capture/proposal/approval/apply/
+adoption/context sequence and generated `examples/continuity/context.json`, source evidence,
+and a verification manifest. The second-agent semantic result is explicitly **not evaluated**.
+Follow `docs/research-continuity.md` for the owner-selected manual test. No subagent was spawned.
+
+Next work: M3 domain templates/calculations, grant audits, full restore/release packaging,
+user-facing evidence/conflict review, and a full requirement audit. Independent work may
+continue while the external manual gate remains named and pending. Private activation
+remains separate and is currently explicitly denied.

@@ -1,0 +1,232 @@
+{
+  "$defs": {
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Evidence Hash",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "locator": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Locator",
+          "type": "string"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "maxLength": 10000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quote"
+        },
+        "source_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source_hash",
+        "evidence_hash",
+        "locator"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "ReceiptEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "maxItems": 20,
+          "title": "Sources",
+          "type": "array"
+        },
+        "text": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "ReceiptEntry",
+      "type": "object"
+    },
+    "ReceiptMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "title": "Content",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "system",
+            "developer",
+            "user",
+            "assistant",
+            "tool"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "content"
+      ],
+      "title": "ReceiptMessage",
+      "type": "object"
+    },
+    "RepositoryBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Alias",
+          "type": "string"
+        },
+        "commit": {
+          "pattern": "^[0-9a-f]{40,64}$",
+          "title": "Commit",
+          "type": "string"
+        },
+        "run_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Run Ids",
+          "type": "array"
+        },
+        "worktree_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Worktree Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "commit",
+        "worktree_hash"
+      ],
+      "title": "RepositoryBinding",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "failures": {
+      "items": {
+        "$ref": "#/$defs/ReceiptEntry"
+      },
+      "maxItems": 100,
+      "title": "Failures",
+      "type": "array"
+    },
+    "messages": {
+      "items": {
+        "$ref": "#/$defs/ReceiptMessage"
+      },
+      "maxItems": 1000,
+      "title": "Messages",
+      "type": "array"
+    },
+    "next_action": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReceiptEntry"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "produced_evidence": {
+      "items": {
+        "$ref": "#/$defs/EvidenceRef"
+      },
+      "maxItems": 100,
+      "title": "Produced Evidence",
+      "type": "array"
+    },
+    "project_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "proposed_decisions": {
+      "items": {
+        "$ref": "#/$defs/ReceiptEntry"
+      },
+      "maxItems": 3,
+      "title": "Proposed Decisions",
+      "type": "array"
+    },
+    "repository": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RepositoryBinding"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "session_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Session Id",
+      "type": "string"
+    },
+    "tried": {
+      "items": {
+        "$ref": "#/$defs/ReceiptEntry"
+      },
+      "maxItems": 100,
+      "title": "Tried",
+      "type": "array"
+    },
+    "unresolved": {
+      "items": {
+        "$ref": "#/$defs/ReceiptEntry"
+      },
+      "maxItems": 100,
+      "title": "Unresolved",
+      "type": "array"
+    }
+  },
+  "required": [
+    "session_id",
+    "project_id"
+  ],
+  "title": "SessionReceipt",
+  "type": "object"
+}

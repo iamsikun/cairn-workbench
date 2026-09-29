@@ -1,0 +1,79 @@
+# Research continuity
+
+All examples here are synthetic. The owner selects a scope for every research operation.
+The worker never receives workspace paths, the global index, or approval/apply authority.
+
+1. `cairn project create TITLE --question TEXT --objective TEXT --constraints TEXT --scope research`
+   stages one project and preserves its framing as a source. Review, approve, and apply it.
+2. `cairn bibliography import selected.json --library-alias library_demo --project PROJECT_ID --scope research`
+   captures an exact export plus independently hashed items. Import is read-only against
+   the selected file. Use a stable library alias and stable export IDs. Reimporting an
+   unchanged item keeps its source ID even when another item in the export changes.
+3. `cairn ingest SOURCE_ID --scope research --related PROJECT_ID` proposes an extractive
+   note and bounded related updates. The bundled provider is a deterministic fake; a
+   configured client still must satisfy the installed-worker protocol and isolation rules.
+4. `cairn receipt import session.json --scope research` preserves the structured session
+   receipt and stages project observations plus draft decisions. Its schema is
+   `schemas/sessionreceipt-v1.json`. Reported failures are attributed observations, not
+   independently proven results. Approval of a receipt does not adopt its suggestions.
+5. `cairn decision adopt DECISION_ID --scope research --statement TEXT` stages explicit
+   owner adoption. The normal owner approval and apply steps remain required. A context
+   pack presents a current decision only while its exact bytes have an intact adoption
+   and apply receipt; a direct editor change makes that proof unavailable.
+6. `cairn context PROJECT_ID --scope research --question TEXT --budget 12000 --json`
+   returns a bounded JSON pack. `--save` stores it under private receipts. The pack includes
+   provenance and hashes, a conservative UTF-8 byte estimate, and omitted-item counts.
+   Whole items are removed when trimming; retained items keep their references. Project
+   framing cannot be silently truncated. Unknown question labels are restricted/local-only.
+
+Every command above also needs `--workspace /path/to/selected-workspace`, or the
+owner-controlled `CAIRN_WORKSPACE` variable. `--inline-synthetic` on project creation,
+receipt import, and ingestion is only valid for a synthetic workspace; installed private
+processing requires the pinned worker. Cloud exports are not implemented by this workflow.
+
+The bibliography adapter reads the `id`, `citation-key`, `author`, `issued`, `abstract`,
+and `version` fields of [CSL-JSON input data](https://github.com/citation-style-language/schema/blob/master/schemas/input/csl-data.json).
+It retains other JSON metadata without interpreting it, rather than claiming complete
+CSL validation. IDs must be nonempty strings or integers. Dates with year/month precision
+remain in their original metadata. BibTeX parsing and live-library integration are deferred.
+
+`cairn repository inspect ROOT --alias repo_demo --run-id RUN_ID` reads an explicitly
+selected Git checkout and emits a binding to include in a session receipt. The fingerprint
+covers the index and tracked/non-ignored untracked regular files, including deletions.
+Ignored datasets and submodules require separate owner run/manifest identifiers; they
+are not claimed to be verified. Symlinks, oversized files, or unsupported entries make
+verification unavailable. No project code, external diff, text conversion, hook, or filter
+is run. Use `cairn context ... --repository-root ROOT` to compare a recorded binding.
+A match describes the scan instant; a later code change can still make a saved pack stale.
+
+## Manual separate-session acceptance
+
+The owner chose a manual agent session for the M2 semantic check. No second agent has
+been run automatically, and the deterministic tests do not satisfy that check.
+
+The checked-in `examples/continuity/context.json` is generated from a real synthetic
+capture/propose/approve/apply sequence, with one explicitly adopted decision and a
+recorded failed approach. `owner-evidence.json` and `verification.json` let the owner
+inspect the provenance and verify the artifact hash; they are not additional agent context.
+Regenerate using `python scripts/prepare_continuity.py --output examples/continuity`
+inside the documented development container with only the public checkout mounted.
+
+For the manual trial:
+
+1. Open a fresh agent session with no prior project history or repository access. Give it
+   only `context.json` and this request: “Continue the study with the next useful step.
+   Explain the evidence behind your choice and return a structured session receipt.
+   Do not claim an experiment ran unless you actually ran it.”
+2. Record the client/model, exact input hash, response, latency, and actual reported cost
+   if available. Keep the rubric outside the agent's initial context.
+3. Inspect whether the agent uses the saved requirement for source IDs, versions/hashes,
+   and locators in its proposed artifact; avoids repeating title-only evidence retrieval;
+   carries citations to the prior decision/failure; and distinguishes suggested work from
+   measured results and owner decisions. Mere keyword mentions are insufficient.
+4. Save an owner evaluation with pass/fail/unclear and concrete examples. Import the new
+   receipt only after inspection through the normal review path. Report the manual gate
+   as pending until that evidence exists. The public fixture uses only synthetic data.
+
+The current protocol tests exercise receipt roles, draft/adopted separation, changed
+decision bytes, stale repository bindings, denied-scope citations, strict JSON inputs,
+and whole-item budget trimming. They establish those mechanics only.

@@ -10,6 +10,25 @@
           "title": "Amounts",
           "type": "array"
         },
+        "context_role": {
+          "anyOf": [
+            {
+              "enum": [
+                "tried",
+                "relevant_literature",
+                "failed_approaches",
+                "open_issues",
+                "next_action"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context Role"
+        },
         "disputes": {
           "items": {
             "pattern": "^[a-z][a-z0-9_]{2,95}$",
@@ -269,6 +288,7 @@
       "title": "ExtractionMetadata",
       "type": "object"
     },
+    "JsonValue": {},
     "Money": {
       "additionalProperties": false,
       "properties": {
@@ -756,6 +776,21 @@
           "title": "Authors",
           "type": "array"
         },
+        "bibliography": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bibliography"
+        },
         "blob": {
           "title": "Blob",
           "type": "string"
@@ -810,6 +845,19 @@
           "minLength": 1,
           "title": "Identity",
           "type": "string"
+        },
+        "library_alias": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{2,95}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Library Alias"
         },
         "origin": {
           "maxLength": 2000,

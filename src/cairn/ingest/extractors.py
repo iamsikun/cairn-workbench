@@ -6,7 +6,9 @@ import json
 import pypdf
 
 from cairn.errors import CairnError
-from cairn.records.models import Extraction, Record, Segment, digest
+from cairn.records.continuity import SessionReceipt
+from cairn.records.json import read_json
+from cairn.records.models import Extraction, Record, Segment, canonical, digest
 
 
 def extract_bytes(source: Record, data: bytes) -> Extraction:
@@ -18,12 +20,66 @@ def extract_bytes(source: Record, data: bytes) -> Extraction:
     coverage = "full_text"
     method: str = kind
     version = "1"
-    if kind in ("text", "markdown", "bibliography", "receipt"):
+    if kind in ("text", "markdown"):
         segments = [
             Segment(locator=f"line {i}", text=line)
             for i, line in enumerate(data.decode("utf-8").splitlines(), 1)
             if line.strip()
         ]
+    elif kind == "bibliography":
+        # The adapter supplies a single preserved CSL-JSON item. A raw BibTeX capture
+        # is kept as an excerpt; this release does not pretend to parse BibTeX.
+        if source.source.bibliography is None:
+            segments = [Segment(locator="bibliography export", text=data.decode("utf-8"))]
+            coverage = "excerpt"
+            warnings.append("Unparsed bibliography text; no paper full text has been read.")
+        else:
+            item = read_json(data)
+            if canonical(item) != canonical(source.source.bibliography):
+                raise CairnError("bibliography metadata differs from preserved item")
+            segments = [
+                Segment(
+                    locator=f"CSL field {key}",
+                    text=value if isinstance(value, str) else canonical(value).decode().strip(),
+                )
+                for key, value in sorted(item.items())
+            ]
+            coverage = "abstract_only" if item.get("abstract") else "excerpt"
+            method = "csl-json-item"
+            warnings.append("Bibliographic metadata only; paper full text has not been read.")
+    elif kind == "receipt":
+        receipt = SessionReceipt.model_validate(read_json(data))
+        segments = [
+            Segment(
+                locator=f"message {i}; role {message.role}", text=message.content, role=message.role
+            )
+            for i, message in enumerate(receipt.messages, 1)
+        ]
+        for field in ("tried", "proposed_decisions", "failures", "unresolved"):
+            segments.extend(
+                Segment(locator=f"{field} {i}", text=entry.text, role="assistant")
+                for i, entry in enumerate(getattr(receipt, field), 1)
+            )
+        if receipt.next_action:
+            segments.append(
+                Segment(locator="next_action", text=receipt.next_action.text, role="assistant")
+            )
+        segments.append(
+            Segment(
+                locator="session metadata",
+                text=canonical(
+                    {
+                        "session_id": receipt.session_id,
+                        "project_id": receipt.project_id,
+                        "repository": receipt.repository,
+                        "produced_evidence": receipt.produced_evidence,
+                    }
+                )
+                .decode()
+                .strip(),
+            )
+        )
+        warnings.append("Session reports and proposed decisions are not owner adoption.")
     elif kind == "conversation":
         messages = json.loads(data)["messages"]
         if not isinstance(messages, list) or len(messages) > 10000:

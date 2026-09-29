@@ -1,0 +1,348 @@
+{
+  "$defs": {
+    "ContextItem": {
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coverage"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "source_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Date"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "verification": {
+          "default": "unreviewed",
+          "title": "Verification",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "title": "ContextItem",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Evidence Hash",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "locator": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Locator",
+          "type": "string"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "maxLength": 10000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quote"
+        },
+        "source_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source_hash",
+        "evidence_hash",
+        "locator"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "RepositoryBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Alias",
+          "type": "string"
+        },
+        "commit": {
+          "pattern": "^[0-9a-f]{40,64}$",
+          "title": "Commit",
+          "type": "string"
+        },
+        "run_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Run Ids",
+          "type": "array"
+        },
+        "worktree_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Worktree Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "commit",
+        "worktree_hash"
+      ],
+      "title": "RepositoryBinding",
+      "type": "object"
+    },
+    "RepositoryState": {
+      "additionalProperties": false,
+      "properties": {
+        "explanation": {
+          "title": "Explanation",
+          "type": "string"
+        },
+        "observed": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RepositoryBinding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "recorded": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RepositoryBinding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "enum": [
+            "unbound",
+            "unverified",
+            "current",
+            "stale"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "explanation"
+      ],
+      "title": "RepositoryState",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "budget": {
+      "maximum": 200000,
+      "minimum": 1000,
+      "title": "Budget",
+      "type": "integer"
+    },
+    "budget_method": {
+      "default": "UTF-8 byte count; conservative estimate, not model tokenization",
+      "title": "Budget Method",
+      "type": "string"
+    },
+    "classification": {
+      "default": "private",
+      "enum": [
+        "public",
+        "private",
+        "restricted"
+      ],
+      "title": "Classification",
+      "type": "string"
+    },
+    "compartments": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]{2,95}$",
+        "type": "string"
+      },
+      "title": "Compartments",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "domain": {
+      "enum": [
+        "research",
+        "finance",
+        "life",
+        "shared"
+      ],
+      "title": "Domain",
+      "type": "string"
+    },
+    "estimated_tokens": {
+      "default": 0,
+      "title": "Estimated Tokens",
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "input_hashes": {
+      "patternProperties": {
+        "^[a-z][a-z0-9_]{2,95}$": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "title": "Input Hashes",
+      "type": "object"
+    },
+    "omitted_sections": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Omitted Sections",
+      "type": "object"
+    },
+    "policy_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Policy Hash",
+      "type": "string"
+    },
+    "processing": {
+      "default": "local_only",
+      "enum": [
+        "local_only",
+        "cloud_eligible"
+      ],
+      "title": "Processing",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "question": {
+      "maxLength": 20000,
+      "minLength": 1,
+      "title": "Question",
+      "type": "string"
+    },
+    "repository": {
+      "$ref": "#/$defs/RepositoryState"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "sections": {
+      "additionalProperties": {
+        "items": {
+          "$ref": "#/$defs/ContextItem"
+        },
+        "type": "array"
+      },
+      "title": "Sections",
+      "type": "object"
+    },
+    "source_ids": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]{2,95}$",
+        "type": "string"
+      },
+      "title": "Source Ids",
+      "type": "array"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "domain",
+    "id",
+    "project_id",
+    "question",
+    "created_at",
+    "policy_hash",
+    "budget",
+    "sections",
+    "source_ids",
+    "input_hashes",
+    "repository"
+  ],
+  "title": "ContextPack",
+  "type": "object"
+}

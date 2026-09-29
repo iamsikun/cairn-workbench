@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Annotated, Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
 ID = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{2,95}$")]
 Digest = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
@@ -116,6 +116,10 @@ class Assertion(Model):
     supersedes: list[ID] = Field(default_factory=list)
     disputes: list[ID] = Field(default_factory=list)
     rationale: str | None = None
+    context_role: (
+        Literal["tried", "relevant_literature", "failed_approaches", "open_issues", "next_action"]
+        | None
+    ) = None
 
     @model_validator(mode="after")
     def evidence_required(self) -> Assertion:
@@ -148,6 +152,8 @@ class SourceMetadata(Model):
     external_id: str | None = None
     citation_key: str | None = None
     authors: list[str] = Field(default_factory=list)
+    bibliography: dict[str, JsonValue] | None = None
+    library_alias: ID | None = None
     extraction: ExtractionMetadata | None = None
 
 

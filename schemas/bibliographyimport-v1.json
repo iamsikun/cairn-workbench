@@ -1,0 +1,37 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "export_source_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Export Source Id",
+      "type": "string"
+    },
+    "item_source_ids": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]{2,95}$",
+        "type": "string"
+      },
+      "maxItems": 10000,
+      "title": "Item Source Ids",
+      "type": "array"
+    },
+    "library_alias": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Library Alias",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "library_alias",
+    "export_source_id",
+    "item_source_ids"
+  ],
+  "title": "BibliographyImport",
+  "type": "object"
+}

@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import base64
 import os
+from datetime import date
 from pathlib import Path
 from typing import Literal
+
+from pydantic import JsonValue
 
 from cairn.adapters.isolation import invoke_worker
 from cairn.errors import Blocked, CairnError, Conflict
 from cairn.ingest.extractors import extract_bytes
+from cairn.policies.models import require_inheritance
 from cairn.records.models import (
     Classification,
     Domain,
@@ -29,6 +33,16 @@ from cairn.storage.workspace import Workspace
 SourceType = Literal["text", "markdown", "pdf", "conversation", "bibliography", "receipt"]
 
 
+def read_source_file(file: Path) -> bytes:
+    fd = os.open(file, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, "rb") as stream:
+        RootFS._regular(os.fstat(stream.fileno()))
+        data = stream.read(MAX_FILE_BYTES + 1)
+    if len(data) > MAX_FILE_BYTES:
+        raise CairnError("source exceeds capture limit")
+    return data
+
+
 def capture(
     ws: Workspace,
     file: Path,
@@ -43,12 +57,7 @@ def capture(
     project_ids: list[str] | None = None,
     compartments: set[str] | None = None,
 ) -> Record:
-    fd = os.open(file, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-    with os.fdopen(fd, "rb") as stream:
-        RootFS._regular(os.fstat(stream.fileno()))
-        data = stream.read(MAX_FILE_BYTES + 1)
-    if len(data) > MAX_FILE_BYTES:
-        raise CairnError("source exceeds capture limit")
+    data = read_source_file(file)
     kinds: dict[str, SourceType] = {
         ".md": "markdown",
         ".txt": "text",
@@ -59,9 +68,51 @@ def capture(
     kind = source_type or kinds.get(file.suffix.lower())
     if kind is None:
         raise CairnError("unsupported capture format")
-    source_identity = identity or file.name
+    return capture_bytes(
+        ws,
+        data,
+        origin=file.name,
+        domain=domain,
+        title=title or file.name,
+        identity=identity or file.name,
+        version=version,
+        classification=classification,
+        processing=processing,
+        source_type=kind,
+        project_ids=project_ids,
+        compartments=compartments,
+    )
+
+
+def capture_bytes(
+    ws: Workspace,
+    data: bytes,
+    *,
+    origin: str,
+    domain: Domain,
+    title: str,
+    identity: str,
+    source_type: SourceType,
+    version: str | None = None,
+    classification: Classification = "private",
+    processing: Processing = "local_only",
+    project_ids: list[str] | None = None,
+    compartments: set[str] | None = None,
+    source_date: date | None = None,
+    external_id: str | None = None,
+    citation_key: str | None = None,
+    authors: list[str] | None = None,
+    bibliography: dict[str, JsonValue] | None = None,
+    library_alias: str | None = None,
+    scope_name: str | None = None,
+) -> Record:
+    if len(data) > MAX_FILE_BYTES:
+        raise CairnError("source exceeds capture limit")
+    source_identity = identity
     checksum = digest(data)
     with ws.lock(write=True):
+        scope = ws.policy.scope(scope_name) if scope_name else None
+        projects = [ws.record(project_id, scope)[1] for project_id in (project_ids or [])]
         previous: list[str] = []
         for _, existing, _ in ws.records():
             meta = existing.source
@@ -75,6 +126,19 @@ def capture(
                 and existing.project_ids == (project_ids or [])
             ):
                 if meta.content_hash == checksum and meta.version == version:
+                    if scope:
+                        scope.require(existing)
+                    require_inheritance(existing, projects)
+                    if (
+                        meta.source_type != source_type
+                        or meta.source_date != source_date
+                        or meta.external_id != external_id
+                        or meta.citation_key != citation_key
+                        or meta.authors != (authors or [])
+                        or meta.bibliography != bibliography
+                        or meta.library_alias != library_alias
+                    ):
+                        raise Conflict("source metadata changed for identical captured bytes")
                     return existing
                 if version is not None and meta.version == version:
                     raise Conflict("declared source version has different bytes")
@@ -83,7 +147,7 @@ def capture(
         record = Record(
             id=new_id("source"),
             type="source",
-            title=title or file.name,
+            title=title,
             domain=domain,
             classification=classification,
             processing=processing,
@@ -93,15 +157,24 @@ def capture(
             updated_at=timestamp,
             source=SourceMetadata(
                 identity=source_identity,
-                origin=file.name,
-                source_type=kind,
+                origin=origin,
+                source_type=source_type,
                 captured_at=timestamp,
                 content_hash=checksum,
                 blob=f"blobs/{checksum}",
                 version=version,
                 supersedes=previous,
+                source_date=source_date,
+                external_id=external_id,
+                citation_key=citation_key,
+                authors=authors or [],
+                bibliography=bibliography,
+                library_alias=library_alias,
             ),
         )
+        if scope:
+            scope.require(record)
+        require_inheritance(record, projects)
         if ws.fs.exists(f"blobs/{checksum}"):
             if digest(ws.fs.read(f"blobs/{checksum}")) != checksum:
                 raise Conflict("stored source blob is corrupt")
@@ -167,6 +240,8 @@ def extract(
                 )
             else:
                 raise Blocked("isolation_unavailable: configure a pinned worker image")
+            if result.source_id != source.id or result.source_hash != source.source.content_hash:
+                raise Conflict("worker returned evidence for another source")
             evidence_hash = digest(canonical(result))
             if not ws.fs.exists(f"evidence/{evidence_hash}.json"):
                 ws.fs.write(f"evidence/{evidence_hash}.json", canonical(result), exclusive=True)

@@ -93,7 +93,11 @@ def review_flags(record: Record) -> set[str]:
     flags: set[str] = {"evidence_and_interpretation"}
     if record.domain == "finance" or record.classification == "restricted":
         flags.add("sensitive_record")
-    if record.type == "decision" or any(a.kind == "owner_decision" for a in record.assertions):
+    if record.type == "decision":
+        flags.add("decision_review")
+    if (record.type == "decision" and record.status == "active") or any(
+        a.kind == "owner_decision" for a in record.assertions
+    ):
         flags.add("owner_adoption")
     if any(a.kind in ("inference", "hypothesis") for a in record.assertions):
         flags.add("interpretation")
@@ -262,6 +266,17 @@ def validate_unlocked(ws: Workspace, proposal: Proposal) -> JobEnvelope:
             raise Conflict("proposal is stale: owner content changed")
         if digest(change.content.encode()) != change.content_hash:
             raise CairnError("candidate checksum mismatch")
+        before = ws.fs.read(change.path).decode() if ws.fs.exists(change.path) else ""
+        actual_diff = "".join(
+            difflib.unified_diff(
+                before.splitlines(keepends=True),
+                change.content.splitlines(keepends=True),
+                fromfile=f"before/{change.path}",
+                tofile=f"after/{change.path}",
+            )
+        )
+        if change.diff != actual_diff:
+            raise CairnError("review diff does not match candidate bytes")
         for ref in all_refs(record):
             check_reference(ws, ref, job.scope_name)
             _, cited, _ = ws.record(ref.id, envelope.scope)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Literal
 
@@ -106,7 +107,7 @@ class Policy(Model):
         raise Denied("no applicable cloud processing grant")
 
 
-def require_inheritance(output: Labels, inputs: list[Labels]) -> None:
+def require_inheritance(output: Labels, inputs: Sequence[Labels]) -> None:
     if any(LEVEL[output.classification] < LEVEL[item.classification] for item in inputs):
         raise Denied("derived record weakens confidentiality")
     if (

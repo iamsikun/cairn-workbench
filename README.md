@@ -9,8 +9,10 @@ Implementation is in progress. See [the build plan](CAIRN_BUILD_PLAN.md) and
 
 M0 and M1 now have an executable synthetic workflow: capture, text/PDF/conversation
 extraction, bounded proposals, exact owner approval, recoverable apply, local history,
-scoped evidence/synthesis search, staged owner edits, and backup/restore. M2 research
-continuity and M3 domain/release work are still pending.
+scoped evidence/synthesis search, staged owner edits, and backup/restore. M2 adds selected
+CSL-JSON bibliography import, project framing, attributed session receipts, explicit
+decision adoption, bounded context packs, and repository-staleness checks. Its manual
+second-agent usefulness gate is pending. M3 domain/release work remains in progress.
 
 Python package: `cairn`; command: `cairn`. Development uses synthetic workspaces outside
 the checkout. A private deployment requires a reviewed, pinned installation and a
@@ -22,10 +24,16 @@ The checks use synthetic data and do not mount a private workspace or host home.
 
 The CLI provides `init`, `capture`, `ingest`, `proposal show`, `validate`, `approve`,
 `apply`, `recover`, `search`, `query`, `edit`, `lint`, `rebuild-index`, `backup`, `restore`,
-`client run`, and `doctor`. Pass `--workspace` (or `CAIRN_WORKSPACE`) and use `--json`
+`client run`, `project create`, `bibliography import`, `receipt import`, `decision adopt`,
+`repository inspect`, `context`, and `doctor`. Pass `--workspace` (or `CAIRN_WORKSPACE`) and use `--json`
 for structured command output. `init` currently requires `--synthetic`; private activation
 will require a reviewed installation rather than an editable checkout.
 
 Read the [architecture](docs/architecture.md), [threat model](docs/threat-model.md),
 [processing policy](docs/privacy.md), [recovery procedure](docs/recovery.md), and
 [agent protocol](docs/agent-integration.md) before choosing an execution profile.
+
+The [research workflow and manual continuity procedure](docs/research-continuity.md)
+explain the M2 distinction between preserved session suggestions and adopted decisions.
+The [synthetic context fixture](examples/continuity/context.json) is ready for a manually
+started second session; deterministic protocol success is not semantic acceptance.

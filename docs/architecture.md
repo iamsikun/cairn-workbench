@@ -29,3 +29,16 @@ The synthetic inline provider is a test facility and cannot be enabled for a pri
 workspace. `FakeProvider` only quotes evidence and connects a selected project; it is
 not a model. Query currently returns labeled evidence excerpts and related synthesis,
 with dates, versions, coverage, and explicit insufficient-evidence status.
+
+Research adapters preserve selected bibliography exports and role-attributed session
+receipts as evidence. Receipt import stages observations and draft decisions. A separate
+owner-adoption proposal followed by exact approval/apply establishes current decisions;
+context generation verifies that chain against the canonical decision bytes. A source
+or assistant-supplied authority flag has no effect.
+
+Context generation is local and read-only unless the owner explicitly saves the pack.
+It checks every retained citation against the selected scope and exact evidence, includes
+only project-bound material, propagates labels including the question, and trims complete
+items with their citations intact. A repository fingerprint is verified only against an
+explicitly selected root and never executes project code. Saved packs represent their
+generation instant and may become stale after any subsequent change.
