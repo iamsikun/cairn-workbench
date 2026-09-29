@@ -1,0 +1,189 @@
+{
+  "$defs": {
+    "RouteGrant": {
+      "additionalProperties": false,
+      "properties": {
+        "destination": {
+          "title": "Destination",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "operations": {
+          "items": {
+            "enum": [
+              "generation",
+              "extraction",
+              "query",
+              "context",
+              "client_export"
+            ],
+            "type": "string"
+          },
+          "title": "Operations",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "owner_consent": {
+          "minLength": 1,
+          "title": "Owner Consent",
+          "type": "string"
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        },
+        "scope": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Scope",
+          "type": "string"
+        },
+        "valid_until": {
+          "format": "date-time",
+          "title": "Valid Until",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "scope",
+        "provider",
+        "destination",
+        "operations",
+        "valid_until",
+        "owner_consent"
+      ],
+      "title": "RouteGrant",
+      "type": "object"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "properties": {
+        "compartments": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Compartments",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "domains": {
+          "items": {
+            "enum": [
+              "research",
+              "finance",
+              "life",
+              "shared"
+            ],
+            "type": "string"
+          },
+          "title": "Domains",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "max_classification": {
+          "default": "private",
+          "enum": [
+            "public",
+            "private",
+            "restricted"
+          ],
+          "title": "Max Classification",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "project_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[a-z][a-z0-9_]{2,95}$",
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Ids"
+        },
+        "record_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[a-z][a-z0-9_]{2,95}$",
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Record Ids"
+        }
+      },
+      "required": [
+        "name",
+        "domains"
+      ],
+      "title": "Scope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "cloud_grants": {
+      "items": {
+        "$ref": "#/$defs/RouteGrant"
+      },
+      "title": "Cloud Grants",
+      "type": "array"
+    },
+    "max_changes": {
+      "default": 4,
+      "maximum": 20,
+      "minimum": 1,
+      "title": "Max Changes",
+      "type": "integer"
+    },
+    "revision": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scopes": {
+      "patternProperties": {
+        "^[a-z][a-z0-9_]{2,95}$": {
+          "$ref": "#/$defs/Scope"
+        }
+      },
+      "title": "Scopes",
+      "type": "object"
+    }
+  },
+  "required": [
+    "scopes"
+  ],
+  "title": "Policy",
+  "type": "object"
+}
