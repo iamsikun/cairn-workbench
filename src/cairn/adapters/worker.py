@@ -1,17 +1,30 @@
 """Unprivileged worker: one JSON job in, one JSON result out; no owner APIs."""
 
+import base64
+import json
 import sys
 
 from cairn.adapters.fake import FakeProvider
 from cairn.adapters.protocol import Job
-from cairn.records.models import canonical
+from cairn.ingest.extractors import extract_bytes
+from cairn.records.models import Record, canonical
 
 
 def main() -> None:
-    raw = sys.stdin.buffer.read(4 * 1024 * 1024 + 1)
+    raw = sys.stdin.buffer.read(48 * 1024 * 1024 + 1)
     try:
-        if len(raw) > 4 * 1024 * 1024:
+        if len(raw) > 48 * 1024 * 1024:
             raise ValueError("job too large")
+        document = json.loads(raw)
+        if document.get("operation") == "extract":
+            if set(document) != {"operation", "source", "data"}:
+                raise ValueError("unexpected extraction fields")
+            result = extract_bytes(
+                Record.model_validate(document["source"]),
+                base64.b64decode(document["data"], validate=True),
+            )
+            sys.stdout.buffer.write(canonical(result))
+            return
         job = Job.model_validate_json(raw)
         if job.provider != "fake-v1" or job.route != "local":
             raise ValueError("unsupported local provider")

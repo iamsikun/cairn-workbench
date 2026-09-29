@@ -126,6 +126,15 @@ class Assertion(Model):
         return self
 
 
+class ExtractionMetadata(Model):
+    evidence_hash: Digest
+    method: str
+    method_version: str
+    coverage: Literal["full_text", "excerpt", "abstract_only", "failed"]
+    tables_inspected: bool = False
+    images_inspected: bool = False
+
+
 class SourceMetadata(Model):
     identity: str = Field(min_length=1, max_length=1000)
     origin: str = Field(min_length=1, max_length=2000)
@@ -139,6 +148,7 @@ class SourceMetadata(Model):
     external_id: str | None = None
     citation_key: str | None = None
     authors: list[str] = Field(default_factory=list)
+    extraction: ExtractionMetadata | None = None
 
 
 class RepositoryBinding(Model):

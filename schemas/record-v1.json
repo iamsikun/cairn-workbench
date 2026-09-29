@@ -144,6 +144,52 @@
       "title": "EvidenceRef",
       "type": "object"
     },
+    "ExtractionMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {
+          "enum": [
+            "full_text",
+            "excerpt",
+            "abstract_only",
+            "failed"
+          ],
+          "title": "Coverage",
+          "type": "string"
+        },
+        "evidence_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Evidence Hash",
+          "type": "string"
+        },
+        "images_inspected": {
+          "default": false,
+          "title": "Images Inspected",
+          "type": "boolean"
+        },
+        "method": {
+          "title": "Method",
+          "type": "string"
+        },
+        "method_version": {
+          "title": "Method Version",
+          "type": "string"
+        },
+        "tables_inspected": {
+          "default": false,
+          "title": "Tables Inspected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "evidence_hash",
+        "method",
+        "method_version",
+        "coverage"
+      ],
+      "title": "ExtractionMetadata",
+      "type": "object"
+    },
     "Money": {
       "additionalProperties": false,
       "properties": {
@@ -418,6 +464,17 @@
           ],
           "default": null,
           "title": "External Id"
+        },
+        "extraction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExtractionMetadata"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "identity": {
           "maxLength": 1000,

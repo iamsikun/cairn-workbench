@@ -40,23 +40,23 @@ class DockerProvider:
 
     def generate(self, job: Job) -> Result:
         raw = canonical(job)
-        if len(raw) > 4 * 1024 * 1024:
-            raise CairnError("job exceeds input budget")
         try:
-            result = subprocess.run(
-                container_command(self.image),
-                input=raw,
-                capture_output=True,
-                timeout=90,
-                check=False,
-            )
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            raise Blocked("isolation_unavailable") from exc
-        if result.returncode:
-            raise Blocked("worker_failed_or_isolation_unavailable")
-        if len(result.stdout) > 4 * 1024 * 1024:
-            raise CairnError("worker result exceeds output budget")
-        try:
-            return Result.model_validate_json(result.stdout)
+            return Result.model_validate_json(invoke_worker(self.image, raw))
         except ValueError as exc:
             raise CairnError("invalid worker result") from exc
+
+
+def invoke_worker(image: str, raw: bytes) -> bytes:
+    if len(raw) > 48 * 1024 * 1024:
+        raise CairnError("job exceeds input budget")
+    try:
+        result = subprocess.run(
+            container_command(image), input=raw, capture_output=True, timeout=90, check=False
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise Blocked("isolation_unavailable") from exc
+    if result.returncode:
+        raise Blocked("worker_failed_or_isolation_unavailable")
+    if len(result.stdout) > 32 * 1024 * 1024:
+        raise CairnError("worker result exceeds output budget")
+    return result.stdout
