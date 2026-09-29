@@ -8,6 +8,7 @@ from cairn.ingest.bibliography import BibliographyImport
 from cairn.policies.models import Policy
 from cairn.proposals.models import Approval, Proposal
 from cairn.records.continuity import ContextPack, SessionReceipt
+from cairn.records.domains import Calculation, FinancialSnapshot, LifeDossier
 from cairn.records.models import Event, Extraction, Record
 
 if __name__ == "__main__":
@@ -25,6 +26,9 @@ if __name__ == "__main__":
         BibliographyImport,
         Approval,
         Proposal,
+        FinancialSnapshot,
+        Calculation,
+        LifeDossier,
     ):
         (destination / f"{model.__name__.lower()}-v1.json").write_text(
             json.dumps(model.model_json_schema(), indent=2, sort_keys=True) + "\n"

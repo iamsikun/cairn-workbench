@@ -142,7 +142,16 @@ class ExtractionMetadata(Model):
 class SourceMetadata(Model):
     identity: str = Field(min_length=1, max_length=1000)
     origin: str = Field(min_length=1, max_length=2000)
-    source_type: Literal["text", "markdown", "pdf", "conversation", "bibliography", "receipt"]
+    source_type: Literal[
+        "text",
+        "markdown",
+        "pdf",
+        "conversation",
+        "bibliography",
+        "receipt",
+        "finance_snapshot",
+        "life_dossier",
+    ]
     captured_at: datetime
     content_hash: Digest
     blob: str
@@ -182,6 +191,9 @@ class Record(Labels):
     sections: dict[str, str] = Field(default_factory=dict)
     repository: RepositoryBinding | None = None
     review_date: date | None = None
+    finance_category: (
+        Literal["educational", "official_rule", "account_snapshot", "owner_decision"] | None
+    ) = None
 
     @field_validator("created_at", "updated_at")
     @classmethod
@@ -198,6 +210,19 @@ class Record(Labels):
             raise ValueError("only source records have source metadata")
         if self.updated_at < self.created_at:
             raise ValueError("updated timestamp predates creation")
+        if self.finance_category and self.domain != "finance":
+            raise ValueError("financial category requires finance domain")
+        if self.finance_category == "official_rule" and not (
+            self.period and (self.period.as_of or self.period.valid_from or self.period.tax_year)
+        ):
+            raise ValueError("official rules require dated applicability metadata")
+        if self.finance_category == "account_snapshot" and not (
+            self.period
+            and self.period.as_of
+            and self.period.owner_alias
+            and self.period.account_alias
+        ):
+            raise ValueError("account snapshots require dated owner and account metadata")
         ids = [item.id for item in self.assertions]
         if len(ids) != len(set(ids)):
             raise ValueError("duplicate assertion IDs")

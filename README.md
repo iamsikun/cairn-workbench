@@ -12,7 +12,9 @@ extraction, bounded proposals, exact owner approval, recoverable apply, local hi
 scoped evidence/synthesis search, staged owner edits, and backup/restore. M2 adds selected
 CSL-JSON bibliography import, project framing, attributed session receipts, explicit
 decision adoption, bounded context packs, and repository-staleness checks. Its manual
-second-agent usefulness gate is pending. M3 domain/release work remains in progress.
+second-agent usefulness gate is pending. M3 now includes structured financial snapshots,
+exact Decimal calculations, dated financial notes, sourced life hubs, and direct evidence
+review. The remaining route/release/restore audit is still in progress.
 
 Python package: `cairn`; command: `cairn`. Development uses synthetic workspaces outside
 the checkout. A private deployment requires a reviewed, pinned installation and a
@@ -37,3 +39,7 @@ The [research workflow and manual continuity procedure](docs/research-continuity
 explain the M2 distinction between preserved session suggestions and adopted decisions.
 The [synthetic context fixture](examples/continuity/context.json) is ready for a manually
 started second session; deterministic protocol success is not semantic acceptance.
+
+The [personal domain workflows](docs/personal-domains.md) cover `finance import`,
+`finance calculate`, `finance note`, `life import`, and `evidence`. Calculation inputs
+come from preserved structured sources, with owner/account/date/unit/currency separation.

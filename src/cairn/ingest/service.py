@@ -18,6 +18,7 @@ from cairn.records.models import (
     Event,
     Extraction,
     ExtractionMetadata,
+    Period,
     Processing,
     Record,
     SourceMetadata,
@@ -30,7 +31,16 @@ from cairn.storage.files import MAX_FILE_BYTES, RootFS
 from cairn.storage.markdown import encode
 from cairn.storage.workspace import Workspace
 
-SourceType = Literal["text", "markdown", "pdf", "conversation", "bibliography", "receipt"]
+SourceType = Literal[
+    "text",
+    "markdown",
+    "pdf",
+    "conversation",
+    "bibliography",
+    "receipt",
+    "finance_snapshot",
+    "life_dossier",
+]
 
 
 def read_source_file(file: Path) -> bytes:
@@ -105,6 +115,7 @@ def capture_bytes(
     bibliography: dict[str, JsonValue] | None = None,
     library_alias: str | None = None,
     scope_name: str | None = None,
+    period: Period | None = None,
 ) -> Record:
     if len(data) > MAX_FILE_BYTES:
         raise CairnError("source exceeds capture limit")
@@ -137,6 +148,7 @@ def capture_bytes(
                         or meta.authors != (authors or [])
                         or meta.bibliography != bibliography
                         or meta.library_alias != library_alias
+                        or existing.period != period
                     ):
                         raise Conflict("source metadata changed for identical captured bytes")
                     return existing
@@ -153,6 +165,7 @@ def capture_bytes(
             processing=processing,
             compartments=compartments or set(),
             project_ids=project_ids or [],
+            period=period,
             created_at=timestamp,
             updated_at=timestamp,
             source=SourceMetadata(

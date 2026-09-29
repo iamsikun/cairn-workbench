@@ -9,7 +9,7 @@ from cairn.cli import app
 from cairn.errors import Denied
 from cairn.ingest.service import capture, extract
 from cairn.proposals.service import approve, ingest
-from cairn.records.models import Record, canonical, now
+from cairn.records.models import EvidenceRef, Record, canonical, now
 from cairn.retrieval.search import backlinks, query, rebuild_index, search
 from cairn.storage.markdown import encode
 from cairn.storage.workspace import Workspace
@@ -67,6 +67,54 @@ def test_restricted_backlinks_are_omitted(ws: Workspace, record: Record) -> None
     secret.related = [record.id]
     ws.fs.write("vault/wiki/finance/concept_secret.md", encode(secret, "restricted backlink"))
     assert backlinks(ws, record.id, scope_name="research") == []
+
+
+def test_denied_evidence_withholds_derived_text_and_ranking(
+    ws: Workspace,
+    record: Record,
+    tmp_path: Path,
+) -> None:
+    file = tmp_path / "secret-fixture.txt"
+    file.write_text("SECRET-DERIVED-VALUE")
+    source = capture(ws, file, domain="finance")
+    extraction, key = extract(ws, source.id, inline_synthetic=True)
+    record.title = "SECRET-DERIVED-TITLE"
+    record.sources = [
+        EvidenceRef(
+            id=source.id, source_hash=extraction.source_hash, evidence_hash=key, locator="line 1"
+        )
+    ]
+    ws.fs.write("vault/wiki/research/concept_demo.md", encode(record, "SECRET-DERIVED-VALUE"))
+    assert search(ws, "SECRET", scope_name="research") == []
+    assert rebuild_index(ws, "research") == 0
+    assert all(b"SECRET-DERIVED" not in ws.fs.read(path) for path in ws.fs.files("cache"))
+
+
+def test_cli_evidence_exact_locator_and_coverage(ws: Workspace, tmp_path: Path) -> None:
+    file = tmp_path / "lines.txt"
+    file.write_text("First evidence line.\nExact second value 42.")
+    source = capture(ws, file, domain="research")
+    extract(ws, source.id, inline_synthetic=True)
+    result = CliRunner().invoke(
+        app,
+        [
+            "evidence",
+            source.id,
+            "--scope",
+            "research",
+            "--locator",
+            "line 2",
+            "--workspace",
+            str(ws.root),
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    report = json.loads(result.stdout)
+    assert report["coverage"] == "full_text"
+    assert (
+        len(report["segments"]) == 1 and report["segments"][0]["text"] == "Exact second value 42."
+    )
 
 
 def test_cli_full_owner_workflow(tmp_path: Path) -> None:

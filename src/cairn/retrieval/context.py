@@ -143,6 +143,22 @@ def context_pack(
                         verification=assertion.verification,
                     )
                 )
+        adopted = {
+            record.id
+            for path, record in related.values()
+            if record.type == "decision"
+            and record.status == "active"
+            and supported(record, all_refs(record))
+            and _adopted(ws, path, record)
+        }
+        superseded = {
+            linked
+            for _, record in related.values()
+            if record.id in adopted
+            for assertion in record.assertions
+            if assertion.kind == "owner_decision" and assertion.verification == "reviewed"
+            for linked in assertion.supersedes
+        }
         for record_id, (path, record) in sorted(related.items()):
             if record_id == project_id or not supported(record, all_refs(record)):
                 continue
@@ -185,11 +201,13 @@ def context_pack(
                     )
                 )
             elif record.type == "decision":
-                if record.status == "active" and _adopted(ws, path, record):
+                if record.id in adopted:
                     for assertion in record.assertions:
                         if (
                             assertion.kind == "owner_decision"
                             and assertion.verification == "reviewed"
+                            and record.id not in superseded
+                            and assertion.id not in superseded
                         ):
                             sections["current_decisions"].append(
                                 ContextItem(

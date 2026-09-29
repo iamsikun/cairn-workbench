@@ -8,6 +8,7 @@ from cairn.ingest.bibliography import BibliographyImport
 from cairn.policies.models import Policy
 from cairn.proposals.models import Approval, Proposal
 from cairn.records.continuity import ContextPack, SessionReceipt
+from cairn.records.domains import Calculation, FinancialSnapshot, LifeDossier
 from cairn.records.models import Event, Extraction, Record
 
 
@@ -25,6 +26,9 @@ from cairn.records.models import Event, Extraction, Record
         BibliographyImport,
         Approval,
         Proposal,
+        FinancialSnapshot,
+        Calculation,
+        LifeDossier,
     ],
 )
 def test_export_matches_model(model: type[Record]) -> None:

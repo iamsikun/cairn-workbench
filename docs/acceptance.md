@@ -8,7 +8,7 @@ artifact, not just code presence. Private activation and M4 are outside this goa
 | M0 | Passed reference acceptance | 24 tests, lint, strict typing, 13 isolation checks |
 | M1 | Passed reference acceptance | 48 tests, installed worker protocols, both isolation profiles |
 | M2 | Mechanics implemented; manual semantic gate pending | Separate-session continuity evaluation chosen by owner |
-| M3 | Pending | Domain workflows, restore, installed release, complete audit |
+| M3 | In progress | Domain workflows implemented; route/release/restore audit remains |
 
 The brief's hard gates will be mapped to named tests as implementation proceeds.
 
@@ -84,7 +84,26 @@ adoption/context sequence and generated `examples/continuity/context.json`, sour
 and a verification manifest. The second-agent semantic result is explicitly **not evaluated**.
 Follow `docs/research-continuity.md` for the owner-selected manual test. No subagent was spawned.
 
-Next work: M3 domain templates/calculations, grant audits, full restore/release packaging,
-user-facing evidence/conflict review, and a full requirement audit. Independent work may
+M3 domain implementation adds exact structured financial observations and Decimal
+calculations, dated financial categories, life dossier/history imports, and the owner
+`evidence` command. The new tests cover decimal fidelity; distinct owner/account/date/
+unit/currency; float rejection; fabricated amounts, metadata, prose and snapshot bodies;
+preserved life history; denied-evidence summary leakage; and decision supersession.
+Installed M3 domain-increment evidence from `bash scripts/check.sh`: **86 tests passed**,
+Ruff passed, strict mypy passed (42 source files), both profiles passed 13 isolation probes
+each, and six installed-worker trials passed (packet, text, bibliography, receipt,
+financial snapshot, and life dossier). The manual-handoff generator also completed.
+
+- `tests/test_domains.py` contains 15 executed cases, including six hostile snapshot
+  mutations and five distinct prohibited arithmetic mixtures.
+- `test_denied_evidence_withholds_derived_text_and_ranking` verifies that stripped citations
+  cannot leave a restricted conclusion in search or its cache.
+- `test_superseded_adopted_decision_is_not_presented_as_current` preserves the original
+  decision and presents only its adopted successor as current.
+- `test_missing_conflict_reference_is_rejected` and `test_cli_evidence_exact_locator_and_coverage`
+  cover conflict-reference integrity and explicit source inspection.
+
+Next work: grant audits, complete restore/release packaging, schema migration support,
+the synthetic evaluation report, and a full requirement audit. Independent work may
 continue while the external manual gate remains named and pending. Private activation
 remains separate and is currently explicitly denied.

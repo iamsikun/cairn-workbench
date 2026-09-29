@@ -10,7 +10,7 @@ from pydantic import Field
 from cairn.errors import Blocked, CairnError
 from cairn.ingest.service import load_extraction
 from cairn.policies.models import Scope
-from cairn.records.models import EvidenceRef, Model, canonical, digest
+from cairn.records.models import EvidenceRef, Model, Period, canonical, digest
 from cairn.storage.workspace import Workspace
 
 
@@ -27,6 +27,10 @@ class Hit(Model):
     verification: list[str] = Field(default_factory=list)
     supersedes: list[str] = Field(default_factory=list)
     disputes: list[str] = Field(default_factory=list)
+    period: Period | None = None
+    status: str = "draft"
+    review_date: str | None = None
+    finance_category: str | None = None
 
 
 ALIASES = {"evidence": "证据", "retrieval": "检索", "decision": "决策"}
@@ -54,6 +58,12 @@ def _corpus(ws: Workspace, scope: Scope) -> tuple[list[tuple[Hit, list[str]]], s
     hashes: dict[str, str] = {}
     corpus: list[tuple[Hit, list[str]]] = []
     for path, record, body in records:
+        from cairn.proposals.service import all_refs
+
+        if any(ref.id not in allowed for ref in all_refs(record)):
+            # Withhold derived text as well as its citation if its evidence is denied.
+            # Stripping only the reference can expose the restricted conclusion.
+            continue
         hashes[path] = digest(ws.fs.read(path))
         if record.source and record.source.extraction:
             extraction, key = load_extraction(ws, record)
@@ -85,6 +95,8 @@ def _corpus(ws: Workspace, scope: Scope) -> tuple[list[tuple[Hit, list[str]]], s
                             supersedes=[
                                 item for item in record.source.supersedes if item in allowed
                             ],
+                            period=record.period,
+                            status=record.status,
                         ),
                         record.aliases,
                     )
@@ -119,12 +131,16 @@ def _corpus(ws: Workspace, scope: Scope) -> tuple[list[tuple[Hit, list[str]]], s
                             for item in a.disputes
                             if item in allowed | allowed_assertions
                         ],
+                        period=record.period,
+                        status=record.status,
+                        review_date=str(record.review_date) if record.review_date else None,
+                        finance_category=record.finance_category,
                     ),
                     record.aliases,
                 )
             )
     key = digest(
-        canonical({"format": 1, "scope": scope, "policy": ws.policy_hash, "hashes": hashes})
+        canonical({"format": 2, "scope": scope, "policy": ws.policy_hash, "hashes": hashes})
     )
     return corpus, key
 
@@ -260,8 +276,13 @@ def backlinks(ws: Workspace, object_id: str, *, scope_name: str) -> list[str]:
     with ws.lock():
         scope = ws.policy.scope(scope_name)
         ws.record(object_id, scope)
+        from cairn.proposals.service import all_refs
+
+        records = ws.records(scope)
+        allowed = {record.id for _, record, _ in records}
         return [
             record.id
-            for _, record, _ in ws.records(scope)
-            if object_id in record.related or any(ref.id == object_id for ref in record.sources)
+            for _, record, _ in records
+            if all(ref.id in allowed for ref in all_refs(record))
+            and (object_id in record.related or any(ref.id == object_id for ref in record.sources))
         ]

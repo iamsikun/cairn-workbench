@@ -22,7 +22,7 @@ docker run "${profile[@]}" --interactive "$worker_id" < "$probe_dir/job.json" > 
 cat "$probe_dir/job.json" "$probe_dir/result.json" | docker run "${profile[@]}" --interactive "$image_id" python scripts/worker_roundtrip.py verify
 docker run "${profile[@]}" "$image_id" python scripts/worker_roundtrip.py make-extraction | docker run "${profile[@]}" --interactive "$worker_id" > "$probe_dir/extraction.json"
 docker run "${profile[@]}" --interactive "$image_id" python scripts/worker_roundtrip.py verify-extraction < "$probe_dir/extraction.json"
-for kind in bibliography receipt; do
+for kind in bibliography receipt finance life; do
   docker run "${profile[@]}" "$image_id" python scripts/worker_roundtrip.py "make-$kind" |
     docker run "${profile[@]}" --interactive "$worker_id" |
     docker run "${profile[@]}" --interactive "$image_id" python scripts/worker_roundtrip.py "verify-$kind"

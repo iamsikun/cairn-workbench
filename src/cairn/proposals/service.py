@@ -249,9 +249,19 @@ def validate_unlocked(ws: Workspace, proposal: Proposal) -> JobEnvelope:
     candidate_ids = {change.id for change in proposal.changes}
     if len(candidate_ids) != len(proposal.changes):
         raise CairnError("duplicate candidate ID")
+    candidate_records = {
+        change.id: decode(change.content.encode())[0] for change in proposal.changes
+    }
+    final_records = {key: value[1] for key, value in current.items()} | candidate_records
+    assertion_owners: dict[str, Record] = {}
+    for candidate in final_records.values():
+        for assertion in candidate.assertions:
+            if assertion.id in final_records or assertion.id in assertion_owners:
+                raise CairnError("ambiguous durable assertion ID")
+            assertion_owners[assertion.id] = candidate
     expected_flags: set[str] = set()
     for change in proposal.changes:
-        record, _ = decode(change.content.encode())
+        record, body = decode(change.content.encode())
         if record.id != change.id or change.path != target_path(record):
             raise Denied("invalid target path or ID")
         envelope.scope.require(record)
@@ -281,9 +291,30 @@ def validate_unlocked(ws: Workspace, proposal: Proposal) -> JobEnvelope:
             check_reference(ws, ref, job.scope_name)
             _, cited, _ = ws.record(ref.id, envelope.scope)
             require_inheritance(record, [cited])
+        if record.domain == "finance":
+            from cairn.ingest.finance import check_observed_money, validate_snapshot_record
+
+            if record.finance_category is None:
+                raise CairnError("finance records require an explicit knowledge category")
+            for assertion in record.assertions:
+                for amount in assertion.amounts:
+                    check_observed_money(ws, amount, scope_name=job.scope_name)
+            if record.finance_category == "account_snapshot":
+                validate_snapshot_record(ws, record, body, scope_name=job.scope_name)
         for linked in [*record.related, *record.project_ids]:
             if linked not in candidate_ids:
                 ws.record(linked, envelope.scope)
+            if linked in record.project_ids and final_records[linked].type != "project":
+                raise CairnError("project links must name project records")
+        for assertion in record.assertions:
+            for linked in [*assertion.supersedes, *assertion.disputes]:
+                if linked in (record.id, assertion.id):
+                    raise CairnError("assertion cannot supersede or dispute itself")
+                target = final_records.get(linked) or assertion_owners.get(linked)
+                if target is None:
+                    raise Denied("conflict reference unavailable in this scope")
+                envelope.scope.require(target)
+                require_inheritance(record, [target])
         expected_flags |= review_flags(record)
     if expected_flags != proposal.review_flags:
         raise Denied("review flags do not match proposed content")

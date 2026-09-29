@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 from typer.testing import CliRunner
 
+from cairn.adapters.protocol import Candidate, Result
 from cairn.cli import app
 from cairn.errors import CairnError, Denied
 from cairn.ingest.bibliography import import_bibliography
@@ -13,9 +14,9 @@ from cairn.ingest.projects import create_project
 from cairn.ingest.receipts import adopt_decision, import_receipt
 from cairn.ingest.service import capture, extract
 from cairn.proposals.models import Proposal
-from cairn.proposals.service import approve, validate
+from cairn.proposals.service import approve, load_job, stage_result, validate
 from cairn.records.continuity import ReceiptEntry, ReceiptMessage, SessionReceipt
-from cairn.records.models import EvidenceRef, Record, canonical
+from cairn.records.models import EvidenceRef, Record, canonical, digest
 from cairn.retrieval.context import context_pack
 from cairn.retrieval.repository import inspect_repository
 from cairn.storage.markdown import decode, encode
@@ -373,6 +374,75 @@ def test_review_diff_tamper_is_rejected(ws: Workspace, tmp_path: Path, project: 
     ws.fs.write(f"proposals/{proposal.id}.json", canonical(proposal))
     with pytest.raises(CairnError, match="review diff"):
         validate(ws, proposal.id)
+
+
+def test_superseded_adopted_decision_is_not_presented_as_current(
+    ws: Workspace,
+    tmp_path: Path,
+    project: Record,
+) -> None:
+    imported = import_receipt(
+        ws, session_file(tmp_path, project), scope_name="research", inline_synthetic=True
+    )
+    assert imported
+    accept(ws, imported)
+    decision_id = next(c.id for c in imported.changes if c.id.startswith("decision_"))
+    adoption = adopt_decision(
+        ws, decision_id, scope_name="research", statement="First owner choice."
+    )
+    assert adoption
+    accept(ws, adoption)
+    # A fresh, sealed job is required after the old version has been adopted.
+    from cairn.proposals.service import prepare_job
+
+    old = ws.record(decision_id)[1]
+    job = prepare_job(ws, old.sources[0].id, scope_name="research", related_ids=[decision_id]).job
+    revised = old.model_copy(deep=True)
+    revised.id = "decision_successor"
+    revised.assertions[0].id = "assert_successor"
+    revised.assertions[0].text = "Retain locators plus extraction coverage in every context pack."
+    revised.assertions[0].supersedes = [old.id]
+    revised.assertions[0].rationale = "Owner expands the explicit provenance requirement."
+    proposal = stage_result(
+        ws,
+        Result(
+            job_id=job.id,
+            input_hash=digest(canonical(job)),
+            provider=job.provider,
+            candidates=[Candidate(record=revised, body="", rationale="Owner revision")],
+        ),
+    )
+    assert proposal and "conflicting_evidence" in proposal.review_flags
+    accept(ws, proposal)
+    pack = context_pack(ws, project.id, question="Next?", budget=20000, scope_name="research")
+    assert len(pack.sections["current_decisions"]) == 1
+    assert pack.sections["current_decisions"][0].id == revised.id
+    assert ws.record(old.id)[1] == old
+
+
+def test_missing_conflict_reference_is_rejected(
+    ws: Workspace, tmp_path: Path, project: Record
+) -> None:
+    imported = import_receipt(
+        ws, session_file(tmp_path, project), scope_name="research", inline_synthetic=True
+    )
+    assert imported
+    job = load_job(ws, imported.job_id).job
+    candidate = decode(imported.changes[0].content.encode())[0]
+    candidate.assertions[0].disputes = ["assert_missing"]
+    candidate.assertions[0].rationale = "Untrusted synthetic conflict claim."
+    staged = stage_result(
+        ws,
+        Result(
+            job_id=job.id,
+            input_hash=digest(canonical(job)),
+            provider=job.provider,
+            candidates=[Candidate(record=candidate, body="", rationale="Propose dispute")],
+        ),
+    )
+    assert staged
+    with pytest.raises(Denied, match="reference unavailable"):
+        validate(ws, staged.id)
 
 
 def test_cli_research_context_and_save(ws: Workspace, project: Record) -> None:

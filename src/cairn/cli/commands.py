@@ -55,7 +55,7 @@ def emit(value: Any, as_json: bool, text: str | None = None) -> None:
         typer.echo(
             "".join(
                 character
-                if character in "\n\t" or unicodedata.category(character) != "Cc"
+                if character in "\n\t" or unicodedata.category(character) not in ("Cc", "Cf")
                 else f"\\u{ord(character):04x}"
                 for character in text
             )
@@ -67,6 +67,46 @@ def register(app: typer.Typer) -> None:
     app.add_typer(proposals, name="proposal")
     clients = typer.Typer(help="Run a scoped packet through a pinned local client image.")
     app.add_typer(clients, name="client")
+
+    @app.command("evidence")
+    @guarded
+    def evidence(
+        source_id: str,
+        workspace: WorkspaceOption,
+        scope: Annotated[str, typer.Option()],
+        locator: str | None = None,
+        json_output: JsonOption = False,
+    ) -> None:
+        from cairn.errors import CairnError
+        from cairn.ingest.service import load_extraction
+
+        ws = Workspace(workspace)
+        with ws.lock():
+            path, source, _ = ws.record(source_id, ws.policy.scope(scope))
+            extraction, key = load_extraction(ws, source)
+            assert source.source
+            segments = [s for s in extraction.segments if locator is None or s.locator == locator]
+            if not segments:
+                raise CairnError("evidence locator unavailable")
+            report = {
+                "source": source,
+                "evidence_hash": key,
+                "coverage": extraction.coverage,
+                "method": extraction.method,
+                "method_version": extraction.method_version,
+                "tables_inspected": extraction.tables_inspected,
+                "images_inspected": extraction.images_inspected,
+                "segments": segments,
+                "warnings": extraction.warnings,
+            }
+            text = (
+                f"{source.title}\n{source.id}\nManifest: {ws.root / path}\n"
+                f"Version: {source.source.version or 'unknown'}; "
+                f"date: {source.source.source_date or 'unknown'}; coverage: {extraction.coverage}\n"
+                f"Source hash: {source.source.content_hash}\nEvidence hash: {key}\n"
+                + "\n\n".join(f"[{s.locator}] {s.text}" for s in segments)
+            )
+        emit(report, json_output, text)
 
     @clients.command("run")
     @guarded
@@ -282,7 +322,15 @@ def register(app: typer.Typer) -> None:
         hits = run_search(Workspace(workspace), query, scope_name=scope, limit=limit)
         text = (
             "\n\n".join(
-                f"[{hit.kind}] {hit.title}\n{hit.id}; {hit.locator}\n{hit.text}" for hit in hits
+                f"[{hit.kind}] {hit.title}\n{hit.id}; {hit.locator}\n"
+                f"Date: {hit.source_date or 'unknown'}; "
+                f"version: {hit.source_version or 'unknown'}; "
+                f"coverage: {hit.coverage or 'synthesis'}; status: {hit.status}\n"
+                f"Verification: {', '.join(hit.verification) or 'unreviewed'}\n"
+                f"Applicability: {canonical(hit.period).decode().strip()}\n"
+                f"Supersedes: {', '.join(hit.supersedes) or 'none recorded'}; "
+                f"disputes: {', '.join(hit.disputes) or 'none recorded'}\n{hit.text}"
+                for hit in hits
             )
             or "No matching authorized evidence or synthesis."
         )

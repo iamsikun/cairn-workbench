@@ -556,7 +556,9 @@
             "pdf",
             "conversation",
             "bibliography",
-            "receipt"
+            "receipt",
+            "finance_snapshot",
+            "life_dossier"
           ],
           "title": "Source Type",
           "type": "string"
@@ -643,6 +645,24 @@
       ],
       "title": "Domain",
       "type": "string"
+    },
+    "finance_category": {
+      "anyOf": [
+        {
+          "enum": [
+            "educational",
+            "official_rule",
+            "account_snapshot",
+            "owner_decision"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Finance Category"
     },
     "id": {
       "pattern": "^[a-z][a-z0-9_]{2,95}$",
