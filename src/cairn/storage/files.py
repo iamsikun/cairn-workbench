@@ -96,8 +96,10 @@ class RootFS:
         except FileNotFoundError:
             return False
 
-    def write(self, relative: str, data: bytes, *, exclusive: bool = False) -> None:
-        if len(data) > MAX_FILE_BYTES:
+    def write(
+        self, relative: str, data: bytes, *, exclusive: bool = False, limit: int = MAX_FILE_BYTES
+    ) -> None:
+        if len(data) > limit:
             raise Denied("file exceeds size limit")
         with self.parent(relative, create=True) as (fd, name):
             try:

@@ -10,6 +10,7 @@ from cairn.proposals.models import Approval, Proposal
 from cairn.records.continuity import ContextPack, SessionReceipt
 from cairn.records.domains import Calculation, FinancialSnapshot, LifeDossier
 from cairn.records.models import Event, Extraction, Record
+from cairn.storage.backup import BackupManifest
 
 if __name__ == "__main__":
     destination = Path("schemas")
@@ -29,6 +30,7 @@ if __name__ == "__main__":
         FinancialSnapshot,
         Calculation,
         LifeDossier,
+        BackupManifest,
     ):
         (destination / f"{model.__name__.lower()}-v1.json").write_text(
             json.dumps(model.model_json_schema(), indent=2, sort_keys=True) + "\n"

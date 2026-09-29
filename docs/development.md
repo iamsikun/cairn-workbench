@@ -9,6 +9,7 @@ Run tests with the processing profile:
 ```sh
 docker run --rm --pull=never --network=none --read-only --cap-drop=ALL \
   --security-opt=no-new-privileges --pids-limit=64 --memory=512m --cpus=1 \
+  --log-driver=none --no-healthcheck --restart=no \
   --user=65532:65532 --tmpfs=/tmp:rw,noexec,nosuid,size=128m,mode=1777 \
   cairn-dev:local
 ```

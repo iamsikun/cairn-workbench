@@ -10,6 +10,7 @@ from cairn.proposals.models import Approval, Proposal
 from cairn.records.continuity import ContextPack, SessionReceipt
 from cairn.records.domains import Calculation, FinancialSnapshot, LifeDossier
 from cairn.records.models import Event, Extraction, Record
+from cairn.storage.backup import BackupManifest
 
 
 @pytest.mark.parametrize(
@@ -29,6 +30,7 @@ from cairn.records.models import Event, Extraction, Record
         FinancialSnapshot,
         Calculation,
         LifeDossier,
+        BackupManifest,
     ],
 )
 def test_export_matches_model(model: type[Record]) -> None:

@@ -1,8 +1,8 @@
 # Remaining M3 release audit
 
 M0/M1 reference gates pass. M2 mechanics pass; its second-agent semantic trial is manual
-and pending by owner choice. M3 domain mechanics pass 86 cumulative tests plus installed
-worker and isolation trials. These results do not close the full M0–M3 implementation goal.
+and pending by owner choice. M3 now passes 110 cumulative tests plus installed worker,
+isolation, and real-engine lifecycle trials. These results do not close the full goal.
 
 Before release review, finish the following public, synthetic-only work:
 
@@ -10,13 +10,14 @@ Before release review, finish the following public, synthetic-only work:
    derived labels. Provide owner-facing route/grant inspection and audit receipts;
    reject missing, expired, destination-mismatched, or scope-mismatched grants. Keep cloud
    execution unavailable until a concrete compliant adapter exists, with no fallback.
-2. Harden and retest full backup/restore: archive-wide case/Unicode/parent collisions,
-   missing manifests, malformed canonical records, referenced blob/evidence integrity,
-   pending transactions, and the mismatch between the 256 MiB archive budget and the
-   current 32 MiB `RootFS.write` default. Validate everything possible before writes.
-3. Bound worker stdout/stderr during execution, rather than only after `subprocess.run`.
-   Ensure a timeout terminates the owned container, not merely its Docker client process.
-   Test failure cleanup without mounting private state or a Docker socket in a worker.
+2. Completed reference hardening: backup/restore now preflights paths, canonical metadata,
+   evidence/quotes, history configuration, and journals. Staged publication avoids partial
+   destinations; a >32 MiB ZIP and interrupted apply restore pass. Private restore still
+   depends on the reviewed-runtime gate in item 4.
+3. Completed reference hardening: worker streams/deadlines are bounded, remote Docker
+   endpoints and implicit volumes are rejected, and owned-container cleanup is required.
+   Real-engine create/start/removal and synthetic launcher failure tests pass. Full private
+   installation verification remains separate; no daemon socket was mounted in a worker.
 4. Deliver an offline installed-wheel trial and release manifest containing the reviewed
    code commit, wheel/dependency hashes, lock hash, versions, and pinned worker images.
    Verify installed imports rather than editable-checkout imports. Supply an explicit

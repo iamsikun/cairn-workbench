@@ -58,6 +58,8 @@ class Workspace:
     def __init__(self, root: Path):
         self.fs = RootFS(root)
         self.root = self.fs.root
+        if self.fs.exists("restore.pending"):
+            raise RecoveryRequired("restore staging is incomplete; use the original archive")
         self.config = WorkspaceConfig.model_validate_json(self.fs.read("workspace.json"))
         check_roots(self.root, [Path(path) for path in self.config.code_roots])
 

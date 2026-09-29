@@ -107,3 +107,22 @@ Next work: grant audits, complete restore/release packaging, schema migration su
 the synthetic evaluation report, and a full requirement audit. Independent work may
 continue while the external manual gate remains named and pending. Private activation
 remains separate and is currently explicitly denied.
+
+M3 restore/worker-hardening evidence from `bash scripts/check.sh`: **110 tests passed**,
+Ruff passed, strict mypy passed (43 files), both profiles passed 13 isolation probes each,
+and all six installed-worker trials passed. A real-engine create/start packet round trip
+and forced removal of a running worker plus child also passed. No contributor Python
+received a Docker socket or host/private mount.
+
+- `tests/test_restore_hardening.py`: 12 executed cases cover complete namespace preflight,
+  special files, missing manifest, invalid records, expected archive digest, copy failure,
+  executable Git configuration, a ZIP above the old 32 MiB ceiling, backup of a real
+  process-terminated two-file apply, and refusal to open incomplete restore staging.
+- `tests/test_worker_lifecycle.py`: 11 cases use real subprocess pipes with a synthetic
+  Docker control process to verify stdout/stderr limits, timeouts, closed pipes, packet
+  success/failure, actual exit-state checks, exact owned-container cleanup, cleanup failure,
+  remote endpoint denial, and image-volume rejection before input transmission.
+
+The synthetic engine verifies launcher behavior, while the separate host script verifies
+the actual Docker lifecycle and worker isolation. Neither is claimed to prove a complete
+private installation or universal container security.

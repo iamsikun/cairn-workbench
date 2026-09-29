@@ -4,6 +4,7 @@ import os
 import subprocess
 
 from cairn.errors import Blocked
+from cairn.storage.history_safety import check_history_config, check_history_paths
 from cairn.storage.workspace import Workspace
 
 
@@ -44,6 +45,8 @@ def snapshot(ws: Workspace, message: str) -> str:
         run(["git", "-c", "core.hooksPath=/dev/null", "init", "--bare", str(gitdir)])
     if gitdir.is_symlink():
         raise Blocked("unsafe_history_directory")
+    check_history_paths(ws.fs.files("history.git"))
+    check_history_config(ws.fs.read("history.git/config"))
     # Path list deliberately excludes blobs, caches, journals, and credentials.
     paths = ["workspace.json", "vault", "policy", "receipts", "approvals", "proposals", "evidence"]
     run([*common, "add", "--", *paths])

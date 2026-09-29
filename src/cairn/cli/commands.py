@@ -176,11 +176,16 @@ def register(app: typer.Typer) -> None:
     @app.command("backup")
     @guarded
     def backup_command(
-        destination: Path, workspace: WorkspaceOption, json_output: JsonOption = False
+        destination: Path,
+        workspace: WorkspaceOption,
+        include_pending: bool = False,
+        json_output: JsonOption = False,
     ) -> None:
         from cairn.storage.backup import backup
 
-        emit(backup(Workspace(workspace), destination), json_output)
+        emit(
+            backup(Workspace(workspace), destination, include_pending=include_pending), json_output
+        )
 
     @app.command("restore")
     @guarded
@@ -188,11 +193,12 @@ def register(app: typer.Typer) -> None:
         archive: Path,
         destination: Annotated[Path, typer.Option()],
         code_root: Annotated[Path, typer.Option()],
+        expected_sha256: str | None = None,
         json_output: JsonOption = False,
     ) -> None:
         from cairn.storage.backup import restore
 
-        ws = restore(archive, destination, code_roots=[code_root])
+        ws = restore(archive, destination, code_roots=[code_root], expected_sha256=expected_sha256)
         emit({"workspace_id": ws.config.id, "restored": True}, json_output)
 
     @app.command()
