@@ -65,6 +65,95 @@ def emit(value: Any, as_json: bool, text: str | None = None) -> None:
 def register(app: typer.Typer) -> None:
     proposals = typer.Typer(help="Inspect sealed proposals.")
     app.add_typer(proposals, name="proposal")
+    clients = typer.Typer(help="Run a scoped packet through a pinned local client image.")
+    app.add_typer(clients, name="client")
+
+    @clients.command("run")
+    @guarded
+    def client_run(
+        source_id: str,
+        workspace: WorkspaceOption,
+        image: Annotated[str, typer.Option()],
+        scope: str = "owner",
+        provider: str = "fake-v1",
+        inline_synthetic: bool = False,
+        json_output: JsonOption = False,
+    ) -> None:
+        from cairn.adapters.isolation import ClientPacketProvider
+        from cairn.ingest.service import extract
+        from cairn.proposals.service import prepare_job, stage_result
+
+        ws = Workspace(workspace)
+        extract(ws, source_id, scope_name=scope, inline_synthetic=inline_synthetic)
+        envelope = prepare_job(
+            ws, source_id, scope_name=scope, provider=provider, execution_image=image
+        )
+        result = ClientPacketProvider(image).generate(envelope.job)
+        staged = stage_result(ws, result)
+        emit(staged or {"status": "unchanged"}, json_output)
+
+    @app.command("edit")
+    @guarded
+    def edit_command(
+        record_id: str,
+        workspace: WorkspaceOption,
+        from_file: Annotated[Path | None, typer.Option()] = None,
+        base_hash: str | None = None,
+        inline_synthetic: bool = False,
+        json_output: JsonOption = False,
+    ) -> None:
+        """Stage an owner revision from an editor or a file with an explicit base hash."""
+        import os
+        import shlex
+        import subprocess
+
+        from cairn.errors import Blocked
+        from cairn.records.models import digest, new_id
+        from cairn.transactions.edit import edit_from_file
+
+        ws = Workspace(workspace)
+        if from_file is None:
+            editor = os.environ.get("EDITOR")
+            if not editor:
+                raise Blocked("set EDITOR or supply --from-file and --base-hash")
+            with ws.lock(write=True):
+                path, _, _ = ws.record(record_id)
+                original = ws.fs.read(path)
+                base_hash = digest(original)
+                staged_path = f"cache/edit/{new_id('edit')}.md"
+                ws.fs.write(staged_path, original, exclusive=True)
+            from_file = ws.root / staged_path
+            completed = subprocess.run([*shlex.split(editor), str(from_file)], check=False)
+            if completed.returncode:
+                raise CairnError("editor exited without a successful staged revision")
+        if base_hash is None:
+            raise CairnError("--base-hash is required with --from-file")
+        proposal = edit_from_file(
+            ws, record_id, from_file, expected_hash=base_hash, inline_synthetic=inline_synthetic
+        )
+        emit(proposal or {"status": "unchanged"}, json_output)
+
+    @app.command("backup")
+    @guarded
+    def backup_command(
+        destination: Path, workspace: WorkspaceOption, json_output: JsonOption = False
+    ) -> None:
+        from cairn.storage.backup import backup
+
+        emit(backup(Workspace(workspace), destination), json_output)
+
+    @app.command("restore")
+    @guarded
+    def restore_command(
+        archive: Path,
+        destination: Annotated[Path, typer.Option()],
+        code_root: Annotated[Path, typer.Option()],
+        json_output: JsonOption = False,
+    ) -> None:
+        from cairn.storage.backup import restore
+
+        ws = restore(archive, destination, code_roots=[code_root])
+        emit({"workspace_id": ws.config.id, "restored": True}, json_output)
 
     @app.command()
     @guarded

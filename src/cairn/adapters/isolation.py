@@ -4,7 +4,7 @@ import re
 import subprocess
 
 from cairn.adapters.protocol import Job, Result
-from cairn.errors import Blocked, CairnError
+from cairn.errors import Blocked, CairnError, Denied
 from cairn.records.models import canonical
 
 
@@ -32,13 +32,19 @@ def container_command(image: str, *, entrypoint: str | None = None) -> list[str]
     return [*args, image]
 
 
-class DockerProvider:
-    """Trusted owner launcher. No mounts, shell, credentials, or tools reach the worker."""
+class ClientPacketProvider:
+    """JSON packet interface to a reviewed local client image.
+
+    The trusted owner launches the client with no mounts, shell tools, credentials,
+    or external network. The response is still untrusted until proposal validation.
+    """
 
     def __init__(self, image: str):
         self.image = image
 
     def generate(self, job: Job) -> Result:
+        if job.execution_image != self.image:
+            raise Denied("job does not bind this execution image")
         raw = canonical(job)
         try:
             return Result.model_validate_json(invoke_worker(self.image, raw))

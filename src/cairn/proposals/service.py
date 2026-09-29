@@ -3,7 +3,7 @@ from __future__ import annotations
 import difflib
 
 from cairn.adapters.fake import FakeProvider
-from cairn.adapters.isolation import DockerProvider
+from cairn.adapters.isolation import ClientPacketProvider
 from cairn.adapters.protocol import Job, Page, Result
 from cairn.errors import Blocked, CairnError, Conflict, Denied
 from cairn.ingest.service import extract, load_extraction
@@ -29,6 +29,7 @@ def prepare_job(
     scope_name: str,
     related_ids: list[str] | None = None,
     provider: str = "fake-v1",
+    execution_image: str | None = None,
 ) -> JobEnvelope:
     if related_ids is None:
         from cairn.retrieval.search import search
@@ -65,6 +66,7 @@ def prepare_job(
             policy_hash=ws.policy_hash,
             scope_name=scope_name,
             provider=provider,
+            execution_image=execution_image or ws.config.worker_image,
             source=source,
             extraction=evidence,
             evidence_hash=evidence_hash,
@@ -345,7 +347,7 @@ def ingest(
         if inline_synthetic and ws.config.synthetic:
             result = FakeProvider().generate(envelope.job)
         elif ws.config.worker_image:
-            result = DockerProvider(ws.config.worker_image).generate(envelope.job)
+            result = ClientPacketProvider(ws.config.worker_image).generate(envelope.job)
         else:
             raise Blocked("isolation_unavailable")
     except Exception as exc:

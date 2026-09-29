@@ -6,7 +6,7 @@ artifact, not just code presence. Private activation and M4 are outside this goa
 | Stage | Status | Remaining |
 | --- | --- | --- |
 | M0 | Passed reference acceptance | 24 tests, lint, strict typing, 13 isolation checks |
-| M1 | Core implemented; integration gates in progress | Client packets, staged owner edit, broader failure/installed-worker tests and documentation |
+| M1 | Passed reference acceptance | 48 tests, installed worker protocols, both isolation profiles |
 | M2 | Pending | Bibliography, context, receipts, continuity demonstration |
 | M3 | Pending | Domain workflows, restore, installed release, complete audit |
 
@@ -49,7 +49,19 @@ The updated installed image still needs its full acceptance run before closing M
 | CLI capture through review/apply/search | `test_cli_full_owner_workflow` |
 | Source summary plus bounded project update | `test_two_file_update_is_reviewable` |
 
-Next work: finish M1 integration and packet/owner-edit interfaces; implement M2 bibliography,
+Installed M1 evidence from `bash scripts/check.sh`: **48 tests passed**, Ruff passed,
+strict mypy passed (30 source files), both development and installed worker profiles
+passed all 13 isolation probes, and installed extraction/client-packet round trips passed.
+The staged owner editor, PDF page/coverage behavior, and backup/restore CLI are present.
+`test_stale_wiki_update_cannot_overwrite_owner_edit` and
+`test_index_failure_leaves_durable_apply_and_retries` cover the final concurrency and
+post-commit maintenance boundaries. Private-runtime readiness remains unproven until M3.
+
+The user selected a **manual agent session** for M2's separate-agent continuity check.
+Prepare its synthetic pack and verification procedure; do not spawn a subagent or claim
+that deterministic tests satisfy that semantic gate.
+
+Next work: implement M2 bibliography,
 project context and receipt workflows; implement M3 domain templates/calculations, grant
 audits, full restore/release packaging, all required documentation, and a full requirement
 audit. Private activation remains separate and is currently explicitly denied.

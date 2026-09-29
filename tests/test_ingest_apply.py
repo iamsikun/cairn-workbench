@@ -11,7 +11,7 @@ from cairn.errors import Blocked, CairnError, Conflict, Denied, RecoveryRequired
 from cairn.ingest.service import capture, extract, latest_stage
 from cairn.proposals.service import approve, ingest, prepare_job, stage_result, validate
 from cairn.records.models import Record, canonical, digest, now
-from cairn.storage.markdown import encode
+from cairn.storage.markdown import decode, encode
 from cairn.storage.workspace import Workspace
 from cairn.transactions.apply import apply, recover
 
@@ -137,6 +137,46 @@ def test_approval_tamper_and_owner_edits_are_rejected(ws: Workspace, tmp_path: P
     ws.fs.write("vault/notes/owner.md", b"An intervening owner edit")
     with pytest.raises(Conflict, match="human note"):
         validate(ws, proposal_id)
+
+
+def test_stale_wiki_update_cannot_overwrite_owner_edit(ws: Workspace, tmp_path: Path) -> None:
+    initial = approved(ws, tmp_path)
+    receipt = apply(ws, initial)
+    target = next(iter(receipt.files))
+    source_id = capture(ws, tmp_path / "paper.txt", domain="research").id
+    envelope = prepare_job(ws, source_id, scope_name="research", related_ids=[])
+    result = FakeProvider().generate(envelope.job)
+    result.candidates[0].body += "\nProposed extension.\n"
+    proposal = stage_result(ws, result)
+    assert proposal
+    approve(ws, proposal.id, acknowledgements=proposal.review_flags, statement="Synthetic review")
+    record, _ = decode(ws.fs.read(target))
+    owner_bytes = encode(record, "A newer owner-authored interpretation.\n")
+    ws.fs.write(target, owner_bytes)
+    with pytest.raises(Conflict, match="stale"):
+        apply(ws, proposal.id)
+    assert ws.fs.read(target) == owner_bytes
+
+
+def test_index_failure_leaves_durable_apply_and_retries(
+    ws: Workspace, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import cairn.retrieval.search as retrieval
+
+    proposal_id = approved(ws, tmp_path)
+
+    def fail_index(*args: object, **kwargs: object) -> int:
+        raise Blocked("synthetic index fault")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(retrieval, "rebuild_unlocked", fail_index)
+        receipt = apply(ws, proposal_id)
+    state = json.loads(ws.fs.read(f"receipts/maintenance/{proposal_id}.json"))
+    assert state["index"] == "pending"
+    for path, expected in receipt.files.items():
+        assert digest(ws.fs.read(path)) == expected
+    assert apply(ws, proposal_id) == receipt
+    assert json.loads(ws.fs.read(f"receipts/maintenance/{proposal_id}.json"))["index"] == "complete"
 
 
 @pytest.mark.parametrize(

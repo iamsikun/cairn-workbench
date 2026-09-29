@@ -882,6 +882,18 @@
       "title": "Evidence Hash",
       "type": "string"
     },
+    "execution_image": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Execution Image"
+    },
     "extraction": {
       "$ref": "#/$defs/Extraction"
     },

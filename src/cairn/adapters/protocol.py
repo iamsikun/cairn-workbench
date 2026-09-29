@@ -18,6 +18,7 @@ class Job(Model):
     scope_name: ID
     route: Literal["local", "cloud"] = "local"
     provider: str
+    execution_image: str | None = None
     source: Record
     extraction: Extraction
     evidence_hash: Digest
