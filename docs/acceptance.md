@@ -8,9 +8,10 @@ artifact, not just code presence. Private activation and M4 are outside this goa
 | M0 | Passed reference acceptance | 24 tests, lint, strict typing, 13 isolation checks |
 | M1 | Passed reference acceptance | 48 tests, installed worker protocols, both isolation profiles |
 | M2 | Mechanics implemented; manual semantic gate pending | Separate-session continuity evaluation chosen by owner |
-| M3 | In progress | Domains, restore, routes, installation, migration, and synthetic evaluation pass; final audit remains |
+| M3 | Passed reference acceptance | 175 tests, 129 gold checks, full requirements matrix, final installed release trial; actual activation separate |
 
-The brief's hard gates will be mapped to named tests as implementation proceeds.
+The brief's hard gates are mapped to implementation and named evidence in
+[the requirements matrix](requirements.md).
 
 M0 evidence collected by `bash scripts/check.sh` in the reference Linux container on
 the macOS Docker host: **24 tests passed**, Ruff passed, strict mypy passed (16 files),
@@ -249,3 +250,25 @@ to inspected implementation and named evidence. The audit identified and closed 
 missing Markdown source-review report and added a validated synthetic configuration
 example. The updated offline installed-release trial remains the final revision-specific
 check for this increment; the manual M2 semantic gate remains pending by owner choice.
+
+Final installed trial at `6bcad55cd9c71ea154dab2d4e6e34b65e80d1929`: **15 distributions,
+878 files verified**. The fresh offline CLI passed Markdown source review, capture through
+approval/apply/query, explicit legacy schema migration with backup, and restore. Modified
+package files, an unreviewed `.pth`, and editable metadata were rejected. Activation with
+no live engine remained blocked without creating a workspace. The exact manifest-bound
+worker image passed all 13 real-engine isolation checks. Retained reports are
+`docs/evidence/final-release-trial.json` and `final-worker-profile.json`; manifest SHA256
+is `b4c9def89d6d673afe6b650adce49714e471902d31541497d3756802af73a9ae`.
+
+The final matrix closes the independent public implementation/evaluation/audit work.
+M0/M1/M3 have reference acceptance; M2 mechanics pass but the required separate manual
+agent session still has no semantic result. The goal must remain incomplete until that
+gate has evidence. Actual private activation, real-data evaluation, and M4 remain outside
+this goal. All test workspaces were synthetic; no private directory was accessed.
+
+The saved manual handoff pack was also rechecked: its SHA256 matches
+`examples/continuity/verification.json`, all 11 citation occurrences resolve against the
+saved source/extraction evidence, and the adopted decision and failed approach are
+present. This verifies the input artifact, not a second agent's use of it. Follow
+[the manual separate-session procedure](research-continuity.md#manual-separate-session-acceptance)
+to supply the remaining result.

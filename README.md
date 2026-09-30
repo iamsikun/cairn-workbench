@@ -16,8 +16,9 @@ second-agent usefulness gate is pending. M3 now includes structured financial sn
 exact Decimal calculations, dated financial notes, sourced life hubs, and direct evidence
 review, audited owner scopes/grants, and complete-request route checks. Cloud execution
 remains unavailable. Explicit backed-up workspace migration and the
-[synthetic evaluation report](docs/evaluation.md) are implemented. The final requirements
-audit is in progress.
+[synthetic evaluation report](docs/evaluation.md) are implemented. The
+[requirements audit](docs/requirements.md) and installed-release checks are complete;
+the overall M0–M3 goal remains open for the manual M2 continuity result.
 
 Python package: `cairn`; command: `cairn`. Development uses synthetic workspaces outside
 the checkout. A private deployment requires a reviewed, pinned installation and a

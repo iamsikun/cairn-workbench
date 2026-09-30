@@ -131,6 +131,8 @@ The following evidence extends the brief rather than replacing its requirements:
 
 M0/M1 have reference acceptance evidence. M2 has implementation and mechanical evidence,
 but its explicit semantic exit gate is pending. M3 has domain, policy, restoration,
-installation, migration, and evaluation evidence; final revision-specific verification
-must include the review-report increment before release acceptance. Nothing in this
-matrix authorizes a real deployment, new cloud consent, publication, or M4 work.
+installation, migration, review, and evaluation evidence. The final installed trial at
+`6bcad55cd9c71ea154dab2d4e6e34b65e80d1929` passed with 15 distributions/878 verified files,
+Markdown source review, migration/restore, tamper rejection, and all 13 checks for the exact
+worker image. See `docs/evidence/final-release-trial.json` and `final-worker-profile.json`.
+Nothing in this matrix authorizes real deployment, new cloud consent, publication, or M4.

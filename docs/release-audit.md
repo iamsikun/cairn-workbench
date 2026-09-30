@@ -1,10 +1,10 @@
-# Remaining M3 release audit
+# M0–M3 release audit
 
 M0/M1 reference gates pass. M2 mechanics pass; its second-agent semantic trial is manual
 and pending by owner choice. M3 now passes 175 cumulative tests plus installed worker,
 isolation, and real-engine lifecycle trials. These results do not close the full goal.
 
-Before release review, finish the following public, synthetic-only work:
+The following public, synthetic-only work is now complete:
 
 1. Completed reference policy audit: owner scope/grant commands require explicit consent
    and the current policy hash; changes have an atomic, verifiable history. Complete
@@ -53,8 +53,16 @@ Before release review, finish the following public, synthetic-only work:
    the missing Markdown review report: current diffs, dates/coverage/conflicts, local
    evidence links, scope revocation, and active-content escaping now have six tests.
    Installation, privacy, recovery, agent-integration, evaluation, migration, and review
-   procedures are documented. A final offline installed trial of the review increment
-   remains before calling the revision-specific release checks complete.
+   procedures are documented. The final offline installed trial at `6bcad55` passed:
+   Markdown source review, the complete synthetic workflow, migration, restore, package
+   tamper rejection, and activation denial without an engine. It verified 15 distributions
+   and 878 files; the exact worker image passed all 13 checks. Retained evidence is in
+   `docs/evidence/final-release-trial.json` and `final-worker-profile.json`.
+
+The only unresolved in-scope milestone gate is the owner-selected manual M2 session.
+`examples/continuity/verification.json` still reports `pending_manual_session` and
+`not_evaluated`; no response or owner evaluation proving semantic continuity exists.
+Do not mark M2 or the overall M0–M3 goal complete on the strength of the mechanical tests.
 
 The private directory remains untouched. Actual private activation, owner real-data
 evaluation, real cloud grants, publication, and M4 are outside the current goal. No public

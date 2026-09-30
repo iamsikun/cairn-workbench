@@ -140,3 +140,13 @@ The matching worker image passed all 13 isolation checks. See the retained
 [schema migration procedure](schema-migrations.md). This is data-format migration inside
 a verified runtime; automatic upgrade from a different approved software release is not
 implemented. The manual continuity gate and actual private activation remain separate.
+
+The final source-review trial at `6bcad55cd9c71ea154dab2d4e6e34b65e80d1929` passed on
+the same reference target with 15 distributions and 878 installed files. It additionally
+exercised `proposal show --markdown` through the freshly installed CLI. Capture through
+restore, migration, tamper rejection, negative activation, and all 13 checks against the
+manifest-bound worker passed. The [final report](evidence/final-release-trial.json) binds
+manifest SHA256 `b4c9def89d6d673afe6b650adce49714e471902d31541497d3756802af73a9ae`;
+the [worker report](evidence/final-worker-profile.json) identifies the exact image.
+These results close reference installation testing, not the pending manual M2 gate or
+the owner's separate release acceptance and actual-machine activation.
