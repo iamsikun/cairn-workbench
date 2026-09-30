@@ -198,6 +198,7 @@ def apply(ws: Workspace, proposal_id: str) -> ApplyReceipt:
 def recover(ws: Workspace) -> list[ApplyReceipt]:
     recovered = []
     with ws.lock(write=True, recovery=True):
+        ws.require_no_pending_migration()
         for path in ws.fs.files("journal"):
             if not path.endswith("/transaction.json"):
                 continue

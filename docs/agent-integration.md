@@ -36,6 +36,11 @@ tools. Running a host client under the owner's login against the vault is not eq
 to using this protocol. Manual external results have an unverifiable processing route
 and must not be accepted as proof of local execution.
 
+Schema inspection/migration commands are owner maintenance operations, outside the model
+packet protocol. A migration advances policy revision, so queued client jobs and pending
+proposals must be regenerated; clients cannot reuse earlier approvals. Previously applied
+decisions remain available through their original adoption receipts and scoped context.
+
 Cloud transport is not implemented. It must not be enabled by changing a provider string
 or supplying credentials. Separately configured owner grants are required before any
 future export of a complete request, including the question and derived context.

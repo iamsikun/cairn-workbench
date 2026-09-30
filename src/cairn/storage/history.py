@@ -49,6 +49,8 @@ def snapshot(ws: Workspace, message: str) -> str:
     check_history_config(ws.fs.read("history.git/config"))
     # Path list deliberately excludes blobs, caches, journals, and credentials.
     paths = ["workspace.json", "vault", "policy", "receipts", "approvals", "proposals", "evidence"]
+    if ws.fs.files("migrations"):
+        paths.append("migrations")
     run([*common, "add", "--", *paths])
     status = run([*common, "status", "--porcelain", "--untracked-files=no"])
     if status.stdout:

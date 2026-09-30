@@ -8,7 +8,7 @@ artifact, not just code presence. Private activation and M4 are outside this goa
 | M0 | Passed reference acceptance | 24 tests, lint, strict typing, 13 isolation checks |
 | M1 | Passed reference acceptance | 48 tests, installed worker protocols, both isolation profiles |
 | M2 | Mechanics implemented; manual semantic gate pending | Separate-session continuity evaluation chosen by owner |
-| M3 | In progress | Domains, restore, and route audit pass; release/migration/evaluation audit remains |
+| M3 | In progress | Domains, restore, routes, installation, and migration pass; evaluation and final audit remain |
 
 The brief's hard gates will be mapped to named tests as implementation proceeds.
 
@@ -183,3 +183,30 @@ the exact manifest-bound worker image passed all 13 real-engine probe checks wit
 scratch and an unmounted synthetic canary. Reports are retained in
 `docs/evidence/activation-release-trial.json` and `activation-worker-profile.json`.
 Actual owner activation, the manual continuity check, and release review remain separate.
+
+Schema migration increment: **169 cumulative tests passed**, Ruff passed, and strict
+mypy passed (55 source files) in `bash scripts/check.sh`. Both isolation profiles and the
+installed worker probe passed all 13 checks each; all six worker trials, the manual-fixture
+generator, and the real-engine lifecycle checks passed. `tests/test_migration.py`
+contributes 18 cases, plus five
+new schema-export parity cases. Legacy workspace v1 stays readable without writes;
+new v2 explicitly requires record schema 1. Unknown versions and a missing v2 record
+contract are rejected. The owner command previews exact bytes and all durable input
+hashes, makes an independently hashed backup, and requires an exact preview digest and
+statement before journaled configuration/policy replacement.
+
+Executed tests cover stale preview and stale workspace handles; occupied backup targets;
+unknown record versions; nine real process-termination boundaries (backup, authorization,
+policy intent, prepared journal, both replacements, receipt, commit marker, and history);
+read blocking while prepared; unexpected owner bytes; an altered configuration target in
+the journal; source/record/adoption-chain preservation; invalidation of pending approvals;
+restoring pre- and post-migration archives; invalid migration receipts; retryable history;
+and the owner CLI. The private-mode fixture checks release binding and re-verification
+with synthetic installation stubs; it is not an actual private deployment.
+
+The migration deliberately changes workspace format only. It does not install or approve
+a different runtime, migrate Markdown record schema 1, or permit backing up a prepared
+schema transaction. Recover locally or use the mandatory pre-migration archive. These
+limits and the separate `schema recover` procedure are in `docs/schema-migrations.md`.
+The offline installed migration trial is the next check; the previous release reports
+do not establish that the new command works from the new wheelhouse.

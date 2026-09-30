@@ -39,9 +39,12 @@ workspaces require an owner-controlled filesystem snapshot of the same durable d
 while no writer runs; preserve text, blobs, evidence, approvals, receipts, journals, and
 history together. Such external backups are outside the built-in ZIP verifier.
 
-Ordinary backup refuses an unresolved transaction. `cairn backup ... --include-pending`
-explicitly preserves its journal and authorization for recovery elsewhere. After restore,
-normal readers still refuse that pending bundle until `cairn recover` succeeds.
+Ordinary backup refuses an unresolved transaction. For synthesis transactions,
+`cairn backup ... --include-pending` explicitly preserves the journal and authorization
+for recovery elsewhere. After restore, normal readers still refuse that pending bundle
+until `cairn recover` succeeds. Schema migrations use a mandatory backup from before the
+change and a separate `schema recover` command. A prepared schema migration must be
+recovered before creating another archive; see [schema migrations](schema-migrations.md).
 
 Backup hashes detect corruption; they do not authenticate an untrusted backup supplier.
 Keep the independently recorded archive digest and store backups with owner-controlled

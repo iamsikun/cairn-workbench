@@ -1,7 +1,7 @@
 # Remaining M3 release audit
 
 M0/M1 reference gates pass. M2 mechanics pass; its second-agent semantic trial is manual
-and pending by owner choice. M3 now passes 146 cumulative tests plus installed worker,
+and pending by owner choice. M3 now passes 169 cumulative tests plus installed worker,
 isolation, and real-engine lifecycle trials. These results do not close the full goal.
 
 Before release review, finish the following public, synthetic-only work:
@@ -31,9 +31,14 @@ Before release review, finish the following public, synthetic-only work:
    revision `330ce6b` (15 distributions, 874 file hashes, 13 real worker probe checks).
    The bundle is not a macOS installation; target compatibility remains explicit. Actual
    owner activation is outside this goal and still requires the pending manual review.
-5. Add versioned schema inspection/migration support with backups and rejection of unknown
-   versions. Existing durable version-one additions must remain readable; no silent
-   destructive rewriting, relabeling, or approval reuse after a migration.
+5. Completed reference schema inspection/migration: legacy workspace v1 remains readable;
+   new v2 declares record schema 1. Explicit owner preview, mandatory backup, exact plan
+   approval, policy-revision invalidation, and a recoverable maintenance journal preserve
+   record/evidence bytes and adopted decisions. Nine process-termination boundaries,
+   changed inputs/authorization, failed backups/history, runtime rechecks, and migration
+   archive validation pass. Unknown versions are rejected. See `docs/schema-migrations.md`
+   for the separate recovery command, pending-backup restriction, and explicit limitation:
+   this migrates data within an approved runtime, not a private software-release upgrade.
 6. Run and retain the synthetic gold-set report for exact source, multiple sources,
    contradictions, outdated rules, absent evidence, roles, Chinese/English retrieval, and
    project continuity. Record observed citation support, write correctness, unauthorized

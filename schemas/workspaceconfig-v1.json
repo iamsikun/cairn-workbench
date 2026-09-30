@@ -1,5 +1,6 @@
 {
   "additionalProperties": false,
+  "description": "Legacy workspace format; reading it never upgrades or rewrites it.",
   "properties": {
     "code_roots": {
       "items": {

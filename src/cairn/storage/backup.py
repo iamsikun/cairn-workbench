@@ -22,7 +22,7 @@ from cairn.storage.activation import check_runtime_metadata, prepare_activation
 from cairn.storage.files import MAX_FILE_BYTES, RootFS, components, disjoint
 from cairn.storage.history_safety import check_history_config, check_history_paths
 from cairn.storage.markdown import decode
-from cairn.storage.workspace import Workspace, WorkspaceConfig, check_roots
+from cairn.storage.workspace import Workspace, WorkspaceConfiguration, check_roots, parse_config
 from cairn.transactions.apply import ApplyReceipt, Transaction
 
 DURABLE_DIRS = (
@@ -34,6 +34,7 @@ DURABLE_DIRS = (
     "approvals",
     "receipts",
     "journal",
+    "migrations",
     "history.git",
 )
 MAX_BACKUP_BYTES = 256 * 1024 * 1024
@@ -72,13 +73,16 @@ def _paths(names: list[str]) -> None:
     check_history_paths(names)
 
 
-def validate_payloads(payloads: dict[str, bytes]) -> WorkspaceConfig:
+def validate_payloads(payloads: dict[str, bytes]) -> WorkspaceConfiguration:
     """Validate durable structures and evidence without executing restored content."""
     _paths(list(payloads))
     if "workspace.json" not in payloads or "policy/workspace.json" not in payloads:
         raise CairnError("backup omits workspace configuration or policy")
     try:
-        config = WorkspaceConfig.model_validate(read_json(payloads["workspace.json"]))
+        config = parse_config(payloads["workspace.json"])
+        from cairn.storage.migration import validate_migrations
+
+        validate_migrations(payloads, config.id)
         if not config.synthetic:
             check_runtime_metadata(config, payloads.__getitem__)
         policy = Policy.model_validate(read_json(payloads["policy/workspace.json"]))
@@ -233,33 +237,47 @@ def validate_payloads(payloads: dict[str, bytes]) -> WorkspaceConfig:
 def backup(
     ws: Workspace, destination: Path, *, include_pending: bool = False
 ) -> dict[str, str | int]:
+    with ws.lock(recovery=include_pending):
+        ws.require_no_pending_migration()
+        return backup_unlocked(ws, destination)
+
+
+def durable_contents(ws: Workspace) -> dict[str, bytes]:
+    """Read a bounded durable snapshot while the caller holds the workspace lock."""
+    contents = {"workspace.json": ws.fs.read("workspace.json")}
+    size = len(contents["workspace.json"])
+    for directory in DURABLE_DIRS:
+        for path in ws.fs.files(directory):
+            contents[path] = ws.fs.read(path)
+            size += len(contents[path])
+            if len(contents) >= 10000 or size > MAX_BACKUP_BYTES:
+                raise CairnError("backup exceeds supported size or file count")
+    return contents
+
+
+def backup_unlocked(ws: Workspace, destination: Path) -> dict[str, str | int]:
+    """Owner writers can back up before a transaction without taking a second flock."""
     destination = destination.absolute()
     if not disjoint(destination, ws.root) or any(
         not disjoint(destination, Path(root)) for root in ws.config.code_roots
     ):
         raise Denied("backup destination must be outside workspace and public code")
-    with ws.lock(recovery=include_pending):
-        contents = {"workspace.json": ws.fs.read("workspace.json")}
-        for directory in DURABLE_DIRS:
-            for path in ws.fs.files(directory):
-                contents[path] = ws.fs.read(path)
-        if len(contents) >= 10000 or sum(map(len, contents.values())) > MAX_BACKUP_BYTES:
-            raise CairnError("backup exceeds supported size or file count")
-        validate_payloads(contents)
-        manifest = BackupManifest(
-            workspace_id=ws.config.id, files={name: digest(data) for name, data in contents.items()}
-        )
-        buffer = io.BytesIO()
-        with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr("manifest.json", canonical(manifest))
-            for path, data in sorted(contents.items()):
-                archive.writestr(path, data)
-        output = buffer.getvalue()
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        RootFS(destination.parent).write(
-            destination.name, output, exclusive=True, limit=MAX_ARCHIVE_BYTES
-        )
-        return {"workspace_id": ws.config.id, "files": len(contents), "sha256": digest(output)}
+    contents = durable_contents(ws)
+    validate_payloads(contents)
+    manifest = BackupManifest(
+        workspace_id=ws.config.id, files={name: digest(data) for name, data in contents.items()}
+    )
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("manifest.json", canonical(manifest))
+        for path, data in sorted(contents.items()):
+            archive.writestr(path, data)
+    output = buffer.getvalue()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    RootFS(destination.parent).write(
+        destination.name, output, exclusive=True, limit=MAX_ARCHIVE_BYTES
+    )
+    return {"workspace_id": ws.config.id, "files": len(contents), "sha256": digest(output)}
 
 
 def restore(
@@ -311,9 +329,7 @@ def restore(
                 raise CairnError("archive expands beyond limits")
             _paths([item.filename for item in members])
             if "workspace.json" in {item.filename for item in members}:
-                archived_config = WorkspaceConfig.model_validate(
-                    read_json(archive.read("workspace.json"))
-                )
+                archived_config = parse_config(archive.read("workspace.json"))
                 if archived_config.synthetic != synthetic:
                     raise Denied("restore mode does not match the archive workspace")
             for item in members:

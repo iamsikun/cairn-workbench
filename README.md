@@ -15,7 +15,8 @@ decision adoption, bounded context packs, and repository-staleness checks. Its m
 second-agent usefulness gate is pending. M3 now includes structured financial snapshots,
 exact Decimal calculations, dated financial notes, sourced life hubs, and direct evidence
 review, audited owner scopes/grants, and complete-request route checks. Cloud execution
-remains unavailable. The remaining release/migration/evaluation audit is in progress.
+remains unavailable. Explicit backed-up workspace migration is implemented; the remaining
+evaluation and requirements audit is in progress.
 
 Python package: `cairn`; command: `cairn`. Development uses synthetic workspaces outside
 the checkout. A private deployment requires a reviewed, pinned installation and a
@@ -32,10 +33,13 @@ owner activation gate. Actual private deployment remains separate from developme
 The CLI provides `init`, `capture`, `ingest`, `proposal show`, `validate`, `approve`,
 `apply`, `recover`, `search`, `query`, `edit`, `lint`, `rebuild-index`, `backup`, `restore`,
 `client run`, `project create`, `bibliography import`, `receipt import`, `decision adopt`,
-`repository inspect`, `context`, `policy`, `release`, and `doctor`. Pass `--workspace` (or `CAIRN_WORKSPACE`) and use `--json`
+`repository inspect`, `context`, `policy`, `release`, `schema`, and `doctor`. Pass
+`--workspace` (or `CAIRN_WORKSPACE`) and use `--json`
 for structured command output. Development `init` and `restore` use `--synthetic`.
 Private initialization and restore require a reviewed installed release, explicit owner
 acknowledgements, and a fresh worker-isolation probe.
+The [schema migration runbook](docs/schema-migrations.md) covers explicit format changes,
+pending-approval invalidation, backups, and interrupted-migration recovery.
 
 Read the [architecture](docs/architecture.md), [threat model](docs/threat-model.md),
 [processing policy](docs/privacy.md), [recovery procedure](docs/recovery.md), and

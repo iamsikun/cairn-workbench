@@ -118,6 +118,16 @@ def trial(bundle: Path) -> None:
     workspace = root / "synthetic-workspace"
     options = ("--workspace", str(workspace), "--json")
     cli("init", "--workspace", str(workspace), "--code-root", "/opt/cairn", "--synthetic")
+    # Recreate the prior documented v1 workspace shape using synthetic bytes only.
+    # The installed reader must not upgrade it just by opening it.
+    config_path = workspace / "workspace.json"
+    legacy_config = json.loads(config_path.read_bytes())
+    legacy_config.pop("record_schema_version")
+    legacy_config["schema_version"] = 1
+    config_path.write_bytes(canonical(legacy_config))
+    legacy_bytes = config_path.read_bytes()
+    assert cli("schema", "inspect", *options)["workspace_schema"] == 1
+    assert config_path.read_bytes() == legacy_bytes
     source_file = root / "synthetic-evidence.txt"
     source_file.write_text("Synthetic release evidence: exact value 42.\n")
     source = cli("capture", str(source_file), "--domain", "research", *options)
@@ -137,6 +147,24 @@ def trial(bundle: Path) -> None:
     cli("apply", proposal["id"], *options)
     answer = cli("query", "42", "--scope", "research", *options)
     assert "exact value 42" in answer["answer"]
+    migration = cli("schema", "preview", *options)
+    migrated = cli(
+        "schema",
+        "apply",
+        "--plan-sha256",
+        migration["sha256"],
+        "--backup",
+        str(root / "pre-migration.zip"),
+        "--statement",
+        "Reviewed this synthetic migration trial.",
+        *options,
+    )
+    assert migrated["plan_sha256"] == migration["sha256"]
+    assert migrated["backup_sha256"] == digest((root / "pre-migration.zip").read_bytes())
+    assert cli("schema", "inspect", *options)["workspace_schema"] == 2
+    after_migration = cli("query", "42", "--scope", "research", *options)
+    assert after_migration["answer"] == answer["answer"]
+    answer = after_migration
     archive = root / "backup.zip"
     backed_up = cli("backup", str(archive), *options)
     restored = root / "restored"
@@ -191,6 +219,7 @@ def trial(bundle: Path) -> None:
                 "distributions": verification["distributions"],
                 "verified_files": verification["verified_files"],
                 "synthetic_capture_approval_apply_query_restore": "passed",
+                "synthetic_schema_migration_with_backup": "passed",
                 "modified_package_rejected": True,
                 "unreviewed_pth_rejected": True,
                 "editable_installation_rejected": True,

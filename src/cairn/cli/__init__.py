@@ -12,6 +12,7 @@ from cairn.cli.domains import register as register_domains
 from cairn.cli.policy import register as register_policy
 from cairn.cli.release import register as register_release
 from cairn.cli.research import register as register_research
+from cairn.cli.schema import register as register_schema
 from cairn.errors import CairnError
 from cairn.records.runtime import ReviewAcknowledgement
 from cairn.storage.workspace import Workspace
@@ -22,6 +23,7 @@ register_research(app)
 register_domains(app)
 register_policy(app)
 register_release(app)
+register_schema(app)
 
 
 @app.command()

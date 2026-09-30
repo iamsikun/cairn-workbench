@@ -14,6 +14,7 @@ from pydantic import Field
 
 from cairn.errors import Conflict, Denied, RecoveryRequired
 from cairn.policies.models import Policy, Scope
+from cairn.records.json import read_json
 from cairn.records.models import ID, Digest, Domain, Event, Model, Record, canonical, digest, new_id
 from cairn.records.runtime import ReviewAcknowledgement
 from cairn.storage.files import RootFS, disjoint
@@ -35,18 +36,42 @@ DIRECTORIES = (
     "approvals",
     "receipts",
     "journal",
+    "migrations",
     "cache",
 )
 
 
-class WorkspaceConfig(Model):
-    schema_version: Literal[1] = 1
+class _WorkspaceFields(Model):
     id: ID
     synthetic: bool
     code_roots: list[str] = Field(min_length=1)
     worker_image: str | None = None
     runtime_release_hash: Digest | None = None
     runtime_approval_id: ID | None = None
+
+
+class WorkspaceConfig(_WorkspaceFields):
+    """Legacy workspace format; reading it never upgrades or rewrites it."""
+
+    schema_version: Literal[1] = 1
+
+
+class WorkspaceConfigV2(_WorkspaceFields):
+    schema_version: Literal[2] = 2
+    record_schema_version: Literal[1]
+
+
+type WorkspaceConfiguration = WorkspaceConfig | WorkspaceConfigV2
+
+
+def parse_config(raw: bytes) -> WorkspaceConfiguration:
+    data = read_json(raw)
+    version = data.get("schema_version", 1) if isinstance(data, dict) else None
+    if type(version) is not int or version not in (1, 2):
+        raise Denied("unsupported workspace schema version; no files were migrated")
+    if version == 1:
+        return WorkspaceConfig.model_validate(data)
+    return WorkspaceConfigV2.model_validate(data)
 
 
 def check_roots(root: Path, code_roots: list[Path]) -> Path:
@@ -65,7 +90,7 @@ class Workspace:
         self.root = self.fs.root
         if self.fs.exists("restore.pending"):
             raise RecoveryRequired("workspace staging is incomplete; use the original input")
-        self.config = WorkspaceConfig.model_validate_json(self.fs.read("workspace.json"))
+        self.config = parse_config(self.fs.read("workspace.json"))
         check_roots(self.root, [Path(path) for path in self.config.code_roots])
         if not self.config.synthetic:
             from cairn.storage.activation import verify_workspace_runtime
@@ -105,10 +130,11 @@ class Workspace:
         )
         if not synthetic and not disjoint(root, Path(sys.prefix)):
             raise Denied("private workspace and installed runtime must be disjoint")
-        config = WorkspaceConfig(
+        config = WorkspaceConfigV2(
             id=new_id("workspace"),
             synthetic=synthetic,
             code_roots=[str(path.resolve()) for path in code_roots],
+            record_schema_version=1,
         )
         approval = activation.approval(config.id, "init") if activation else None
         if activation and approval:
@@ -170,14 +196,15 @@ class Workspace:
         try:
             self.fs._regular(os.fstat(fd))
             fcntl.flock(fd, fcntl.LOCK_EX if write else fcntl.LOCK_SH)
+            current = parse_config(self.fs.read("workspace.json"))
+            if current != self.config:
+                raise Conflict("workspace runtime configuration changed; reopen the workspace")
             if not self.config.synthetic:
                 from cairn.storage.activation import verify_workspace_runtime
 
-                current = WorkspaceConfig.model_validate_json(self.fs.read("workspace.json"))
-                if current != self.config:
-                    raise Conflict("workspace runtime configuration changed; reopen the workspace")
                 verify_workspace_runtime(current, self.fs.read)
             if not recovery:
+                self.require_no_pending_migration()
                 for path in self.fs.files("journal"):
                     if path.endswith("/transaction.json"):
                         transaction = json.loads(self.fs.read(path))
@@ -187,6 +214,15 @@ class Workspace:
         finally:
             fcntl.flock(fd, fcntl.LOCK_UN)
             os.close(fd)
+
+    def require_no_pending_migration(self) -> None:
+        for path in self.fs.files("migrations"):
+            if path.endswith("/transaction.json"):
+                from cairn.records.migration import MigrationTransaction
+
+                tx = MigrationTransaction.model_validate(read_json(self.fs.read(path)))
+                if tx.status != "committed":
+                    raise RecoveryRequired("an incomplete schema migration requires schema recover")
 
     def records(self, scope: Scope | None = None) -> list[tuple[str, Record, str]]:
         result = []

@@ -20,6 +20,13 @@ revalidates under a single writer lock, journals before/after bytes, replaces fi
 records a durable receipt, then maintains indexes and local Git history. Readers refuse
 an incomplete bundle until recovery. The history repository is local and has no remote.
 
+Workspace schemas 1 and 2 are readable without implicit rewriting. Explicit owner schema
+migration uses the same writer lock, a mandatory backup, a digest-bound preview, and a
+separate recoverable maintenance journal. It cannot accept worker-supplied configuration
+edits. The initial migration declares the record schema without rewriting record bytes
+and advances policy revision to invalidate pending approvals. See
+[schema migrations](schema-migrations.md) for version and recovery limits.
+
 Scope, classification, processing permission, and domain are separate concepts. Derived
 records retain the strongest classification and local-only restriction of their inputs,
 plus all access compartments. `shared` does not mean public. Owner CLI scope selection

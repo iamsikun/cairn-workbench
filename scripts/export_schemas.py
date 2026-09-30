@@ -10,11 +10,17 @@ from cairn.policies.models import Policy, RouteGrant, Scope
 from cairn.proposals.models import Approval, Proposal
 from cairn.records.continuity import ContextPack, SessionReceipt
 from cairn.records.domains import Calculation, FinancialSnapshot, LifeDossier
+from cairn.records.migration import (
+    MigrationAuthorization,
+    MigrationPlan,
+    MigrationReceipt,
+    MigrationTransaction,
+)
 from cairn.records.models import Event, Extraction, Record
 from cairn.records.release import ReleaseManifest
 from cairn.records.runtime import ProbeRequest, ProbeResult, RuntimeApproval, WorkerProfile
 from cairn.storage.backup import BackupManifest
-from cairn.storage.workspace import WorkspaceConfig
+from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2
 
 if __name__ == "__main__":
     destination = Path("schemas")
@@ -46,7 +52,15 @@ if __name__ == "__main__":
         WorkerProfile,
         RuntimeApproval,
         WorkspaceConfig,
+        WorkspaceConfigV2,
+        MigrationAuthorization,
+        MigrationPlan,
+        MigrationReceipt,
+        MigrationTransaction,
     ):
-        (destination / f"{model.__name__.lower()}-v1.json").write_text(
+        version = model.model_fields.get("schema_version")
+        number = version.default if version else 1
+        name = "workspaceconfig" if model is WorkspaceConfigV2 else model.__name__.lower()
+        (destination / f"{name}-v{number}.json").write_text(
             json.dumps(model.model_json_schema(), indent=2, sort_keys=True) + "\n"
         )

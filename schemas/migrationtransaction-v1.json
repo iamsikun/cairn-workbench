@@ -1,0 +1,48 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "authorization_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Authorization Hash",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "policy_change_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Policy Change Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "status": {
+      "default": "prepared",
+      "enum": [
+        "prepared",
+        "committed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "workspace_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "workspace_id",
+    "authorization_hash",
+    "policy_change_hash"
+  ],
+  "title": "MigrationTransaction",
+  "type": "object"
+}

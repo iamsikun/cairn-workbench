@@ -23,7 +23,7 @@ from cairn.records.runtime import (
 from cairn.storage.release import load_release, verify_runtime
 
 if TYPE_CHECKING:
-    from cairn.storage.workspace import WorkspaceConfig
+    from cairn.storage.workspace import WorkspaceConfiguration
 
 
 def check_worker(image: str) -> WorkerProfile:
@@ -107,7 +107,7 @@ def prepare_activation(
 
 
 def check_runtime_metadata(
-    config: WorkspaceConfig,
+    config: WorkspaceConfiguration,
     read: Callable[[str], bytes],
 ) -> tuple[ReleaseManifest, RuntimeApproval]:
     if not config.runtime_release_hash or not config.runtime_approval_id:
@@ -135,6 +135,6 @@ def check_runtime_metadata(
     return manifest, approval
 
 
-def verify_workspace_runtime(config: WorkspaceConfig, read: Callable[[str], bytes]) -> None:
+def verify_workspace_runtime(config: WorkspaceConfiguration, read: Callable[[str], bytes]) -> None:
     manifest, _ = check_runtime_metadata(config, read)
     verify_runtime(manifest)

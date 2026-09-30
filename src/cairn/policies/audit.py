@@ -18,7 +18,7 @@ class PolicyChange(Model):
     id: ID
     workspace_id: ID
     at: datetime
-    operation: Literal["set_scope", "set_grant", "revoke_grant"]
+    operation: Literal["set_scope", "set_grant", "revoke_grant", "schema_migration"]
     before_hash: Digest
     after_hash: Digest
     before_content: str

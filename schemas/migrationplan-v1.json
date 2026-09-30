@@ -1,0 +1,63 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "after_config": {
+      "title": "After Config",
+      "type": "string"
+    },
+    "after_policy": {
+      "title": "After Policy",
+      "type": "string"
+    },
+    "before_config": {
+      "title": "Before Config",
+      "type": "string"
+    },
+    "before_policy": {
+      "title": "Before Policy",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "input_hashes": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "maxProperties": 10000,
+      "title": "Input Hashes",
+      "type": "object"
+    },
+    "operation": {
+      "const": "workspace_v1_to_v2",
+      "default": "workspace_v1_to_v2",
+      "title": "Operation",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "workspace_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "workspace_id",
+    "input_hashes",
+    "before_config",
+    "after_config",
+    "before_policy",
+    "after_policy"
+  ],
+  "title": "MigrationPlan",
+  "type": "object"
+}
