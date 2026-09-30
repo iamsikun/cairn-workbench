@@ -71,34 +71,21 @@ def verify_runtime(manifest: ReleaseManifest) -> dict[str, str | int | bool]:
         raise Denied("site-packages lies outside the dedicated runtime")
     if cairn.__file__ is None or Path(cairn.__file__).resolve() != site / "cairn/__init__.py":
         raise Denied("Cairn was imported from a checkout or another environment")
-    distributions = list(importlib.metadata.distributions(path=[str(site)]))
-    actual = {normalized_name(d.metadata["Name"]): d for d in distributions}
     expected = {artifact.name: artifact for artifact in manifest.artifacts}
-    if len(actual) != len(distributions) or set(actual) != set(expected):
-        raise Denied("installed distribution inventory differs from the reviewed release")
     files = dict(manifest.bootstrap_files)
     generated: set[str] = set()
+    metadata_dirs: dict[str, str] = {}
     for name, artifact in expected.items():
-        distribution = actual[name]
-        if distribution.version != artifact.version:
-            raise Denied("installed dependency version mismatch")
-        direct = distribution.read_text("direct_url.json")
-        if direct:
-            metadata_url = read_json(direct.encode())
-            if not isinstance(metadata_url, dict) or not isinstance(
-                metadata_url.get("dir_info", {}), dict
-            ):
-                raise Denied("invalid installation origin metadata")
-            if metadata_url.get("dir_info", {}).get("editable"):
-                raise Denied("editable installations cannot process private data")
         metadata = [
             path for path in artifact.installed_files if path.endswith(".dist-info/METADATA")
         ]
         if len(metadata) != 1:
             raise Denied("release distribution metadata unavailable")
         parent = metadata[0].rsplit("/", 1)[0]
+        metadata_dirs[name] = parent
         generated.update(
-            f"{parent}/{leaf}" for leaf in ("RECORD", "INSTALLER", "REQUESTED", "direct_url.json")
+            f"{parent}/{leaf}"
+            for leaf in ("RECORD", "INSTALLER", "REQUESTED", "direct_url.json", "uv_cache.json")
         )
         files.update(artifact.installed_files)
     fs = RootFS(site)
@@ -114,6 +101,24 @@ def verify_runtime(manifest: ReleaseManifest) -> dict[str, str | int | bool]:
             installed.add(child.name)
     if installed - set(files) - generated:
         raise Denied("unreviewed files or bytecode found in site-packages")
+    # Only inspect distribution metadata after file/path preflight. In particular,
+    # never follow an unreviewed metadata symlink using importlib's convenience API.
+    distributions = list(importlib.metadata.distributions(path=[str(site)]))
+    actual = {normalized_name(d.metadata["Name"]): d for d in distributions}
+    if len(actual) != len(distributions) or set(actual) != set(expected):
+        raise Denied("installed distribution inventory differs from the reviewed release")
+    for name, artifact in expected.items():
+        if actual[name].version != artifact.version:
+            raise Denied("installed dependency version mismatch")
+        path = f"{metadata_dirs[name]}/direct_url.json"
+        if fs.exists(path):
+            metadata_url = read_json(fs.read(path))
+            if not isinstance(metadata_url, dict) or not isinstance(
+                metadata_url.get("dir_info", {}), dict
+            ):
+                raise Denied("invalid installation origin metadata")
+            if metadata_url.get("dir_info", {}).get("editable"):
+                raise Denied("editable installations cannot process private data")
     return {
         "installation_verified": True,
         "code_revision": manifest.code_revision,

@@ -48,6 +48,7 @@ def trial(bundle: Path) -> None:
             "--offline",
             "--no-cache",
             "--no-index",
+            "--link-mode=copy",
             "--python",
             str(python),
             "--find-links",
