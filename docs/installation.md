@@ -129,3 +129,14 @@ Diagnostics do not download models, change policy, start services, or grant clou
 Approval authority remains the owner process's exclusive filesystem access. These flags
 do not sandbox an agent with owner shell/daemon access. Workers have no approval, apply,
 init, restore, or release-mutation endpoint and no owner mounts.
+
+The schema-migration reference trial at revision
+`1b72f1b7b276dfe3cf019895e2ea90249d56b230` verified 15 distributions and 877 installed
+files on Linux-aarch64/CPython 3.13.11. Its installed CLI migrated a synthetic workspace
+from schema 1 to 2 with a reviewed preview and backup, then restored the migrated archive.
+The matching worker image passed all 13 isolation checks. See the retained
+[installed trial](evidence/migration-release-trial.json),
+[worker result](evidence/migration-worker-profile.json), and
+[schema migration procedure](schema-migrations.md). This is data-format migration inside
+a verified runtime; automatic upgrade from a different approved software release is not
+implemented. The manual continuity gate and actual private activation remain separate.

@@ -39,6 +39,9 @@ Before release review, finish the following public, synthetic-only work:
    archive validation pass. Unknown versions are rejected. See `docs/schema-migrations.md`
    for the separate recovery command, pending-backup restriction, and explicit limitation:
    this migrates data within an approved runtime, not a private software-release upgrade.
+   The offline installed CLI migration/restore trial at `1b72f1b` passed (15 distributions,
+   877 verified files), with all 13 exact-image isolation checks. Its reports are in
+   `docs/evidence/migration-release-trial.json` and `migration-worker-profile.json`.
 6. Run and retain the synthetic gold-set report for exact source, multiple sources,
    contradictions, outdated rules, absent evidence, roles, Chinese/English retrieval, and
    project continuity. Record observed citation support, write correctness, unauthorized

@@ -208,5 +208,13 @@ The migration deliberately changes workspace format only. It does not install or
 a different runtime, migrate Markdown record schema 1, or permit backing up a prepared
 schema transaction. Recover locally or use the mandatory pre-migration archive. These
 limits and the separate `schema recover` procedure are in `docs/schema-migrations.md`.
-The offline installed migration trial is the next check; the previous release reports
-do not establish that the new command works from the new wheelhouse.
+The clean-revision offline trial at `1b72f1b7b276dfe3cf019895e2ea90249d56b230` passed
+with **15 distributions and 877 verified files**. The freshly installed CLI opened a
+synthetic legacy workspace without rewriting it, migrated it after preview/backup,
+retained its query result, and backed up/restored the migrated workspace. Installation
+tamper checks and activation denial without an engine also passed. The manifest-bound
+worker passed all 13 real-engine isolation checks. Evidence is retained in
+`docs/evidence/migration-release-trial.json` and `migration-worker-profile.json`.
+The manifest SHA256 is `af540becc04763a2dac6b459dd798ffbe97de4b6f040df7cfe1471724c221bfd`.
+This remains a Linux-aarch64 reference trial, not owner-machine activation or semantic
+acceptance. Gold-set reporting, the final requirements audit, and the manual M2 gate remain.
