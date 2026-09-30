@@ -5,6 +5,16 @@ workspace or source archive. Build and activate a pinned release before owner-si
 The local catalog does not require a GPU, but automatic reading remains queued until
 the enrolled owner device passes isolation and an owner-reviewed quality/memory pilot.
 
+## Mac owner installation
+
+The reference release bundle and installed trial currently target Linux-aarch64.
+They do not constitute a native macOS installation and do not inherit the Mac's SSH
+or subscription-client authentication. Before activation, produce and validate a
+compatible pinned Mac owner installation and review its fixed SSH and official-client
+transport. Keep authentication on the owner side; do not give the inference container
+the owner's home, credentials, Docker socket, or network access. The existing private
+runtime is not automatically upgraded by building the reference bundle.
+
 ## Workstation preparation
 
 The runner targets a dedicated Linux WSL2 distribution named `Cairn`, with NVIDIA GPU

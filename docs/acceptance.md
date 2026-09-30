@@ -1,19 +1,32 @@
 # Acceptance evidence
 
-## Journal library extension (2026-09-30, in progress)
+## Journal library extension (2026-09-30, software validated; deployment pending)
 
 Catalog hardening preserves bibliographic observations as source snapshots, resolves
 pre-existing journal identities in place, supports folder aliases/publication series,
 and treats an empty previously populated route as uncertain. The catalog/discovery
 boundary tests use synthetic journals and PDFs. No private library was used by tests.
 
-The integrated development-container run passed **217 tests**, lint and
-strict typing across 76 modules before the final cancellation and backup validation changes.
-A separate physical **260MiB** streaming trial restored all 65 synthetic blobs and checked
-the archive digest; [the report](evidence/library-backup-trial.json) records 272,630,931
-payload bytes. Final isolation/release checks, workstation GPU pilot,
-and live subscription trial are separate gates. Synthetic readers/verifiers do not
-establish semantic quality. The workstation SSH connection still times out.
+The final `scripts/check.sh` run at code revision
+`653aba4f1011d0c058b7014be6266908c154c50b` passed **227 tests**, Ruff and strict mypy
+across 77 source files. Both development and installed processing profiles passed all
+13 isolation checks. Installed extraction and packet trials, 129 gold checks, and real
+Docker create/start/remove plus hostile-child cleanup passed. The new PDF page trial
+uses actual PDFium rendering with synthetic model responses; it does not test semantic
+reading quality.
+
+The same revision passed the offline installed release trial: 15 distributions,
+899 verified files, library scan/mark/feed/streaming restore, schema migration with backup,
+and capture/approval/apply/query/restore. Modified packages, unreviewed `.pth` files,
+editable installations, and activation without a live engine were rejected. See the
+[installed trial](evidence/library-release-trial.json) and
+[exact released worker profile](evidence/library-worker-profile.json). Release manifest
+SHA-256: `8feceae826e915d29fa2b31598de44b48681e999003018b63a383570f5571a0f`.
+
+A separate physical **260MiB of source payload** streaming trial restored all 65
+synthetic blobs and checked the archive digest; [the report](evidence/library-backup-trial.json)
+records 272,630,931 total payload bytes. This exceeds the legacy total-size limit without
+claiming a one-terabyte capacity trial.
 
 Implemented interfaces cover catalog/filter/export, publication backfill, explicit
 owner-device enrollment, resumable/cancellable reading proposals, bounded subscription
@@ -21,11 +34,24 @@ verification, saved Markdown/HTML/Atom digests, delivery acknowledgements, and s
 backup/restore. Pending or failed verification is visible; selected pending checks and
 failed checks block owner acceptance. Local older papers are inventoried and preserved;
 weekly baseline scans do not read the archive. The reader is Qwen/llama.cpp code, not a
-claim that a live Qwen model has run. No private pilot or active weekly schedule is claimed.
+claim that a live Qwen model has run. The Monday 09:00 America/Chicago heartbeat has been
+prepared in a paused state. No private library or private workspace was used for these
+tests, and no private runtime was upgraded.
+
+Deployment remains pending: the workstation SSH connection still times out; its GPU,
+WSL2/container configuration, pinned Qwen build, memory use and reading quality remain
+unverified. The release trial is Linux-aarch64, not a native macOS owner installation.
+A compatible pinned Mac installation with reviewed owner SSH/client transport, live
+subscription adapter capability checks, and a small owner-reviewed pilot are required
+before full cataloging and weekly activation. Subscription login status and synthetic
+protocol tests do not establish live tool disabling, billing behavior, or output quality.
+See [deployment gates](library-deployment.md). No skipped or synthetic check is counted
+as passing a live deployment gate.
 
 M0–M3 reference acceptance is complete. A checked item requires an executed test or
-inspected artifact, not just code presence. Private activation and M4 are outside this
-goal. Entries below retain the chronological evidence, including earlier pending gates.
+inspected artifact, not just code presence. Entries below retain the earlier M0–M3
+chronological evidence and scope statements; the authorized journal extension and its
+remaining deployment gates are described above.
 
 | Stage | Status | Evidence and limits |
 | --- | --- | --- |
