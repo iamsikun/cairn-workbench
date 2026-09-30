@@ -204,6 +204,10 @@ class Record(Labels):
 
     @model_validator(mode="after")
     def consistent(self) -> Record:
+        if "cairn_library_v1" in self.sections:
+            from cairn.library.models import metadata
+
+            metadata(self)
         if not self.id.startswith(f"{self.type}_"):
             raise ValueError("record ID prefix must match type")
         if (self.type == "source") != (self.source is not None):

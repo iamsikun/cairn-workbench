@@ -1,0 +1,44 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "const": "cairn-library",
+      "default": "cairn-library",
+      "title": "Id",
+      "type": "string"
+    },
+    "layout": {
+      "const": "journal_subfolders",
+      "default": "journal_subfolders",
+      "title": "Layout",
+      "type": "string"
+    },
+    "read_only": {
+      "const": true,
+      "default": true,
+      "title": "Read Only",
+      "type": "boolean"
+    },
+    "root": {
+      "title": "Root",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "default": "research",
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Scope",
+      "type": "string"
+    }
+  },
+  "required": [
+    "root"
+  ],
+  "title": "LibraryConfig",
+  "type": "object"
+}

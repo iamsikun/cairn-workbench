@@ -11,6 +11,24 @@ directory is named `cairn`. These names do not change the Python package or CLI.
 
 ## 1. Intended result and scope
 
+### Authorized journal-library follow-on
+
+The follow-on adds an owner-maintained journal/paper catalog, public publication
+discovery, bounded inference on an enrolled owner workstation, subscription-based
+sample verification, and a weekly saved feed. The canonical writer stays on the owner
+Mac. Development uses synthetic inputs only. The local reader targets Qwen3.5-9B with
+a pinned CUDA/WSL2 runtime; live hardware, quality, transport, and isolation are separate
+activation gates. Public metadata fetchers and subscription-verifier transports are
+trusted, separately scoped components; extraction/inference workers remain offline.
+Model checks never confer owner approval or mark personal reading as complete.
+
+All older papers are cataloged; reading is selective. Weekly updates cover new
+publications and archive additions. Initial calibration checks ten readings with both
+verifiers; ongoing sampling is 10% plus flagged results. Digest scheduling defaults to
+Monday 09:00 America/Chicago, using a thread heartbeat after reviewed activation.
+Detailed operational behavior and actual evidence are recorded in `docs/library.md`
+and `docs/acceptance.md`; this authorization is not a claim of deployment readiness.
+
 Cairn will be a local knowledge compiler with a review queue. It will preserve evidence and human thinking, propose bounded improvements to a Markdown wiki, and supply scoped, source-aware context to existing agent clients.
 
 The first release covers M0–M3 from the brief. Build one reliable research workflow first, then add project continuity and finance/life records. M4 is a separate follow-on: no custom chat interface, hosted service, remote MCP, vector database, or multi-device synchronization is required for the first release.

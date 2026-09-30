@@ -1,0 +1,123 @@
+{
+  "$defs": {
+    "DiscoverySource": {
+      "additionalProperties": false,
+      "properties": {
+        "issn": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{4}-\\d{3}[\\dX]$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Issn"
+        },
+        "kind": {
+          "enum": [
+            "crossref",
+            "atom",
+            "rss",
+            "pmlr"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DiscoverySource",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "checked_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Checked At"
+    },
+    "coverage": {
+      "default": "Local collection only; publication coverage unknown",
+      "title": "Coverage",
+      "type": "string"
+    },
+    "discovery": {
+      "items": {
+        "$ref": "#/$defs/DiscoverySource"
+      },
+      "title": "Discovery",
+      "type": "array"
+    },
+    "folder": {
+      "title": "Folder",
+      "type": "string"
+    },
+    "issns": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Issns",
+      "type": "array"
+    },
+    "kind": {
+      "const": "journal",
+      "default": "journal",
+      "title": "Kind",
+      "type": "string"
+    },
+    "resolved": {
+      "default": false,
+      "title": "Resolved",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "watermark": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Watermark"
+    }
+  },
+  "required": [
+    "folder"
+  ],
+  "title": "Journal",
+  "type": "object"
+}

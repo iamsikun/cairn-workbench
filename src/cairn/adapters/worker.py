@@ -17,6 +17,15 @@ def main() -> None:
         if len(raw) > 48 * 1024 * 1024:
             raise ValueError("job too large")
         document = json.loads(raw)
+        if document.get("operation") == "inspect_pdf":
+            from cairn.library.pdf import inspect_metadata
+
+            if set(document) != {"operation", "data"}:
+                raise ValueError("unexpected metadata fields")
+            sys.stdout.buffer.write(
+                canonical(inspect_metadata(base64.b64decode(document["data"], validate=True)))
+            )
+            return
         if document.get("operation") == "probe":
             from cairn.adapters.probe import probe
 

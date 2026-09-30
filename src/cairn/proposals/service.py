@@ -175,6 +175,10 @@ def stage_result(ws: Workspace, result: Result) -> Proposal | None:
         seen: set[str] = set()
         for candidate in result.candidates:
             record = candidate.record
+            if "cairn_library_v1" in record.sections or (
+                record.id in existing and "cairn_library_v1" in existing[record.id][1].sections
+            ):
+                raise Denied("library catalog and reading state are owner-controlled")
             if record.id in seen:
                 raise CairnError("duplicate candidate ID")
             seen.add(record.id)
@@ -278,6 +282,10 @@ def validate_unlocked(ws: Workspace, proposal: Proposal) -> JobEnvelope:
     expected_flags: set[str] = set()
     for change in proposal.changes:
         record, body = decode(change.content.encode())
+        if "cairn_library_v1" in record.sections or (
+            record.id in current and "cairn_library_v1" in current[record.id][1].sections
+        ):
+            raise Denied("library catalog and reading state are owner-controlled")
         if record.id != change.id or change.path != target_path(record):
             raise Denied("invalid target path or ID")
         envelope.scope.require(record)

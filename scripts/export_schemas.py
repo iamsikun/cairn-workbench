@@ -5,6 +5,9 @@ from pathlib import Path
 
 from cairn.adapters.protocol import Job, Result
 from cairn.ingest.bibliography import BibliographyImport
+from cairn.library.discovery import DiscoveryReport, Publication
+from cairn.library.models import Journal, LibraryConfig, Paper, ScanReport
+from cairn.library.store import LibraryTransaction
 from cairn.policies.audit import PolicyChange, RouteAudit, RouteRequest
 from cairn.policies.models import Policy, RouteGrant, Scope
 from cairn.proposals.models import Approval, Proposal
@@ -26,6 +29,13 @@ if __name__ == "__main__":
     destination = Path("schemas")
     destination.mkdir(exist_ok=True)
     for model in (
+        Publication,
+        DiscoveryReport,
+        Journal,
+        LibraryConfig,
+        Paper,
+        ScanReport,
+        LibraryTransaction,
         Record,
         Extraction,
         Event,

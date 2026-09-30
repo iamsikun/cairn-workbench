@@ -199,8 +199,13 @@ def recover(ws: Workspace) -> list[ApplyReceipt]:
     recovered = []
     with ws.lock(write=True, recovery=True):
         ws.require_no_pending_migration()
+        from cairn.library.store import recover_library_unlocked
+
+        recover_library_unlocked(ws)
         for path in ws.fs.files("journal"):
             if not path.endswith("/transaction.json"):
+                continue
+            if json.loads(ws.fs.read(path)).get("kind") == "library":
                 continue
             tx = Transaction.model_validate_json(ws.fs.read(path))
             if tx.status == "rolled_back":

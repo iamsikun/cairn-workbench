@@ -155,6 +155,20 @@ def validate_payloads(payloads: dict[str, bytes]) -> WorkspaceConfiguration:
                 if path != f"receipts/applied/{receipt.proposal_id}.json":
                     raise Conflict("backup receipt identity mismatch")
             elif path.startswith("journal/"):
+                parsed = read_json(raw)
+                if parsed.get("kind") == "library":
+                    from cairn.library.store import LibraryTransaction, validate_entry
+
+                    library_tx = LibraryTransaction.model_validate(parsed)
+                    if (
+                        library_tx.workspace_id != config.id
+                        or path != f"journal/{library_tx.id}/transaction.json"
+                        or library_tx.status != "committed"
+                    ):
+                        raise Conflict("invalid or incomplete library transaction")
+                    for entry in library_tx.entries:
+                        validate_entry(entry)
+                    continue
                 transaction = Transaction.model_validate(read_json(raw))
                 if path != f"journal/{transaction.id}/transaction.json":
                     raise Conflict("backup transaction identity mismatch")

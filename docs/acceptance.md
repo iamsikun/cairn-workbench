@@ -310,3 +310,13 @@ Repository naming update: the software repository is `cairn-workbench`; the sepa
 configured private knowledge base is `cairn`. Documentation and the synthetic example
 configuration use those names. Runtime code, Python package, CLI, and schemas are
 unchanged; this documentation/configuration-only change passes `git diff --check`.
+# Journal catalog follow-on — implementation evidence
+
+The journal catalog extension is under development. Synthetic tests run in the documented
+network-disabled development container (public checkout mount only). The targeted catalog,
+existing ingestion/apply, backup, schema-export, and CLI suite passed **65 tests**.
+Three additional publication-discovery tests passed: cursor resumption/idempotence,
+unresolved journals/feed-only coverage, and failed-page watermark preservation.
+These are mechanical tests, not paper-reading quality evidence. Workstation SSH timed out;
+GPU inference, subscription verification, release activation, and private-library deployment
+are not yet verified. No real paper or private workspace has been used by contributor code.
