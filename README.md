@@ -45,6 +45,8 @@ pending-approval invalidation, backups, and interrupted-migration recovery.
 Read the [architecture](docs/architecture.md), [threat model](docs/threat-model.md),
 [processing policy](docs/privacy.md), [recovery procedure](docs/recovery.md), and
 [agent protocol](docs/agent-integration.md) before choosing an execution profile.
+The [review procedure](docs/review.md) explains terminal/Markdown diffs, local evidence
+links, dated conflicts, and the distinction between quote support and owner approval.
 
 The [research workflow and manual continuity procedure](docs/research-continuity.md)
 explain the M2 distinction between preserved session suggestions and adopted decisions.

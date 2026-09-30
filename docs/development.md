@@ -31,3 +31,9 @@ maintenance when no longer needed; never use real private data as a canary.
 The host Docker launcher is trusted. A client that can control that launcher or the Docker
 daemon is outside the worker boundary. The application never mounts its daemon socket
 inside a worker. This boundary does not defend against a compromised host/engine.
+
+`examples/workspace.example.json` documents the machine-local configuration shape using
+fictional paths and synthetic mode. It is not a complete workspace or private approval.
+Use `cairn init --synthetic` to create development fixtures; use the separately reviewed
+installation/activation procedure for private operation. No actual owner paths or runtime
+approvals belong in the public checkout.

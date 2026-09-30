@@ -132,6 +132,26 @@ def trial(bundle: Path) -> None:
     source_file.write_text("Synthetic release evidence: exact value 42.\n")
     source = cli("capture", str(source_file), "--domain", "research", *options)
     proposal = cli("ingest", source["id"], "--scope", "research", "--inline-synthetic", *options)
+    review = subprocess.run(
+        [
+            str(python),
+            "-I",
+            "-B",
+            "-m",
+            "cairn",
+            "proposal",
+            "show",
+            proposal["id"],
+            "--workspace",
+            str(workspace),
+            "--markdown",
+        ],
+        capture_output=True,
+        env=env,
+        check=True,
+    ).stdout.decode()
+    assert "[Source manifest](<" in review and "[Evidence at line 1](<" in review
+    assert "Valid against current inputs" in review and "coverage: full" in review
     cli("validate", proposal["id"], *options)
     acknowledgements = [
         word for flag in proposal["review_flags"] for word in ("--acknowledge", flag)
@@ -220,6 +240,7 @@ def trial(bundle: Path) -> None:
                 "verified_files": verification["verified_files"],
                 "synthetic_capture_approval_apply_query_restore": "passed",
                 "synthetic_schema_migration_with_backup": "passed",
+                "installed_markdown_source_review": "passed",
                 "modified_package_rejected": True,
                 "unreviewed_pth_rejected": True,
                 "editable_installation_rejected": True,

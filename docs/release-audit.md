@@ -1,7 +1,7 @@
 # Remaining M3 release audit
 
 M0/M1 reference gates pass. M2 mechanics pass; its second-agent semantic trial is manual
-and pending by owner choice. M3 now passes 169 cumulative tests plus installed worker,
+and pending by owner choice. M3 now passes 175 cumulative tests plus installed worker,
 isolation, and real-engine lifecycle trials. These results do not close the full goal.
 
 Before release review, finish the following public, synthetic-only work:
@@ -48,8 +48,13 @@ Before release review, finish the following public, synthetic-only work:
    retained in `docs/evidence/goldset.json`; human review duration/edits and semantic
    usefulness remain explicitly unmeasured. See `docs/evaluation.md`. Actual second-session
    continuity remains the separate manual M2 gate; this report does not satisfy it.
-7. Map every brief hard gate to an executed test, manual gate, or named unsupported
-   capability. Finish installation, privacy, recovery, and agent-integration documentation.
+7. The full requirement mapping is in `docs/requirements.md`, with inspected source,
+   named tests, retained reports, limits, and the explicit manual gate. The audit closed
+   the missing Markdown review report: current diffs, dates/coverage/conflicts, local
+   evidence links, scope revocation, and active-content escaping now have six tests.
+   Installation, privacy, recovery, agent-integration, evaluation, migration, and review
+   procedures are documented. A final offline installed trial of the review increment
+   remains before calling the revision-specific release checks complete.
 
 The private directory remains untouched. Actual private activation, owner real-data
 evaluation, real cloud grants, publication, and M4 are outside the current goal. No public

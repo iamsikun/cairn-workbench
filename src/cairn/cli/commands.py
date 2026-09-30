@@ -273,18 +273,20 @@ def register(app: typer.Typer) -> None:
     @proposals.command("show")
     @guarded
     def proposal_show(
-        proposal_id: str, workspace: WorkspaceOption, json_output: JsonOption = False
+        proposal_id: str,
+        workspace: WorkspaceOption,
+        json_output: JsonOption = False,
+        markdown: bool = False,
     ) -> None:
-        """Show exact candidate diffs and required owner review."""
+        """Show current diffs, source provenance and required owner review; optionally Markdown."""
+        from cairn.proposals.review import render_review
+
+        if json_output and markdown:
+            raise CairnError("choose either --json or --markdown")
         ws = Workspace(workspace)
         with ws.lock():
             proposal = load_proposal(ws, proposal_id)
-        text = (
-            f"{proposal.id}\nProvider: {proposal.provider}; route: {proposal.route}\n"
-            f"Required review: {', '.join(sorted(proposal.review_flags))}\n"
-            "Quote matches establish presence, not entailment. Reviewed does not mean true.\n"
-        )
-        text += "\n".join(change.diff for change in proposal.changes)
+            text = render_review(ws, proposal, markdown=markdown)
         emit(proposal, json_output, text)
 
     @app.command("validate")

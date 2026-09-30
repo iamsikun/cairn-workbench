@@ -233,3 +233,19 @@ human edits/time and semantic quality are explicitly unmeasured. Conversation ro
 unadopted suggestions, and the adopted decision/failure context workflow were exercised.
 See `docs/evaluation.md` and `docs/evidence/goldset.json`. This does not satisfy the
 owner-selected manual second-agent gate or establish entailment or complete security.
+
+Source-review/final-audit increment: **175 tests passed**, Ruff passed, strict mypy passed
+(56 files), both sets of 13 isolation checks and the installed worker probe passed, all
+six worker trials passed, gold-set checks remained **129/129**, and the real-engine
+lifecycle checks passed. Six new review tests cover local source/artifact links, dates,
+coverage, explicit conflicts, read-only behavior, recomputed stale/tampered diffs, revoked
+scope denial, symlink refusal, and rendering hostile HTML/links/fences without activation.
+An earlier acceptance invocation stopped at a test-formatting lint error; the corrected
+complete invocation passed all stages.
+
+`docs/requirements.md` now maps every brief boundary, ingestion step, hard gate, named
+artifact, interface, domain template, evaluation measure, and additional plan requirement
+to inspected implementation and named evidence. The audit identified and closed the
+missing Markdown source-review report and added a validated synthetic configuration
+example. The updated offline installed-release trial remains the final revision-specific
+check for this increment; the manual M2 semantic gate remains pending by owner choice.
