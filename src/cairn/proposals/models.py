@@ -33,7 +33,7 @@ class Proposal(Model):
     input_hash: Digest
     policy_hash: Digest
     provider: str
-    route: Literal["local", "cloud"]
+    route: Literal["local", "cloud", "owner_device"]
     created_at: datetime
     changes: list[Change] = Field(min_length=1, max_length=20)
     review_flags: set[str] = Field(default_factory=set)

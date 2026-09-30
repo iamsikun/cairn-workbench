@@ -1,0 +1,99 @@
+{
+  "$defs": {
+    "VerificationFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "explanation": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Explanation",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "numerical",
+            "citation",
+            "interpretation",
+            "missing_evidence",
+            "injection"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page"
+        },
+        "severity": {
+          "enum": [
+            "minor",
+            "serious"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "severity",
+        "kind",
+        "explanation"
+      ],
+      "title": "VerificationFinding",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/VerificationFinding"
+      },
+      "maxItems": 40,
+      "title": "Findings",
+      "type": "array"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Limitations",
+      "type": "array"
+    },
+    "packet_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Packet Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "verdict": {
+      "enum": [
+        "supported",
+        "concerns",
+        "insufficient_evidence"
+      ],
+      "title": "Verdict",
+      "type": "string"
+    }
+  },
+  "required": [
+    "packet_hash",
+    "verdict"
+  ],
+  "title": "VerificationResult",
+  "type": "object"
+}

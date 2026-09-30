@@ -5,6 +5,7 @@ import os
 import stat
 import tempfile
 import zipfile
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Literal
 
@@ -73,7 +74,7 @@ def _paths(names: list[str]) -> None:
     check_history_paths(names)
 
 
-def validate_payloads(payloads: dict[str, bytes]) -> WorkspaceConfiguration:
+def validate_payloads(payloads: Mapping[str, bytes]) -> WorkspaceConfiguration:
     """Validate durable structures and evidence without executing restored content."""
     _paths(list(payloads))
     if "workspace.json" not in payloads or "policy/workspace.json" not in payloads:
@@ -176,6 +177,9 @@ def validate_payloads(payloads: dict[str, bytes]) -> WorkspaceConfiguration:
             elif path.startswith("receipts/") and path.endswith(".json"):
                 # Subsystem receipts have independent shapes; reject ambiguous JSON at minimum.
                 read_json(raw)
+        from cairn.library.validation import validate_library
+
+        validate_library(payloads, records)
         for record in records.values():
             meta = record.source
             if meta:

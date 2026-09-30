@@ -27,40 +27,34 @@ def fetch_isolated(ws: Workspace, url: str, hosts: set[str]) -> bytes:
     args = [
         arg.replace("--network=none", "--network=bridge") for arg in profile[2:-1] if arg != "--rm"
     ]
-    container_id = (
+    name = "cairn-public-" + uuid4().hex
+    try:
         _docker(
             [
                 "create",
                 *args,
                 "--name",
-                "cairn-public-" + uuid4().hex,
+                name,
                 image,
                 "-m",
                 "cairn.library.fetcher",
             ],
             env=env,
         )
-        .decode()
-        .strip()
-    )
-    import re
-
-    if not re.fullmatch(r"[a-f0-9]{64}", container_id):
-        raise Blocked("public_fetcher_identity_unverified")
-    try:
         code, output = bounded_process(
-            ["docker", "start", "--attach", "--interactive", container_id],
+            ["docker", "start", "--attach", "--interactive", name],
             canonical({"url": url, "hosts": sorted(hosts)}),
             timeout=60,
             stdout_limit=12 * 1024 * 1024,
             env=env,
         )
-        if code:
+        state = json.loads(_docker(["inspect", "--format", "{{json .State}}", name], env=env))
+        if code or state.get("Running") or state.get("ExitCode") != 0 or state.get("OOMKilled"):
             raise Blocked("publication_source_unavailable")
         data = json.loads(output)
         return base64.b64decode(data["data"], validate=True)
     finally:
-        _docker(["rm", "--force", "--volumes", container_id], env=env)
+        _docker(["rm", "--force", "--volumes", name], env=env)
 
 
 def main() -> None:

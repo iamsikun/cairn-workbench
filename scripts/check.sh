@@ -9,7 +9,8 @@ profile=(--rm --pull=never --network=none --read-only --cap-drop=ALL
   --log-driver=none --no-healthcheck --restart=no
   --security-opt=no-new-privileges --pids-limit=64 --memory=512m --cpus=1
   --user=65532:65532 --tmpfs=/tmp:rw,noexec,nosuid,size=128m,mode=1777)
-docker run "${profile[@]}" "$image_id" pytest -p no:cacheprovider
+docker run "${profile[@]}" --tmpfs=/test:rw,noexec,nosuid,size=512m,mode=1777 \
+  -e TMPDIR=/test "$image_id" pytest -p no:cacheprovider
 docker run "${profile[@]}" "$image_id" ruff check src tests scripts
 docker run "${profile[@]}" "$image_id" mypy
 probe_dir="$(mktemp -d /tmp/cairn-synthetic-canary.XXXXXX)"

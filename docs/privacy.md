@@ -15,6 +15,13 @@ corpus, including ranking statistics. Titles, counts, references, backlinks, sni
 and cached payloads do not come from a global model-visible index. Policy and corpus
 changes alter cache identities; cache deletion loses no durable knowledge.
 
+The journal extension adds an explicitly enrolled `owner_device` route and bounded,
+owner-configured subscription verification; see [deployment boundaries](library-deployment.md).
+An owner device is not described as same-machine local execution. Only selected job bytes
+and read-only pinned model artifacts enter its offline GPU container. The separate public
+metadata fetcher receives owner-approved public URLs and no private workspace, library or
+credentials. Document URLs cannot authorize additional destinations or PDF downloads.
+
 The owner can always copy data manually, and already exported information cannot be
 retracted by revoking a scope. The application must not label an unverifiable client
 route local-only. A missing local model is a blocked capability, not a reason to send

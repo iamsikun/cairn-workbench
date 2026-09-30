@@ -334,7 +334,8 @@ def discover(
             key = digest(canonical(endpoint))
             checkpoint = f"receipts/library/discovery/{record.id}/{key}.json"
             with ws.lock():
-                state = json.loads(ws.fs.read(checkpoint)) if ws.fs.exists(checkpoint) else {}
+                checkpoint_raw = ws.fs.read(checkpoint) if ws.fs.exists(checkpoint) else None
+                state = json.loads(checkpoint_raw) if checkpoint_raw else {}
             started = state.get("started") or now().isoformat()
             watermark = state.get("watermark")
             cursor = state.get("cursor") or "*"
@@ -394,7 +395,11 @@ def discover(
                         "visited": [] if completed else sorted(visited),
                     }
                     with ws.lock(write=True):
+                        current_raw = ws.fs.read(checkpoint) if ws.fs.exists(checkpoint) else None
+                        if current_raw != checkpoint_raw:
+                            raise Conflict("discovery checkpoint advanced concurrently")
                         commit_unlocked(ws, {checkpoint: canonical(state)}, "discovery_checkpoint")
+                        checkpoint_raw = canonical(state)
                     if completed:
                         break
             except (CairnError, ValueError, KeyError, OSError, ET.ParseError):

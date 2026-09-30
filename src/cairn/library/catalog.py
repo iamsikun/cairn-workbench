@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import stat
@@ -7,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from cairn.errors import CairnError, Conflict, Denied
+from cairn.ingest.service import capture_bytes
 from cairn.library.models import (
     FileLocation,
     Journal,
@@ -138,11 +140,14 @@ def correct(ws: Workspace, paper_id: str, fields: dict[str, Any], *, scope: str)
         "abstract",
         "priority",
         "topics",
+        "note_ids",
     }
     if not fields or not fields.keys() <= allowed:
         raise Denied("unsupported owner correction")
     with ws.lock(write=True):
         record, value = get_paper(ws, paper_id, scope)
+        for linked in fields.get("note_ids", []):
+            ws.record(linked, ws.policy.scope(scope))
         if "title" in fields:
             record.title = fields["title"]
         for key, val in fields.items():
@@ -269,11 +274,22 @@ def scan(ws: Workspace, *, extract_metadata: bool = True, rehash: bool = False) 
                 ):
                     report.unchanged += 1
                     continue
+                data = None
                 if info.st_size > MAX_FILE_BYTES:
                     report.issues[relative] = "PDF_exceeds_processing_limit"
-                    report.complete = False
-                    continue
-                data = fs.read(relative)
+                    checksum = hashlib.sha256()
+                    with fs.parent(relative) as (fd, leaf):
+                        file_fd = os.open(
+                            leaf, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd
+                        )
+                        with os.fdopen(file_fd, "rb") as stream:
+                            fs._regular(os.fstat(stream.fileno()))
+                            for block in iter(lambda: stream.read(1024 * 1024), b""):
+                                checksum.update(block)
+                    content_hash = checksum.hexdigest()
+                else:
+                    data = fs.read(relative)
+                    content_hash = digest(data)
                 after = path.lstat()
                 if (info.st_ino, info.st_size, info.st_mtime_ns) != (
                     after.st_ino,
@@ -281,9 +297,8 @@ def scan(ws: Workspace, *, extract_metadata: bool = True, rehash: bool = False) 
                     after.st_mtime_ns,
                 ):
                     raise Conflict("file changed during scan")
-                content_hash = digest(data)
                 observed: dict[str, Any] = {}
-                if extract_metadata:
+                if extract_metadata and data is not None:
                     try:
                         observed = inspect_pdf(ws, data)
                     except (CairnError, ValueError):
@@ -326,17 +341,33 @@ def scan(ws: Workspace, *, extract_metadata: bool = True, rehash: bool = False) 
                 new_location = FileLocation(
                     path=relative,
                     content_hash=content_hash,
-                    size=len(data),
+                    size=info.st_size,
                     mtime_ns=info.st_mtime_ns,
                     source_id=location.source_id
                     if location and location.content_hash == content_hash
                     else None,
                 )
                 paper.files = [f for f in paper.files if f.path != relative] + [new_location]
+                if data is not None:
+                    preserved = capture_bytes(
+                        ws,
+                        data,
+                        origin=f"library:{config.id}/{relative}",
+                        identity=f"library-paper:{paper_id}",
+                        title=record.title,
+                        domain="research",
+                        source_type="pdf",
+                        classification=record.classification,
+                        processing=record.processing,
+                        compartments=record.compartments,
+                        project_ids=record.project_ids,
+                        library_alias="cairn_library",
+                        scope_name=config.scope,
+                    )
+                    new_location.source_id = preserved.id
+                    paper.source_ids = sorted(set([*paper.source_ids, preserved.id]))
                 snapshot = None
                 if observed:
-                    from cairn.ingest.service import capture_bytes
-
                     snapshot = capture_bytes(
                         ws,
                         canonical({"pdf_hash": content_hash, "observed": observed}),

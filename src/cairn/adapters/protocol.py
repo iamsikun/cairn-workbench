@@ -16,7 +16,7 @@ class Job(Model):
     operation: Literal["ingest"] = "ingest"
     policy_hash: Digest
     scope_name: ID
-    route: Literal["local", "cloud"] = "local"
+    route: Literal["local", "cloud", "owner_device"] = "local"
     provider: str
     execution_image: str | None = None
     source: Record

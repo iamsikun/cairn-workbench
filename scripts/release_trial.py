@@ -1,5 +1,6 @@
 """Offline fresh-environment trial, run with synthetic files and executable scratch only."""
 
+import io
 import json
 import os
 import subprocess
@@ -185,6 +186,27 @@ def trial(bundle: Path) -> None:
     after_migration = cli("query", "42", "--scope", "research", *options)
     assert after_migration["answer"] == answer["answer"]
     answer = after_migration
+    from pypdf import PdfWriter
+
+    library = root / "synthetic-library"
+    journal = library / "Example Journal"
+    journal.mkdir(parents=True)
+    writer = PdfWriter()
+    writer.add_blank_page(width=200, height=200)
+    writer.add_metadata({"/Title": "Synthetic release paper", "/Author": "A. Example"})
+    pdf = io.BytesIO()
+    writer.write(pdf)
+    (journal / "paper.pdf").write_bytes(pdf.getvalue())
+    library_options = ("--workspace", str(workspace))
+    cli("library", "configure", str(library), *library_options)
+    scanned = cli("library", "scan", *library_options, "--json")
+    assert scanned["complete"] and len(scanned["added"]) == 1
+    paper_id = scanned["added"][0]
+    assert cli("library", "scan", *library_options, "--json")["unchanged"] == 1
+    cli("library", "mark", paper_id, "read", *library_options)
+    assert cli("library", "show", paper_id, *library_options)["paper"]["reading"] == "read"
+    cli("library", "update", *library_options, "--read-budget", "0")
+    assert cli("feed", "latest", *library_options, "--json")["entries"] == []
     archive = root / "backup.zip"
     backed_up = cli("backup", str(archive), *options)
     restored = root / "restored"
@@ -202,6 +224,9 @@ def trial(bundle: Path) -> None:
     )
     assert (
         cli("query", "42", "--scope", "research", "--workspace", str(restored), "--json") == answer
+    )
+    assert (
+        cli("library", "show", paper_id, "--workspace", str(restored))["paper"]["reading"] == "read"
     )
 
     # Actual installed files are tested, never package mocks or PYTHONPATH substitutions.
@@ -240,6 +265,7 @@ def trial(bundle: Path) -> None:
                 "verified_files": verification["verified_files"],
                 "synthetic_capture_approval_apply_query_restore": "passed",
                 "synthetic_schema_migration_with_backup": "passed",
+                "installed_library_scan_mark_feed_streaming_restore": "passed",
                 "installed_markdown_source_review": "passed",
                 "modified_package_rejected": True,
                 "unreviewed_pth_rejected": True,

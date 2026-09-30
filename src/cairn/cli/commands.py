@@ -182,7 +182,7 @@ def register(app: typer.Typer) -> None:
         include_pending: bool = False,
         json_output: JsonOption = False,
     ) -> None:
-        from cairn.storage.backup import backup
+        from cairn.storage.streaming_backup import backup
 
         emit(
             backup(Workspace(workspace), destination, include_pending=include_pending), json_output
@@ -202,7 +202,7 @@ def register(app: typer.Typer) -> None:
         acknowledge: Annotated[list[ReviewAcknowledgement] | None, typer.Option()] = None,
         json_output: JsonOption = False,
     ) -> None:
-        from cairn.storage.backup import restore
+        from cairn.storage.streaming_backup import restore
 
         ws = restore(
             archive,

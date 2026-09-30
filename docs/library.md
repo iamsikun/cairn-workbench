@@ -36,3 +36,9 @@ All catalog writes use the workspace lock and bounded recoverable owner transact
 Interrupted transactions block readers until `cairn recover`. No model actor label is
 authority to run this writer. Scope-filtered SQLite catalog indexes are disposable.
 The HTML export escapes imported text and has no active scripts or network resources.
+
+The remaining interfaces are `library discover`, `library read`, `library jobs`,
+`library retry`, `library cancel`, `library worker enroll/probe/revoke`, `library verify`,
+`library update`, and `feed latest/history/export/acknowledge`. Reading results enter the
+normal proposal/validate/approve/apply workflow. Filenames never supply personal reading
+status. See [deployment, consent and pilot requirements](library-deployment.md).

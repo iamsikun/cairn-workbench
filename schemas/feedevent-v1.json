@@ -1,0 +1,43 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "at": {
+      "format": "date-time",
+      "title": "At",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "new_publication",
+        "newly_discovered",
+        "box_addition",
+        "box_revision"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "paper_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Paper Id",
+      "type": "string"
+    },
+    "reading_requested": {
+      "default": false,
+      "title": "Reading Requested",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "paper_id",
+    "kind",
+    "at"
+  ],
+  "title": "FeedEvent",
+  "type": "object"
+}

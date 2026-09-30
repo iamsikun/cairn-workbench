@@ -107,7 +107,8 @@
     "route": {
       "enum": [
         "local",
-        "cloud"
+        "cloud",
+        "owner_device"
       ],
       "title": "Route",
       "type": "string"

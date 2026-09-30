@@ -5,16 +5,16 @@ ENV UV_COMPILE_BYTECODE=1 UV_NO_PROGRESS=1 PYTHONDONTWRITEBYTECODE=1
 RUN apt-get update && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
 COPY pyproject.toml uv.lock README.md ./
-RUN uv sync --locked --no-install-project --no-dev
+RUN uv sync --locked --no-install-project --no-dev --extra reader
 COPY src/ src/
-RUN uv sync --locked --no-dev --no-editable
+RUN uv sync --locked --no-dev --no-editable --extra reader
 ENV PATH="/opt/cairn/.venv/bin:$PATH"
 USER 65532:65532
 ENTRYPOINT ["python", "-m", "cairn.adapters.worker"]
 
 FROM base AS development
 USER root
-RUN uv sync --locked --no-editable
+RUN uv sync --locked --no-editable --extra reader
 COPY tests/ tests/
 COPY scripts/ scripts/
 COPY schemas/ schemas/

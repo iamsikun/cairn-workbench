@@ -11,6 +11,7 @@ docker run --rm --pull=never --network=none --read-only --cap-drop=ALL \
   --security-opt=no-new-privileges --pids-limit=64 --memory=512m --cpus=1 \
   --log-driver=none --no-healthcheck --restart=no \
   --user=65532:65532 --tmpfs=/tmp:rw,noexec,nosuid,size=128m,mode=1777 \
+  --tmpfs=/test:rw,noexec,nosuid,size=512m,mode=1777 -e TMPDIR=/test \
   cairn-dev:local
 ```
 
@@ -18,6 +19,12 @@ Use the same profile for `ruff check src tests scripts` and `mypy`. Development 
 contain only public files and create synthetic workspaces in container-local temporary
 storage. Never mount a host home, private workspace, credentials, or the Docker socket.
 For editing/formatting, an explicit mount of only the public checkout is acceptable.
+
+The physical large-library trial runs `python scripts/library_backup_trial.py` with
+`--memory=1g` and a 768MiB container-local `/tmp`; it preserves and restores 260MiB of
+synthetic blobs. This larger test scratch space is not an inference-worker permission.
+PDF rendering tests require the development image's locked `reader` extra. No GPU or
+subscription account is required by contributor tests; simulated outputs are labeled.
 
 `scripts/export_schemas.py` generates schemas from the typed models. The schema parity
 test detects drift. Run it with only the public checkout writable.

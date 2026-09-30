@@ -6,6 +6,7 @@ import re
 import selectors
 import subprocess
 import time
+from pathlib import Path
 from uuid import uuid4
 
 from cairn.adapters.protocol import Job, Result
@@ -75,6 +76,7 @@ def bounded_process(
     stdout_limit: int,
     stderr_limit: int = ERROR_LIMIT,
     env: dict[str, str] | None = None,
+    cwd: Path | None = None,
 ) -> tuple[int, bytes]:
     """Drain both pipes without unbounded buffering; never return worker diagnostics."""
     deadline = time.monotonic() + timeout
@@ -85,6 +87,7 @@ def bounded_process(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=env,
+            cwd=cwd,
             bufsize=0,
         )
     except OSError as exc:

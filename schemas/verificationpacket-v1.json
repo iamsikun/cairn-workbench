@@ -1,0 +1,217 @@
+{
+  "$defs": {
+    "PaperClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quote"
+        },
+        "text": {
+          "maxLength": 5000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "page"
+      ],
+      "title": "PaperClaim",
+      "type": "object"
+    },
+    "PaperSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "assumptions": {
+          "items": {
+            "$ref": "#/$defs/PaperClaim"
+          },
+          "maxItems": 20,
+          "title": "Assumptions",
+          "type": "array"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/PaperClaim"
+          },
+          "maxItems": 40,
+          "title": "Findings",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "$ref": "#/$defs/PaperClaim"
+          },
+          "maxItems": 20,
+          "title": "Limitations",
+          "type": "array"
+        },
+        "methods": {
+          "items": {
+            "$ref": "#/$defs/PaperClaim"
+          },
+          "maxItems": 20,
+          "title": "Methods",
+          "type": "array"
+        },
+        "research_question": {
+          "items": {
+            "$ref": "#/$defs/PaperClaim"
+          },
+          "maxItems": 20,
+          "title": "Research Question",
+          "type": "array"
+        },
+        "summary": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "summary"
+      ],
+      "title": "PaperSummary",
+      "type": "object"
+    },
+    "Segment": {
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "title": "Locator",
+          "type": "string"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "enum": [
+                "system",
+                "developer",
+                "user",
+                "assistant",
+                "tool"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "locator",
+        "text"
+      ],
+      "title": "Segment",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "coverage": {
+      "title": "Coverage",
+      "type": "string"
+    },
+    "images": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "maxProperties": 4,
+      "title": "Images",
+      "type": "object"
+    },
+    "omitted_pages": {
+      "items": {
+        "type": "integer"
+      },
+      "title": "Omitted Pages",
+      "type": "array"
+    },
+    "paper_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Paper Id",
+      "type": "string"
+    },
+    "passages": {
+      "items": {
+        "$ref": "#/$defs/Segment"
+      },
+      "maxItems": 12,
+      "title": "Passages",
+      "type": "array"
+    },
+    "read_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Read Id",
+      "type": "string"
+    },
+    "result_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Result Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "source_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Hash",
+      "type": "string"
+    },
+    "source_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Source Id",
+      "type": "string"
+    },
+    "summary": {
+      "$ref": "#/$defs/PaperSummary"
+    }
+  },
+  "required": [
+    "read_id",
+    "paper_id",
+    "source_id",
+    "source_hash",
+    "result_hash",
+    "summary",
+    "passages",
+    "coverage"
+  ],
+  "title": "VerificationPacket",
+  "type": "object"
+}

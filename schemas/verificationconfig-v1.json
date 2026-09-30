@@ -1,0 +1,54 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "claude_model": {
+      "default": "sonnet",
+      "title": "Claude Model",
+      "type": "string"
+    },
+    "codex_model": {
+      "default": "gpt-6.1-sol",
+      "title": "Codex Model",
+      "type": "string"
+    },
+    "journal_ids": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]{2,95}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Journal Ids",
+      "type": "array"
+    },
+    "owner_statement": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Owner Statement",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "default": "research",
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "valid_until": {
+      "format": "date-time",
+      "title": "Valid Until",
+      "type": "string"
+    }
+  },
+  "required": [
+    "journal_ids",
+    "valid_until",
+    "owner_statement"
+  ],
+  "title": "VerificationConfig",
+  "type": "object"
+}

@@ -7,11 +7,21 @@ pre-existing journal identities in place, supports folder aliases/publication se
 and treats an empty previously populated route as uncertain. The catalog/discovery
 boundary tests use synthetic journals and PDFs. No private library was used by tests.
 
-The integrated development-container run currently passes **217 tests**, lint and
-strict typing across 76 modules before the final cancellation changes. The physical
-260MiB streaming backup trial, final isolation/release checks, workstation GPU pilot,
+The integrated development-container run passed **217 tests**, lint and
+strict typing across 76 modules before the final cancellation and backup validation changes.
+A separate physical **260MiB** streaming trial restored all 65 synthetic blobs and checked
+the archive digest; [the report](evidence/library-backup-trial.json) records 272,630,931
+payload bytes. Final isolation/release checks, workstation GPU pilot,
 and live subscription trial are separate gates. Synthetic readers/verifiers do not
 establish semantic quality. The workstation SSH connection still times out.
+
+Implemented interfaces cover catalog/filter/export, publication backfill, explicit
+owner-device enrollment, resumable/cancellable reading proposals, bounded subscription
+verification, saved Markdown/HTML/Atom digests, delivery acknowledgements, and streaming
+backup/restore. Pending or failed verification is visible; selected pending checks and
+failed checks block owner acceptance. Local older papers are inventoried and preserved;
+weekly baseline scans do not read the archive. The reader is Qwen/llama.cpp code, not a
+claim that a live Qwen model has run. No private pilot or active weekly schedule is claimed.
 
 M0–M3 reference acceptance is complete. A checked item requires an executed test or
 inspected artifact, not just code presence. Private activation and M4 are outside this

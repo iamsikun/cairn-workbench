@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
@@ -14,6 +14,168 @@ from cairn.storage.workspace import Workspace
 def register(app: typer.Typer) -> None:
     library = typer.Typer(help="Journal inventory, reading progress, and paper jobs.")
     app.add_typer(library, name="library")
+    worker = typer.Typer(help="Explicitly enrolled owner-device inference routes.")
+    library.add_typer(worker, name="worker")
+    feeds = typer.Typer(help="Saved journal digests and bounded feed access.")
+    app.add_typer(feeds, name="feed")
+
+    @library.command("update")
+    @guarded
+    def update(
+        workspace: WorkspaceOption,
+        device: str | None = None,
+        scope: str = "research",
+        page_budget: int = 100,
+        read_budget: int = 10,
+    ) -> None:
+        from cairn.library.update import update as run
+
+        emit(
+            run(
+                Workspace(workspace),
+                device_id=device,
+                scope=scope,
+                page_budget=page_budget,
+                read_budget=read_budget,
+            ),
+            True,
+        )
+
+    @feeds.command("latest")
+    @guarded
+    def feed_latest(
+        workspace: WorkspaceOption, scope: str = "research", json_output: JsonOption = False
+    ) -> None:
+        from cairn.library.feed import history, render
+
+        values = history(Workspace(workspace), scope, 1)
+        emit(
+            values[0] if values else {"status": "no_digest"},
+            json_output,
+            render(values[0], "md") if values else "No digest yet.",
+        )
+
+    @feeds.command("history")
+    @guarded
+    def feed_history(workspace: WorkspaceOption, scope: str = "research", limit: int = 20) -> None:
+        from cairn.library.feed import history
+
+        emit(history(Workspace(workspace), scope, limit), True)
+
+    @feeds.command("export")
+    @guarded
+    def feed_export(
+        output: Path, workspace: WorkspaceOption, scope: str = "research", format: str = "atom"
+    ) -> None:
+        from cairn.errors import Blocked
+        from cairn.library.feed import history, render
+
+        values = history(Workspace(workspace), scope, 1)
+        if not values:
+            raise Blocked("no_saved_digest")
+        output.write_text(render(values[0], format))
+        emit({"path": str(output), "digest": values[0].id}, True)
+
+    @feeds.command("acknowledge")
+    @guarded
+    def feed_acknowledge(
+        digest_id: str, workspace: WorkspaceOption, scope: str = "research"
+    ) -> None:
+        from cairn.library.feed import acknowledge
+
+        acknowledge(Workspace(workspace), digest_id, scope)
+        emit({"digest": digest_id, "notification": "acknowledged"}, True)
+
+    @worker.command("enroll")
+    @guarded
+    def enroll(file: Path, workspace: WorkspaceOption) -> None:
+        from cairn.ingest.service import read_source_file
+        from cairn.library.device import enroll as run
+        from cairn.library.reader_models import DeviceConfig
+
+        emit(
+            run(Workspace(workspace), DeviceConfig.model_validate_json(read_source_file(file))),
+            True,
+        )
+
+    @worker.command("probe")
+    @guarded
+    def probe(device_id: str, workspace: WorkspaceOption) -> None:
+        from cairn.library.device import enroll, load_device
+
+        ws = Workspace(workspace)
+        emit(enroll(ws, load_device(ws, device_id)), True)
+
+    @worker.command("revoke")
+    @guarded
+    def revoke(device_id: str, workspace: WorkspaceOption) -> None:
+        from cairn.library.device import revoke as run
+
+        run(Workspace(workspace), device_id)
+        emit({"device": device_id, "enrolled": False}, True)
+
+    @library.command("capture")
+    @guarded
+    def capture(paper_id: str, workspace: WorkspaceOption, scope: str = "research") -> None:
+        from cairn.library.reader import capture_paper
+
+        emit(capture_paper(Workspace(workspace), paper_id, scope), True)
+
+    @library.command("read")
+    @guarded
+    def read(
+        paper_id: str,
+        device: str,
+        workspace: WorkspaceOption,
+        scope: str = "research",
+        queue_only: bool = False,
+        revision: int = 1,
+    ) -> None:
+        from cairn.library.reader import enqueue, run
+
+        ws = Workspace(workspace)
+        state = enqueue(ws, paper_id, device, scope=scope, revision=revision)
+        emit(state if queue_only else run(ws, state.job.id), True)
+
+    @library.command("jobs")
+    @guarded
+    def jobs(workspace: WorkspaceOption, scope: str = "research") -> None:
+        from cairn.library.reader import jobs as run
+
+        emit(run(Workspace(workspace), scope), True)
+
+    @library.command("retry")
+    @guarded
+    def retry(job_id: str, workspace: WorkspaceOption) -> None:
+        from cairn.library.reader import run
+
+        emit(run(Workspace(workspace), job_id, retry=True), True)
+
+    @library.command("cancel")
+    @guarded
+    def cancel(job_id: str, workspace: WorkspaceOption) -> None:
+        from cairn.library.reader import cancel as run
+
+        emit(run(Workspace(workspace), job_id), True)
+
+    @library.command("verification-configure")
+    @guarded
+    def verification_configure(file: Path, workspace: WorkspaceOption) -> None:
+        from cairn.ingest.service import read_source_file
+        from cairn.library.verification import configure
+        from cairn.library.verification_models import VerificationConfig
+
+        configure(
+            Workspace(workspace), VerificationConfig.model_validate_json(read_source_file(file))
+        )
+        emit({"verification": "configured", "billing": "subscription_only"}, True)
+
+    @library.command("verify")
+    @guarded
+    def verify(workspace: WorkspaceOption, scope: str = "research") -> None:
+        from cairn.library.verification import verify as run
+
+        emit(run(Workspace(workspace), scope), True)
 
     @library.command("discover")
     @guarded
@@ -71,8 +233,35 @@ def register(app: typer.Typer) -> None:
 
     @library.command("journals")
     @guarded
-    def journals(workspace: WorkspaceOption, scope: str = "research") -> None:
-        emit(catalog.list_entities(Workspace(workspace), scope, "journal"), True)
+    def journals(
+        workspace: WorkspaceOption, scope: str = "research", json_output: JsonOption = False
+    ) -> None:
+        ws = Workspace(workspace)
+        rows = papers(ws, scope=scope)
+        values: list[dict[str, Any]] = []
+        for journal in catalog.list_entities(ws, scope, "journal"):
+            items = [row for row in rows if journal.id in row["metadata"]["journal_ids"]]
+            with_pdf = sum(
+                any(f["availability"] == "available" for f in row["metadata"]["files"])
+                for row in items
+            )
+            values.append(
+                {
+                    "journal": journal,
+                    "papers": len(items),
+                    "with_pdf": with_pdf,
+                    "metadata_only": len(items) - with_pdf,
+                }
+            )
+        emit(
+            values,
+            json_output,
+            "\n".join(
+                f"{item['journal'].id}  {item['journal'].title}: {item['papers']} papers; "
+                f"{item['with_pdf']} PDFs"
+                for item in values
+            ),
+        )
 
     @library.command("papers")
     @guarded
@@ -84,6 +273,8 @@ def register(app: typer.Typer) -> None:
         year: int | None = None,
         reading: str | None = None,
         available: bool | None = None,
+        analysis: str | None = None,
+        review: str | None = None,
         json_output: JsonOption = False,
     ) -> None:
         rows = papers(
@@ -94,6 +285,8 @@ def register(app: typer.Typer) -> None:
             year=year,
             reading=reading,
             available=available,
+            analysis=analysis,
+            review=review,
         )
         emit(rows, json_output, "\n".join(f"{r['id']}  {r['title']}" for r in rows))
 

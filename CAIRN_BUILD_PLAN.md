@@ -29,6 +29,14 @@ Monday 09:00 America/Chicago, using a thread heartbeat after reviewed activation
 Detailed operational behavior and actual evidence are recorded in `docs/library.md`
 and `docs/acceptance.md`; this authorization is not a claim of deployment readiness.
 
+Implementation now includes all three software stages. The separate
+`docs/library-deployment.md` records pinned artifacts, bounded export consent, deterministic
+sampling cohorts, saved feeds, and the hardware/quality/installation gates. The owner
+transport process needs a compatible reviewed installation with access to the official
+host SSH and subscription clients. The reference Linux release does not by itself
+provide a native macOS installation or inherit host credentials. Preserve this distinction
+during deployment; do not widen an inference container to make a transport work.
+
 Cairn will be a local knowledge compiler with a review queue. It will preserve evidence and human thinking, propose bounded improvements to a Markdown wiki, and supply scoped, source-aware context to existing agent clients.
 
 The first release covers M0–M3 from the brief. Build one reliable research workflow first, then add project continuity and finance/life records. M4 is a separate follow-on: no custom chat interface, hosted service, remote MCP, vector database, or multi-device synchronization is required for the first release.

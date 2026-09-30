@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from cairn.errors import CairnError, Conflict, RecoveryRequired
@@ -81,15 +82,16 @@ def _receipt(auth: MigrationAuthorization) -> MigrationReceipt:
 
 
 def validate_migrations(
-    payloads: dict[str, bytes], workspace_id: str, *, allow_pending: bool = False
+    payloads: Mapping[str, bytes], workspace_id: str, *, allow_pending: bool = False
 ) -> dict[str, tuple[MigrationAuthorization, MigrationTransaction]]:
     """Validate historical or staged journals without trusting journal-supplied edits."""
     from cairn.storage.backup import _paths
 
     groups: dict[str, dict[str, bytes]] = {}
-    for path, raw in payloads.items():
+    for path in payloads:
         if not path.startswith("migrations/"):
             continue
+        raw = payloads[path]
         parts = path.split("/")
         if len(parts) != 3 or parts[2] not in (
             "authorization.json",
@@ -139,7 +141,8 @@ def validate_migrations(
 
 
 def inspect(ws: Workspace) -> dict[str, object]:
-    from cairn.storage.backup import durable_contents, validate_payloads
+    from cairn.storage.backup import validate_payloads
+    from cairn.storage.streaming_backup import durable_contents
 
     with ws.lock():
         contents = durable_contents(ws)
@@ -157,7 +160,8 @@ def inspect(ws: Workspace) -> dict[str, object]:
 
 
 def _preview_unlocked(ws: Workspace) -> MigrationPlan:
-    from cairn.storage.backup import durable_contents, validate_payloads
+    from cairn.storage.backup import validate_payloads
+    from cairn.storage.streaming_backup import durable_contents
 
     contents = durable_contents(ws)
     validate_payloads(contents)
@@ -176,7 +180,7 @@ def preview(ws: Workspace) -> MigrationPlan:
 def _complete(
     ws: Workspace, auth: MigrationAuthorization, tx: MigrationTransaction
 ) -> MigrationReceipt:
-    from cairn.storage.backup import durable_contents
+    from cairn.storage.streaming_backup import durable_contents
 
     plan = auth.plan
     directory = f"migrations/{plan.id}"
@@ -245,7 +249,7 @@ def _maintenance(ws: Workspace, receipt: MigrationReceipt) -> None:
 def apply(
     ws: Workspace, *, plan_sha256: str, backup_path: Path, statement: str
 ) -> MigrationReceipt:
-    from cairn.storage.backup import backup_unlocked
+    from cairn.storage.streaming_backup import backup_unlocked
 
     if not statement.strip() or len(statement) > 4000:
         raise CairnError(
@@ -284,7 +288,7 @@ def apply(
 
 
 def recover(ws: Workspace) -> list[MigrationReceipt]:
-    from cairn.storage.backup import durable_contents
+    from cairn.storage.streaming_backup import durable_contents
 
     with ws.lock(write=True, recovery=True):
         # A schema migration is never allowed to overlap a synthesis transaction.
