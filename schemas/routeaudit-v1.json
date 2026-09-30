@@ -1,0 +1,127 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "at": {
+      "format": "date-time",
+      "title": "At",
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "allowed",
+        "denied",
+        "blocked"
+      ],
+      "title": "Decision",
+      "type": "string"
+    },
+    "destination": {
+      "title": "Destination",
+      "type": "string"
+    },
+    "execution_performed": {
+      "const": false,
+      "default": false,
+      "title": "Execution Performed",
+      "type": "boolean"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "input_hashes": {
+      "patternProperties": {
+        "^[a-z][a-z0-9_]{2,95}$": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "title": "Input Hashes",
+      "type": "object"
+    },
+    "operation": {
+      "enum": [
+        "generation",
+        "extraction",
+        "query",
+        "context",
+        "client_export"
+      ],
+      "title": "Operation",
+      "type": "string"
+    },
+    "payload_hash": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Payload Hash"
+    },
+    "policy_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Policy Hash",
+      "type": "string"
+    },
+    "provider": {
+      "title": "Provider",
+      "type": "string"
+    },
+    "reason": {
+      "title": "Reason",
+      "type": "string"
+    },
+    "request_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Request Hash",
+      "type": "string"
+    },
+    "requested_route": {
+      "enum": [
+        "local",
+        "cloud"
+      ],
+      "title": "Requested Route",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "workspace_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "workspace_id",
+    "at",
+    "policy_hash",
+    "scope",
+    "requested_route",
+    "provider",
+    "destination",
+    "operation",
+    "request_hash",
+    "input_hashes",
+    "decision",
+    "reason"
+  ],
+  "title": "RouteAudit",
+  "type": "object"
+}

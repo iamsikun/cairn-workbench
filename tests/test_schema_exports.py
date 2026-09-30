@@ -5,7 +5,8 @@ import pytest
 
 from cairn.adapters.protocol import Job, Result
 from cairn.ingest.bibliography import BibliographyImport
-from cairn.policies.models import Policy
+from cairn.policies.audit import PolicyChange, RouteAudit, RouteRequest
+from cairn.policies.models import Policy, RouteGrant, Scope
 from cairn.proposals.models import Approval, Proposal
 from cairn.records.continuity import ContextPack, SessionReceipt
 from cairn.records.domains import Calculation, FinancialSnapshot, LifeDossier
@@ -20,6 +21,11 @@ from cairn.storage.backup import BackupManifest
         Extraction,
         Event,
         Policy,
+        PolicyChange,
+        RouteAudit,
+        RouteRequest,
+        RouteGrant,
+        Scope,
         Job,
         Result,
         ContextPack,

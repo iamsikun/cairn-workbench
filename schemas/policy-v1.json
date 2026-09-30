@@ -4,6 +4,8 @@
       "additionalProperties": false,
       "properties": {
         "destination": {
+          "maxLength": 2000,
+          "minLength": 1,
           "title": "Destination",
           "type": "string"
         },
@@ -23,16 +25,20 @@
             ],
             "type": "string"
           },
+          "minItems": 1,
           "title": "Operations",
           "type": "array",
           "uniqueItems": true
         },
         "owner_consent": {
+          "maxLength": 4000,
           "minLength": 1,
           "title": "Owner Consent",
           "type": "string"
         },
         "provider": {
+          "maxLength": 200,
+          "minLength": 1,
           "title": "Provider",
           "type": "string"
         },
@@ -81,6 +87,7 @@
             ],
             "type": "string"
           },
+          "minItems": 1,
           "title": "Domains",
           "type": "array",
           "uniqueItems": true
@@ -151,6 +158,19 @@
       },
       "title": "Cloud Grants",
       "type": "array"
+    },
+    "last_change": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Change"
     },
     "max_changes": {
       "default": 4,

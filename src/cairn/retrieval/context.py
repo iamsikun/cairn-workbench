@@ -290,7 +290,7 @@ def context_pack(
         )
         ws.policy.authorize_route(
             scope,
-            consulted,
+            [record for record in consulted if isinstance(record, Record)],
             route="local",
             provider="context-v1",
             operation="context",

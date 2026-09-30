@@ -56,6 +56,8 @@ class ClientPacketProvider:
         self.image = image
 
     def generate(self, job: Job) -> Result:
+        if job.route != "local":
+            raise Denied("local client cannot execute a cloud job")
         if job.execution_image != self.image:
             raise Denied("job does not bind this execution image")
         raw = canonical(job)

@@ -14,7 +14,8 @@ CSL-JSON bibliography import, project framing, attributed session receipts, expl
 decision adoption, bounded context packs, and repository-staleness checks. Its manual
 second-agent usefulness gate is pending. M3 now includes structured financial snapshots,
 exact Decimal calculations, dated financial notes, sourced life hubs, and direct evidence
-review. The remaining route/release/restore audit is still in progress.
+review, audited owner scopes/grants, and complete-request route checks. Cloud execution
+remains unavailable. The remaining release/migration/evaluation audit is in progress.
 
 Python package: `cairn`; command: `cairn`. Development uses synthetic workspaces outside
 the checkout. A private deployment requires a reviewed, pinned installation and a
@@ -27,7 +28,7 @@ The checks use synthetic data and do not mount a private workspace or host home.
 The CLI provides `init`, `capture`, `ingest`, `proposal show`, `validate`, `approve`,
 `apply`, `recover`, `search`, `query`, `edit`, `lint`, `rebuild-index`, `backup`, `restore`,
 `client run`, `project create`, `bibliography import`, `receipt import`, `decision adopt`,
-`repository inspect`, `context`, and `doctor`. Pass `--workspace` (or `CAIRN_WORKSPACE`) and use `--json`
+`repository inspect`, `context`, `policy`, and `doctor`. Pass `--workspace` (or `CAIRN_WORKSPACE`) and use `--json`
 for structured command output. `init` currently requires `--synthetic`; private activation
 will require a reviewed installation rather than an editable checkout.
 

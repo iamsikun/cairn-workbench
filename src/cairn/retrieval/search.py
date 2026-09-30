@@ -214,6 +214,17 @@ def search(
     if not terms:
         return []
     with ws.lock(write=True):
+        from cairn.policies.audit import require_local_route_unlocked
+
+        require_local_route_unlocked(
+            ws,
+            scope_name=scope_name,
+            records=[],
+            operation="query",
+            provider="fts5",
+            persist=False,
+            payload_hash=digest(canonical({"question": query, "limit": limit, "kind": kind})),
+        )
         connection = _index(ws, ws.policy.scope(scope_name))
         try:
             # FTS syntax is constructed from literal tokens, never accepted as SQL/FTS code.
@@ -258,6 +269,7 @@ def query(ws: Workspace, question: str, *, scope_name: str, limit: int = 10) -> 
     return {
         "status": "evidence_found" if evidence else "insufficient_evidence",
         "mode": "extractive",
+        "processing": {"route": "local", "provider": "fts5", "remote_requests": 0},
         "answer": "\n\n".join(f"{hit.text}\n[{hit.id}; {hit.locator}]" for hit in evidence),
         "hits": [json.loads(canonical(hit)) for hit in hits],
         "conflicts": [

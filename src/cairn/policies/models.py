@@ -4,17 +4,18 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator, model_validator
 
 from cairn.errors import Denied
 from cairn.records.models import ID, Classification, Domain, Labels, Model, Record, now
 
 LEVEL = {"public": 0, "private": 1, "restricted": 2}
+Operation = Literal["generation", "extraction", "query", "context", "client_export"]
 
 
 class Scope(Model):
     name: ID
-    domains: set[Domain]
+    domains: set[Domain] = Field(min_length=1)
     max_classification: Classification = "private"
     compartments: set[ID] = Field(default_factory=set)
     record_ids: set[ID] | None = None
@@ -58,19 +59,44 @@ class Scope(Model):
 class RouteGrant(Model):
     id: ID
     scope: ID
-    provider: str
-    destination: str
-    operations: set[Literal["generation", "extraction", "query", "context", "client_export"]]
+    provider: str = Field(min_length=1, max_length=200)
+    destination: str = Field(min_length=1, max_length=2000)
+    operations: set[Operation] = Field(min_length=1)
     valid_until: datetime
-    owner_consent: str = Field(min_length=1)
+    owner_consent: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("valid_until")
+    @classmethod
+    def timezone_required(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            raise ValueError("grant expiry requires a timezone")
+        return value
+
+    @field_validator("owner_consent", "provider", "destination")
+    @classmethod
+    def nonblank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("grant fields cannot be blank")
+        return value
 
 
 class Policy(Model):
     schema_version: Literal[1] = 1
     revision: int = Field(default=1, ge=1)
+    last_change: ID | None = None
     scopes: dict[ID, Scope]
     cloud_grants: list[RouteGrant] = Field(default_factory=list)
     max_changes: int = Field(default=4, ge=1, le=20)
+
+    @model_validator(mode="after")
+    def consistent(self) -> Policy:
+        if any(key != scope.name for key, scope in self.scopes.items()):
+            raise ValueError("scope keys must match names")
+        if len({grant.id for grant in self.cloud_grants}) != len(self.cloud_grants):
+            raise ValueError("duplicate grant ID")
+        if any(grant.scope not in self.scopes for grant in self.cloud_grants):
+            raise ValueError("grant scope unavailable")
+        return self
 
     def scope(self, name: str) -> Scope:
         if name not in self.scopes:
@@ -80,20 +106,44 @@ class Policy(Model):
     def authorize_route(
         self,
         scope: Scope,
-        inputs: list[Labels],
+        inputs: Sequence[Labels],
         *,
         route: Literal["local", "cloud"],
         provider: str,
-        operation: str,
+        operation: Operation,
         destination: str = "local",
         question: Labels | None = None,
+        extra_parts: Sequence[Labels] = (),
     ) -> None:
+        self.scope(scope.name).narrowed(scope)
+        for item in inputs:
+            if isinstance(item, Record):
+                scope.require(item)
+            elif (
+                item.domain not in scope.domains
+                or LEVEL[item.classification] > LEVEL[scope.max_classification]
+                or not item.compartments <= scope.compartments
+            ):
+                raise Denied("request input unavailable in this scope")
         if route == "local":
+            if destination != "local":
+                raise Denied("local routes cannot name a remote destination")
             return
         # Missing question labels never become permission to export a question.
-        all_inputs = [*inputs, question or Labels(domain="shared", classification="restricted")]
+        all_inputs = [
+            *inputs,
+            question or Labels(domain="shared", classification="restricted"),
+            *extra_parts,
+        ]
         if any(item.processing != "cloud_eligible" for item in all_inputs):
             raise Denied("request requires local-only processing")
+        if any(
+            item.domain not in scope.domains
+            or LEVEL[item.classification] > LEVEL[scope.max_classification]
+            or not item.compartments <= scope.compartments
+            for item in all_inputs
+        ):
+            raise Denied("complete request exceeds grant scope")
         for grant in self.cloud_grants:
             if (
                 grant.scope == scope.name

@@ -1,15 +1,16 @@
 # Remaining M3 release audit
 
 M0/M1 reference gates pass. M2 mechanics pass; its second-agent semantic trial is manual
-and pending by owner choice. M3 now passes 110 cumulative tests plus installed worker,
+and pending by owner choice. M3 now passes 127 cumulative tests plus installed worker,
 isolation, and real-engine lifecycle trials. These results do not close the full goal.
 
 Before release review, finish the following public, synthetic-only work:
 
-1. Audit every processing path against the complete request, including question and
-   derived labels. Provide owner-facing route/grant inspection and audit receipts;
-   reject missing, expired, destination-mismatched, or scope-mismatched grants. Keep cloud
-   execution unavailable until a concrete compliant adapter exists, with no fallback.
+1. Completed reference policy audit: owner scope/grant commands require explicit consent
+   and the current policy hash; changes have an atomic, verifiable history. Complete
+   request checks cover all five operations and deny missing/mismatched/expired grants or
+   incompatible labels. Cloud execution remains unavailable, with no fallback. Local
+   processing receipts bind packet hashes; read-only query/context retain local provenance.
 2. Completed reference hardening: backup/restore now preflights paths, canonical metadata,
    evidence/quotes, history configuration, and journals. Staged publication avoids partial
    destinations; a >32 MiB ZIP and interrupted apply restore pass. Private restore still

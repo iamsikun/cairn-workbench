@@ -11,6 +11,7 @@ from typing import Literal
 from pydantic import ValidationError
 
 from cairn.errors import CairnError, Conflict, Denied
+from cairn.policies.audit import PolicyChange, RouteAudit, policy_changes
 from cairn.policies.models import Policy
 from cairn.proposals.models import Approval, JobEnvelope, Proposal
 from cairn.proposals.service import all_refs, target_path
@@ -76,7 +77,10 @@ def validate_payloads(payloads: dict[str, bytes]) -> WorkspaceConfig:
         raise CairnError("backup omits workspace configuration or policy")
     try:
         config = WorkspaceConfig.model_validate(read_json(payloads["workspace.json"]))
-        Policy.model_validate(read_json(payloads["policy/workspace.json"]))
+        policy = Policy.model_validate(read_json(payloads["policy/workspace.json"]))
+        policy_changes(
+            digest(payloads["policy/workspace.json"]), policy, payloads.__getitem__, config.id
+        )
         if "history.git/config" in payloads:
             check_history_config(payloads["history.git/config"])
         elif any(path.startswith("history.git/") for path in payloads):
@@ -123,6 +127,14 @@ def validate_payloads(payloads: dict[str, bytes]) -> WorkspaceConfig:
                 event = Event.model_validate(read_json(raw))
                 if path != f"receipts/events/{event.id}.json":
                     raise Conflict("backup event identity mismatch")
+            elif path.startswith("receipts/policy/"):
+                change = PolicyChange.model_validate(read_json(raw))
+                if path != f"receipts/policy/{change.id}.json" or change.workspace_id != config.id:
+                    raise Conflict("backup policy audit identity mismatch")
+            elif path.startswith("receipts/routes/"):
+                audit = RouteAudit.model_validate(read_json(raw))
+                if path != f"receipts/routes/{audit.id}.json" or audit.workspace_id != config.id:
+                    raise Conflict("backup route audit identity mismatch")
             elif path.startswith("receipts/applied/"):
                 receipt = ApplyReceipt.model_validate(read_json(raw))
                 if path != f"receipts/applied/{receipt.proposal_id}.json":

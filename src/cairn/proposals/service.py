@@ -7,6 +7,7 @@ from cairn.adapters.isolation import ClientPacketProvider
 from cairn.adapters.protocol import Job, Page, Result
 from cairn.errors import Blocked, CairnError, Conflict, Denied
 from cairn.ingest.service import extract, load_extraction
+from cairn.policies.audit import require_local_route_unlocked
 from cairn.policies.models import require_inheritance
 from cairn.proposals.models import Approval, Change, JobEnvelope, Proposal
 from cairn.records.models import Event, EvidenceRef, Record, canonical, digest, new_id, now
@@ -54,13 +55,9 @@ def prepare_job(
         related = [ws.record(object_id, scope) for object_id in (related_ids or [])]
         inputs = {path: digest(ws.fs.read(path)), f"evidence/{evidence_hash}.json": evidence_hash}
         inputs.update({path: digest(ws.fs.read(path)) for path, _, _ in related})
-        policy.authorize_route(
-            scope,
-            [source, *(item[1] for item in related)],
-            route="local",
-            provider=provider,
-            operation="generation",
-        )
+        cited = {ref.id for _, record, _ in related for ref in all_refs(record)}
+        supporting = [ws.record(object_id, scope) for object_id in sorted(cited)]
+        inputs.update({path: digest(ws.fs.read(path)) for path, _, _ in supporting})
         job = Job(
             id="job_pending",
             policy_hash=ws.policy_hash,
@@ -74,6 +71,23 @@ def prepare_job(
             max_changes=policy.max_changes,
         )
         job.id = "job_" + digest(canonical(job))[:32]
+        require_local_route_unlocked(
+            ws,
+            scope_name=scope_name,
+            records=[source, *(item[1] for item in related), *(item[1] for item in supporting)],
+            operation="generation",
+            provider=provider,
+            payload_hash=digest(canonical(job)),
+        )
+        if execution_image is not None:
+            require_local_route_unlocked(
+                ws,
+                scope_name=scope_name,
+                records=[source, *(item[1] for item in related), *(item[1] for item in supporting)],
+                operation="client_export",
+                provider=provider,
+                payload_hash=digest(canonical(job)),
+            )
         envelope = JobEnvelope(
             job=job, scope=scope, input_hashes=inputs, protected_hashes=ws.protected_hashes()
         )

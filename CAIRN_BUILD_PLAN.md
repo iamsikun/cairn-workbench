@@ -1,6 +1,7 @@
 # Cairn build plan
 
-Status: proposed plan; no application has been implemented.
+Status: implementation baseline. M0/M1 reference gates pass; M2/M3 implementation and
+acceptance progress is recorded in `docs/acceptance.md` and `docs/release-audit.md`.
 
 This plan translates `KNOWLEDGE_WORKBENCH_BUILD_BRIEF.md` into an implementation sequence. The brief remains the requirements baseline. Product name, Python import package, and CLI name will be `Cairn`, `cairn`, and `cairn`. Public examples must use synthetic identities, records, and paths.
 
@@ -31,7 +32,9 @@ Development uses the source checkout and synthetic fixtures. Private operation u
 
 Use `uv` for development and locked build preparation. Build a wheel plus a hashed dependency manifest/wheelhouse for an offline private installation. A virtual environment separates dependencies; it does not isolate filesystem access. [uv documents editable project installs](https://docs.astral.sh/uv/concepts/projects/sync/) and [separate tool environments](https://docs.astral.sh/uv/concepts/tools/); neither substitutes for the execution controls below.
 
-The public checkout currently contains only the brief and is not a Git repository. Initializing Git belongs to the future implementation, with no automatic remote, push, package publication, or private-workspace initialization.
+At planning time the checkout contained only the brief and was not a Git repository.
+Implementation initialized local Git history. No automatic remote, push, package
+publication, or private-workspace initialization is authorized.
 
 ## 3. Execution and authority
 

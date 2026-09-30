@@ -9,6 +9,7 @@ import typer
 from cairn import __version__
 from cairn.cli.commands import register
 from cairn.cli.domains import register as register_domains
+from cairn.cli.policy import register as register_policy
 from cairn.cli.research import register as register_research
 from cairn.errors import CairnError
 from cairn.storage.workspace import Workspace
@@ -17,6 +18,7 @@ app = typer.Typer(no_args_is_help=True, help="Preserved evidence and owner-revie
 register(app)
 register_research(app)
 register_domains(app)
+register_policy(app)
 
 
 @app.command()

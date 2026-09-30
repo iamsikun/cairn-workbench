@@ -240,6 +240,24 @@ def extract(
         data = ws.fs.read(source.source.blob)
         attempt = new_id("attempt")
         try:
+            from cairn.policies.audit import require_local_route_unlocked
+
+            require_local_route_unlocked(
+                ws,
+                scope_name=scope_name,
+                records=[source],
+                operation="extraction",
+                provider="extract-v1",
+                payload_hash=digest(
+                    canonical(
+                        {
+                            "source": source,
+                            "raw_hash": digest(data),
+                            "worker_image": ws.config.worker_image,
+                        }
+                    )
+                ),
+            )
             if inline_synthetic and ws.config.synthetic:
                 result = extract_bytes(source, data)
             elif ws.config.worker_image:

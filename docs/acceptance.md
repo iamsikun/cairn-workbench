@@ -8,7 +8,7 @@ artifact, not just code presence. Private activation and M4 are outside this goa
 | M0 | Passed reference acceptance | 24 tests, lint, strict typing, 13 isolation checks |
 | M1 | Passed reference acceptance | 48 tests, installed worker protocols, both isolation profiles |
 | M2 | Mechanics implemented; manual semantic gate pending | Separate-session continuity evaluation chosen by owner |
-| M3 | In progress | Domain workflows implemented; route/release/restore audit remains |
+| M3 | In progress | Domains, restore, and route audit pass; release/migration/evaluation audit remains |
 
 The brief's hard gates will be mapped to named tests as implementation proceeds.
 
@@ -103,7 +103,7 @@ financial snapshot, and life dossier). The manual-handoff generator also complet
 - `test_missing_conflict_reference_is_rejected` and `test_cli_evidence_exact_locator_and_coverage`
   cover conflict-reference integrity and explicit source inspection.
 
-Next work: grant audits, complete restore/release packaging, schema migration support,
+Next work: complete release packaging, schema migration support,
 the synthetic evaluation report, and a full requirement audit. Independent work may
 continue while the external manual gate remains named and pending. Private activation
 remains separate and is currently explicitly denied.
@@ -126,3 +126,21 @@ received a Docker socket or host/private mount.
 The synthetic engine verifies launcher behavior, while the separate host script verifies
 the actual Docker lifecycle and worker isolation. Neither is claimed to prove a complete
 private installation or universal container security.
+
+M3 policy-audit evidence from `bash scripts/check.sh`: **127 tests passed**, Ruff passed,
+strict mypy passed (45 files), both profiles passed 13 isolation probes each, all six
+installed-worker trials passed, and the real Docker create/start/removal trials passed.
+
+`tests/test_policy_audit.py` executes 12 cases: all five processing operations; missing,
+expired, wrong-provider/destination/scope/operation grants; question and metadata labels;
+unknown labels; public evidence paired with a private question; denied input audit
+redaction; local-client cloud-job rejection; exact policy history with interrupted
+replacement; stale proposals after policy changes; scope replacement revoking grants;
+restore of policy history; and the owner policy CLI. Five new schema parity cases cover
+the audit/request/scope/grant models. A full-run context regression was fixed and rerun:
+question labels constrain the output pack without widening access to stored records.
+
+Cloud grants describe consent only. There is no cloud adapter, and an otherwise matching
+cloud request is explicitly blocked without transmission. Release installation, version
+inspection/migration, and the gold-set report remain required independent work. The
+owner-selected manual continuity session is still pending.
