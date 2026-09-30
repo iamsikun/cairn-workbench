@@ -156,3 +156,12 @@ def test_resolving_journal_preserves_identity_and_empty_scan_is_uncertain(ws, tm
     file.unlink()
     result = scan(ws)
     assert not result.complete and not result.missing
+
+
+def test_catalog_survives_oversized_disposable_cache(ws, tmp_path, monkeypatch) -> None:
+    root = library(ws, tmp_path)
+    (root / "Example Journal/a.pdf").write_bytes(pdf())
+    scan(ws)
+    monkeypatch.setattr("cairn.library.index.MAX_FILE_BYTES", 1)
+    assert len(papers(ws, scope="research", query="   ")) == 1
+    assert not ws.fs.files("cache/library")

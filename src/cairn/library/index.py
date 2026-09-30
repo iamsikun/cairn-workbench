@@ -8,6 +8,7 @@ from typing import Any
 from cairn.library.models import Paper, metadata
 from cairn.library.store import entities_unlocked
 from cairn.records.models import canonical, digest
+from cairn.storage.files import MAX_FILE_BYTES
 from cairn.storage.workspace import Workspace
 
 
@@ -105,10 +106,12 @@ def papers(
                         ),
                     )
                 db.commit()
-                ws.fs.write(cache, db.serialize())
+                serialized = db.serialize()
+                if len(serialized) <= MAX_FILE_BYTES:
+                    ws.fs.write(cache, serialized)
             predicates: list[str] = []
             params: list[Any] = []
-            if query:
+            if query.strip():
                 # Literal terms: user text cannot inject FTS syntax.
                 terms = " AND ".join('"' + word.replace('"', '""') + '"' for word in query.split())
                 predicates.append("id IN (SELECT id FROM search WHERE search MATCH ?)")
