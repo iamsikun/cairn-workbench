@@ -72,7 +72,9 @@ def papers(
                         "title": record.title,
                         "metadata": visible_metadata,
                     }
-                    has_file = any(f.availability == "available" for f in value.files)
+                    has_file = any(
+                        f.availability == "available" or f.source_id for f in value.files
+                    )
                     db.execute(
                         "INSERT INTO papers VALUES(?,?,?,?,?)",
                         (

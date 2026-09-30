@@ -7,7 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from cairn.adapters.protocol import Candidate, Job, Result
-from cairn.errors import Blocked, Conflict, Denied
+from cairn.errors import Blocked, CairnError, Conflict, Denied
 from cairn.ingest.service import SourceType, capture_bytes
 from cairn.library.catalog import check_library_root, config_unlocked, get_paper
 from cairn.library.device import device_path, exchange, load_device, require_device
@@ -57,15 +57,26 @@ def capture_paper(ws: Workspace, paper_id: str, scope: str = "research") -> Reco
         config = config_unlocked(ws)
         record, paper = get_paper(ws, paper_id, scope)
         files = sorted(
-            (f for f in paper.files if f.availability == "available"),
-            key=lambda f: (f.mtime_ns, f.path),
+            (f for f in paper.files if f.availability == "available" or f.source_id),
+            key=lambda f: (f.availability == "available", f.mtime_ns, f.path),
             reverse=True,
         )
         if paper.conflicts:
             raise Blocked("paper_identity_requires_review")
         if files:
             location = files[0]
-            raw = RootFS(check_library_root(ws, Path(config.root))).read(location.path)
+            try:
+                raw = RootFS(check_library_root(ws, Path(config.root))).read(location.path)
+            except (OSError, CairnError):
+                if not location.source_id:
+                    raise Blocked("paper_unavailable_and_not_preserved") from None
+                _, preserved, _ = ws.record(location.source_id, ws.policy.scope(scope))
+                if (
+                    preserved.source is None
+                    or preserved.source.content_hash != location.content_hash
+                ):
+                    raise Conflict("preserved library source mismatch") from None
+                raw = ws.fs.read(preserved.source.blob)
             if digest(raw) != location.content_hash:
                 raise Conflict("library file changed; scan before reading")
             source_type: SourceType = "pdf"
@@ -156,8 +167,7 @@ def check_binding(ws: Workspace, job: ReaderJob) -> tuple[DeviceConfig, Record, 
     if digest(raw) != job.source_hash:
         raise Conflict("reader source checksum changed")
     if job.source_type == "pdf" and not any(
-        file.content_hash == job.source_hash and file.availability == "available"
-        for file in paper.files
+        file.content_hash == job.source_hash for file in paper.files
     ):
         raise Conflict("selected library version is no longer current")
     if job.source_type == "bibliography":

@@ -78,7 +78,11 @@ def entries(ws: Workspace, events: list[FeedEvent], scope: str) -> list[FeedEntr
                 reading_status=paper.reading,
                 availability="PDF available"
                 if any(f.availability == "available" for f in paper.files)
-                else "Metadata only",
+                else (
+                    "Archived PDF; Box unavailable"
+                    if any(f.source_id for f in paper.files)
+                    else "Metadata only"
+                ),
             )
             candidates = [r for r in readings if r.job.paper_id == record.id]
             if candidates:

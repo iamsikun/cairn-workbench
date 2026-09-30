@@ -207,6 +207,7 @@ def trial(bundle: Path) -> None:
     assert cli("library", "show", paper_id, *library_options)["paper"]["reading"] == "read"
     cli("library", "update", *library_options, "--read-budget", "0")
     assert cli("feed", "latest", *library_options, "--json")["entries"] == []
+    answer = cli("query", "42", "--scope", "research", *options)
     archive = root / "backup.zip"
     backed_up = cli("backup", str(archive), *options)
     restored = root / "restored"

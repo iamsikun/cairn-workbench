@@ -115,6 +115,15 @@ def test_unavailable_retry_and_revoked_device(ws: Workspace, tmp_path: Path) -> 
         validate(ws, completed.proposal_id or "proposal_missing")
 
 
+def test_preserved_pdf_can_be_read_while_box_is_offline(ws: Workspace, tmp_path: Path) -> None:
+    paper_id, device = setup(ws, tmp_path)
+    root = tmp_path / "synthetic-library"
+    root.rename(tmp_path / "offline-library")
+    assert not scan(ws).complete
+    state = enqueue(ws, paper_id, device.id)
+    assert run(ws, state.job.id, transport=response).status == "completed"
+
+
 def test_cancellation_and_changed_source(ws: Workspace, tmp_path: Path) -> None:
     paper_id, device = setup(ws, tmp_path)
     state = enqueue(ws, paper_id, device.id)
