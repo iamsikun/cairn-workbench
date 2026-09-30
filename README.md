@@ -4,21 +4,23 @@ Cairn compiles selected evidence into a reviewable Markdown wiki and scoped proj
 context. Sources and human notes are preserved. Models propose changes; the owner
 approves and applies them.
 
-Implementation is in progress. See [the build plan](CAIRN_BUILD_PLAN.md) and
+M0–M3 reference acceptance is complete. See [the build plan](CAIRN_BUILD_PLAN.md) and
 [acceptance tracking](docs/acceptance.md). Do not use this checkout with private data.
 
 M0 and M1 now have an executable synthetic workflow: capture, text/PDF/conversation
 extraction, bounded proposals, exact owner approval, recoverable apply, local history,
 scoped evidence/synthesis search, staged owner edits, and backup/restore. M2 adds selected
 CSL-JSON bibliography import, project framing, attributed session receipts, explicit
-decision adoption, bounded context packs, and repository-staleness checks. Its manual
-second-agent usefulness gate is pending. M3 now includes structured financial snapshots,
+decision adoption, bounded context packs, and repository-staleness checks. The supplied
+manual second-session response passes the narrow design-level continuity review, with
+receipt-format and citation limits recorded. M3 includes structured financial snapshots,
 exact Decimal calculations, dated financial notes, sourced life hubs, and direct evidence
 review, audited owner scopes/grants, and complete-request route checks. Cloud execution
 remains unavailable. Explicit backed-up workspace migration and the
 [synthetic evaluation report](docs/evaluation.md) are implemented. The
 [requirements audit](docs/requirements.md) and installed-release checks are complete;
-the overall M0–M3 goal remains open for the manual M2 continuity result.
+the [manual M2 result](docs/research-continuity.md#recorded-manual-result) closes the last
+milestone gate. This is not owner approval for private deployment.
 
 Python package: `cairn`; command: `cairn`. Development uses synthetic workspaces outside
 the checkout. A private deployment requires a reviewed, pinned installation and a
@@ -51,8 +53,9 @@ links, dated conflicts, and the distinction between quote support and owner appr
 
 The [research workflow and manual continuity procedure](docs/research-continuity.md)
 explain the M2 distinction between preserved session suggestions and adopted decisions.
-The [synthetic context fixture](examples/continuity/context.json) is ready for a manually
-started second session; deterministic protocol success is not semantic acceptance.
+The [synthetic context fixture](examples/continuity/context.json), supplied response, and
+separate reviewer assessment retain the manual trial. The owner's verdict remains
+"unclear"; the reviewer explains the observed pass without inferring owner approval.
 
 The [personal domain workflows](docs/personal-domains.md) cover `finance import`,
 `finance calculate`, `finance note`, `life import`, and `evidence`. Calculation inputs

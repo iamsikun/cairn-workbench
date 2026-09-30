@@ -1,7 +1,8 @@
 # Cairn build plan
 
-Status: implementation baseline. M0/M1 reference gates pass; M2/M3 implementation and
-acceptance progress is recorded in `docs/acceptance.md` and `docs/release-audit.md`.
+Status: M0–M3 reference acceptance complete. Executed checks and the limited manual M2
+assessment are recorded in `docs/acceptance.md` and `docs/release-audit.md`. Private
+deployment and owner release acceptance remain separate.
 
 This plan translates `KNOWLEDGE_WORKBENCH_BUILD_BRIEF.md` into an implementation sequence. The brief remains the requirements baseline. Product name, Python import package, and CLI name will be `Cairn`, `cairn`, and `cairn`. Public examples must use synthetic identities, records, and paths.
 

@@ -23,7 +23,7 @@ claims or an entailment score.
 | English/Chinese alias | `retrieval` also finds the Chinese source | Passed; no general translation claim |
 | Source injection | Juniper's purported instructions remain quoted data and cannot change policy or adopt a decision | Passed in the defined fixture |
 | Conversation roles | User and assistant roles remain ordered; receipt approval does not adopt the suggestion | Passed |
-| Project continuity | An explicit adoption and failed approach are present with citations in a bounded pack | Passed mechanics; actual second-session usefulness pending |
+| Project continuity | An explicit adoption and failed approach are present with citations in a bounded pack | Passed mechanics; the later manual response is assessed separately below |
 
 The defined disclosure checks observed **zero violations**: adding a denied record did
 not change authorized rankings/counts; denied titles, backlinks, query text, and context
@@ -44,9 +44,14 @@ This establishes a reproducible usefulness baseline for preserving and finding s
 evidence. Future changes should retain all expected sources, dates, conflicts, and quote
 locators, with zero observed disclosure/write violations in this corpus. Do not optimize
 latency by weakening those checks. Semantic answer quality, generalization, real-client
-cost, human review burden, and usefulness in a later agent session remain unmeasured.
-The [manual continuity procedure](research-continuity.md#manual-separate-session-acceptance)
-remains the owner-selected M2 semantic gate. The owner's real evaluation set stays private.
+cost, and human review burden remain unmeasured by this gold set. The later
+[manual continuity result](research-continuity.md#recorded-manual-result) provides one
+owner-supplied real-client observation: a concrete test design uses the saved decision
+and avoids the recorded failure. The reviewer scores that narrow gate as passing while
+preserving the owner's unclear verdict. Model/time are reported, cost/tokens unknown,
+external execution not independently observed, and the original receipt format needs
+reviewer normalization. This does not change the gold report's zero-model metrics or
+establish general model quality. The owner's real evaluation set stays private.
 
 Run `python scripts/evaluate_goldset.py --output /tmp/goldset.json` inside the documented
 development container. `scripts/check.sh` runs it against the installed development image

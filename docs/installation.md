@@ -3,8 +3,9 @@
 The public checkout is a development environment. Private initialization and private
 restore require a verified installation, explicit owner review, and a fresh isolation
 probe. Development trials use synthetic files only; they do not activate the owner's
-private workspace or prove that a model is useful. The manual continuity gate and the
-remaining release audit are still pending.
+private workspace or prove that a model is useful. The reference release audit and the
+separate [manual continuity review](research-continuity.md#recorded-manual-result) are
+complete. Actual owner release acceptance and machine activation remain separate.
 
 ## Prepare a reference bundle
 
@@ -148,5 +149,6 @@ restore, migration, tamper rejection, negative activation, and all 13 checks aga
 manifest-bound worker passed. The [final report](evidence/final-release-trial.json) binds
 manifest SHA256 `b4c9def89d6d673afe6b650adce49714e471902d31541497d3756802af73a9ae`;
 the [worker report](evidence/final-worker-profile.json) identifies the exact image.
-These results close reference installation testing, not the pending manual M2 gate or
-the owner's separate release acceptance and actual-machine activation.
+These results close reference installation testing. The separate manual M2 response now
+has a recorded design-level reviewer pass; it does not supply the owner's separate
+release acceptance or actual-machine activation.

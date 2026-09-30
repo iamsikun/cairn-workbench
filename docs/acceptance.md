@@ -1,13 +1,14 @@
 # Acceptance evidence
 
-Implementation is in progress. A checked item requires an executed test or inspected
-artifact, not just code presence. Private activation and M4 are outside this goal.
+M0–M3 reference acceptance is complete. A checked item requires an executed test or
+inspected artifact, not just code presence. Private activation and M4 are outside this
+goal. Entries below retain the chronological evidence, including earlier pending gates.
 
-| Stage | Status | Remaining |
+| Stage | Status | Evidence and limits |
 | --- | --- | --- |
 | M0 | Passed reference acceptance | 24 tests, lint, strict typing, 13 isolation checks |
 | M1 | Passed reference acceptance | 48 tests, installed worker protocols, both isolation profiles |
-| M2 | Mechanics implemented; manual semantic gate pending | Separate-session continuity evaluation chosen by owner |
+| M2 | Passed narrow manual continuity review | Owner-supplied real-client design uses the decision and avoids the failure; owner verdict remains unclear; receipt normalized separately |
 | M3 | Passed reference acceptance | 175 tests, 129 gold checks, full requirements matrix, final installed release trial; actual activation separate |
 
 The brief's hard gates are mapped to implementation and named evidence in
@@ -272,3 +273,35 @@ saved source/extraction evidence, and the adopted decision and failed approach a
 present. This verifies the input artifact, not a second agent's use of it. Follow
 [the manual separate-session procedure](research-continuity.md#manual-separate-session-acceptance)
 to supply the remaining result.
+
+Manual M2 evidence received from the owner: reported model **GPT 6 Astra Light**, reported
+generation time **7 seconds**, cost/tokens unknown, owner verdict **unclear** because the
+context was unfamiliar. That verdict is preserved, not promoted to owner approval.
+The supplied response explicitly uses the adopted provenance requirement in a concrete
+three-source/four-case design, avoids title-only retrieval, and separates its design from
+unrun experiments. It cites the matching context ID and named decision/failure sections.
+The implementation assistant therefore records a **design-level semantic continuity pass**.
+
+The original receipt is not Cairn-schema compatible (missing session/project IDs, an
+unstructured next action, and extra fields). The initial test prompt did not supply that
+schema. The raw receipt is retained, and a separately labeled reviewer normalization
+validates as `SessionReceipt`. Its added evidence references come from the saved pack,
+not the second agent. No approval, adoption, canonical import, or experiment was performed.
+The context hash and all 11 input citation occurrences were reverified in the no-network
+development container. External client isolation, input bytes, and network behavior are
+not independently verified; this is an owner-supplied manual observation.
+
+See [the recorded review](research-continuity.md#recorded-manual-result) and
+[`manual-evaluation.json`](../examples/continuity/manual-evaluation.json) for artifact
+hashes, criterion-specific evidence, validation errors, and limits. This closes the last
+M0–M3 gate at its specified scope. The runtime code and earlier executed release checks
+are unchanged. Actual private deployment and general model-quality evaluation remain
+outside this acceptance.
+
+Final evidence validation is retained in `docs/evidence/manual-review-check.json`:
+67 checks passed, including 37 local documentation links, original-receipt rejection,
+normalized-receipt validation, artifact hashes, and current source/corpus/evaluator
+bindings to the passing 129-check gold report. A Git comparison against the installed
+trial's `6bcad55` revision confirmed no changes to runtime, tests, schemas, build scripts,
+dependencies, container configuration, CI, or templates. This documentation/evidence-only
+increment did not rerun or change the previously passing 175-test release validation.

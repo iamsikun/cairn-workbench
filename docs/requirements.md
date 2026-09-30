@@ -6,9 +6,10 @@ the scope around passing tests. “Reference verified” means executed syntheti
 inspected implementation under the documented container profile. It does not mean real
 owner data was tested or that a host/engine compromise is prevented.
 
-The full goal is **not complete** while the owner-selected manual M2 continuity trial
-has no result. The private directory has not been initialized or used. M4, publication,
-real-data evaluation, and actual owner deployment are outside this goal. Current source
+M0–M3 reference acceptance is complete, including the owner-supplied manual M2 response
+and the separately attributed reviewer assessment. The private directory has not been
+initialized or used. M4, publication, real-data evaluation, and actual owner deployment
+are outside this goal. Current source
 review and evaluation evidence are described below; the final acceptance log records
 which committed revisions and installed bundles were executed.
 
@@ -70,7 +71,7 @@ which committed revisions and installed bundles were executed.
 | Compact project question/objective/constraints/decisions/literature/failures/issues/action/citations | `ContextPack`, budget/role/scope tests; gold project context | Whole retained items keep citations; UTF-8 byte estimate is conservative, not a model tokenizer |
 | Commit/run bindings and stale/unverified handling | `RepositoryBinding`, `inspect_repository`; current/stale/unverified repository test | Selected repository is read-only; ignored datasets/submodules require separate manifests |
 | Structured session receipts become reviewed proposals | `SessionReceipt`, `import_receipt`, explicit `adopt_decision`; receipt tests and installed receipt extraction | Code/data/checkpoints/manuscripts remain in their repositories; no hidden-client-memory dependency |
-| Another agent actually uses a decision and avoids the failed approach | `examples/continuity/context.json`, owner evidence and verification; `docs/research-continuity.md` manual rubric | **Pending manual session by owner choice. Protocol tests and gold results do not prove this requirement** |
+| Another agent actually uses a decision and avoids the failed approach | `examples/continuity/session-beta-response.md`, hash-bound `manual-evaluation.json`; `docs/research-continuity.md` recorded review | Reviewer-assessed design-level pass: concrete provenance fields and offsets replace title-only retrieval. Owner verdict remains unclear. Citations are context-section level; original receipt requires separate normalization. |
 | Existing-client job/result integration, deterministic offline fake | `FakeProvider`, `ClientPacketProvider`, strict protocol, sealed jobs and real installed packet round trip | A concrete real model frontend is not bundled. Manual/unverified client output is not claimed local. Missing capability is blocked |
 | Intended CLI surface | `init`, `capture`, `ingest`, `proposal show`, `validate`, `apply`, `search`, `context`, `lint`, `rebuild-index`, `doctor`; CLI integration tests | All original names available under `cairn`; owner approval, edit, recover, backup/restore, policy/release/schema and domain commands added |
 | Stable JSON, distinct error statuses, honest doctor | CLI guarded errors; activation doctor tests; full owner CLI tests; worker diagnostics redaction | JSON preserves structured contracts; doctor does not install models, change permissions, or grant routes |
@@ -109,11 +110,11 @@ which committed revisions and installed bundles were executed.
 | --- | --- |
 | Exact-source, multiple-source, contradiction, outdated-rule, absent-evidence, bilingual, role and project cases | `examples/goldset/corpus.json`, `scripts/evaluate_goldset.py`, `docs/evidence/goldset.json`; 129 checks and eight query cases |
 | Citation support and source coverage | 36 citation occurrences checked; expected source recall/precision per query; locators/hashes/quotes inspected |
-| Useful answer quality | Exact-source wording/date/conflict/status rubric per case. General semantic/model quality explicitly unmeasured; multiple-source retrieval is not synthesis |
+| Useful answer quality | Exact-source wording/date/conflict/status rubric per case, plus one owner-supplied real-client design-level continuity response. General semantic/model quality explicitly unmeasured; multiple-source retrieval is not synthesis |
 | Unauthorized disclosure and write correctness | Zero observed violations in the defined scope/write corpus; exact affected-page hashes and durable-read-only checks |
 | Review burden | 12 fixture proposals, 13 page changes, per-proposal flags and diff-line counts; actual human edits/time unmeasured |
 | Latency and model cost | Three samples/median per query, context and workload time; zero model calls/tokens and USD 0.00 model cost |
-| Honest fake/real distinction, private real evaluation | `docs/evaluation.md` limits; manual continuity pending; no private corpus or logs copied into development |
+| Honest fake/real distinction, private real evaluation | `docs/evaluation.md` limits and separate `manual-evaluation.json`: model/time owner-reported, isolation/network not independently observed, owner verdict preserved; no private corpus or logs copied into development |
 
 ## Plan-specific release and remaining gates
 
@@ -129,9 +130,11 @@ The following evidence extends the brief rather than replacing its requirements:
 | Actual-machine activation requires separate owner acceptance and fresh probe | Synthetic lifecycle stand-ins plus actual installed negative activation; no private activation occurred. Manual review is still pending |
 | Named limitations and release review | `docs/installation.md`, `docs/privacy.md`, `docs/recovery.md`, `docs/agent-integration.md`, `docs/schema-migrations.md`, `docs/review.md` |
 
-M0/M1 have reference acceptance evidence. M2 has implementation and mechanical evidence,
-but its explicit semantic exit gate is pending. M3 has domain, policy, restoration,
-installation, migration, review, and evaluation evidence. The final installed trial at
+M0/M1 have reference acceptance evidence. M2 has implementation/mechanical evidence and
+a separately evaluated manual response demonstrating the specified continuity behavior.
+The owner's unclear verdict is preserved; the reviewer pass does not confer approval or
+adoption. M3 has domain, policy, restoration, installation, migration, review, and
+evaluation evidence. The final installed trial at
 `6bcad55cd9c71ea154dab2d4e6e34b65e80d1929` passed with 15 distributions/878 verified files,
 Markdown source review, migration/restore, tamper rejection, and all 13 checks for the exact
 worker image. See `docs/evidence/final-release-trial.json` and `final-worker-profile.json`.

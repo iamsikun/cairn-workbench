@@ -55,8 +55,10 @@ The checked-in `examples/continuity/context.json` is generated from a real synth
 capture/propose/approve/apply sequence, with one explicitly adopted decision and a
 recorded failed approach. `owner-evidence.json` and `verification.json` let the owner
 inspect the provenance and verify the artifact hash; they are not additional agent context.
-Regenerate using `python scripts/prepare_continuity.py --output examples/continuity`
-inside the documented development container with only the public checkout mounted.
+For a new trial, generate a separate pack using
+`python scripts/prepare_continuity.py --output /tmp/new-manual-handoff` inside the
+documented development container. Do not overwrite the retained pack: the recorded
+manual response and evaluation are bound to its exact IDs and hash.
 
 For the manual trial:
 
@@ -77,3 +79,39 @@ For the manual trial:
 The current protocol tests exercise receipt roles, draft/adopted separation, changed
 decision bytes, stale repository bindings, denied-scope citations, strict JSON inputs,
 and whole-item budget trimming. They establish those mechanics only.
+
+## Recorded manual result
+
+The owner supplied a response from **GPT 6 Astra Light**, with **7 seconds** reported
+generation time, and an **unclear** verdict because the context was unfamiliar. The
+implementation assistant assessed the response as a **pass for the brief's narrow M2
+continuity requirement**. The owner's verdict remains unchanged and is not approval
+to adopt the proposed baseline or activate a private workspace.
+
+| Criterion | Observation |
+| --- | --- |
+| Uses the recorded decision | Specifies three stable fixture IDs, version 1, exact UTF-8 bodies, SHA-256 computation, matching quotes, and code-point offsets as its output contract. Hashes are explicitly uncomputed. |
+| Avoids the failed approach | Searches scoped source bodies and returns exact evidence/provenance instead of title-only results. The explanation connects this choice to the saved failure. |
+| Cites decision/failure | Links the context pack, gives its matching context ID, and names `current_decisions` and `failed_approaches`. These are resolvable section-level citations, not full durable evidence references. |
+| Separates design, results and authority | Marks execution pending, experiments empty, results unknown, and new decisions empty. Does not claim independent reproduction or owner adoption. |
+
+The [supplied response](../examples/continuity/session-beta-response.md) retains the
+prose, table formatting, and JSON, with only the host-specific link destination replaced
+by a relative link for public-fixture privacy. The
+[reported receipt](../examples/continuity/session-beta-reported-receipt.json) is valid
+JSON but **fails Cairn's receipt schema**. The test asked for a structured receipt without
+supplying that schema; this is an integration-format limitation, not failed continuity.
+
+The [normalized receipt](../examples/continuity/session-beta-normalized.json) is a separate
+reviewer-authored derivative. It preserves the response as an assistant message, maps
+design/limitations into the schema, and resolves references from the named pack sections.
+Those added IDs/references are not credited to the second agent. It passes schema
+validation; no canonical import/apply or decision adoption was performed.
+
+The [machine-readable review](../examples/continuity/manual-evaluation.json) records the
+owner and assessor verdicts separately, all artifact hashes, original schema errors,
+and verification of the input pack's 11 citation occurrences. Cost/tokens are unknown.
+Client/model and time are owner-reported; external input bytes, session isolation, and
+network activity were not independently observed. One synthetic design response proves
+the observed continuity behavior only; it does not establish general model quality,
+retrieval performance, or private-runtime readiness.

@@ -1,8 +1,9 @@
 # M0–M3 release audit
 
-M0/M1 reference gates pass. M2 mechanics pass; its second-agent semantic trial is manual
-and pending by owner choice. M3 now passes 175 cumulative tests plus installed worker,
-isolation, and real-engine lifecycle trials. These results do not close the full goal.
+M0/M1 reference gates pass. M2 mechanics and the narrow review of the owner-supplied
+second-session response pass; its original receipt needs the separately recorded
+normalization. M3 passes 175 cumulative tests plus installed worker, isolation, and
+real-engine lifecycle trials. The evidence below closes M0–M3 reference acceptance.
 
 The following public, synthetic-only work is now complete:
 
@@ -30,7 +31,7 @@ The following public, synthetic-only work is now complete:
    stand-ins. The updated offline negative-activation and exact-image trial passed at
    revision `330ce6b` (15 distributions, 874 file hashes, 13 real worker probe checks).
    The bundle is not a macOS installation; target compatibility remains explicit. Actual
-   owner activation is outside this goal and still requires the pending manual review.
+   owner activation is outside this goal and still requires separate owner release review.
 5. Completed reference schema inspection/migration: legacy workspace v1 remains readable;
    new v2 declares record schema 1. Explicit owner preview, mandatory backup, exact plan
    approval, policy-revision invalidation, and a recoverable maintenance journal preserve
@@ -46,8 +47,9 @@ The following public, synthetic-only work is now complete:
    supported citation occurrences, zero observed disclosure/write violations, and 12
    fixture proposals changing 13 pages. Latencies, flags, and zero model calls/cost are
    retained in `docs/evidence/goldset.json`; human review duration/edits and semantic
-   usefulness remain explicitly unmeasured. See `docs/evaluation.md`. Actual second-session
-   continuity remains the separate manual M2 gate; this report does not satisfy it.
+   usefulness remain explicitly unmeasured by the gold set. See `docs/evaluation.md`.
+   Actual second-session continuity is assessed separately in the manual M2 review;
+   this mechanical report does not satisfy it.
 7. The full requirement mapping is in `docs/requirements.md`, with inspected source,
    named tests, retained reports, limits, and the explicit manual gate. The audit closed
    the missing Markdown review report: current diffs, dates/coverage/conflicts, local
@@ -59,11 +61,17 @@ The following public, synthetic-only work is now complete:
    and 878 files; the exact worker image passed all 13 checks. Retained evidence is in
    `docs/evidence/final-release-trial.json` and `final-worker-profile.json`.
 
-The only unresolved in-scope milestone gate is the owner-selected manual M2 session.
-`examples/continuity/verification.json` still reports `pending_manual_session` and
-`not_evaluated`; no response or owner evaluation proving semantic continuity exists.
-Do not mark M2 or the overall M0–M3 goal complete on the strength of the mechanical tests.
+The owner supplied the manual M2 response, reporting GPT 6 Astra Light and seven seconds.
+It uses the saved provenance decision in a concrete bilingual test design, avoids
+title-only retrieval, cites the relevant context sections, and does not invent execution
+or approval. The reviewer records a narrow continuity pass, with the owner's original
+unclear verdict retained. The original receipt fails the Cairn schema; a labeled reviewer
+normalization passes and does not invent experimental results or second-agent citations.
+See `examples/continuity/manual-evaluation.json` and the recorded manual review in
+`docs/research-continuity.md`. External session isolation/network were not independently
+observed. No in-scope milestone gate remains unevaluated; actual deployment is separate.
 
 The private directory remains untouched. Actual private activation, owner real-data
 evaluation, real cloud grants, publication, and M4 are outside the current goal. No public
-test result is a substitute for the selected manual continuity session or release review.
+test result substitutes for owner release acceptance; the limited manual observation
+also does not establish general semantic quality.

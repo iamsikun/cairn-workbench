@@ -1,0 +1,32 @@
+{
+  "receipt_type": "study_session",
+  "context_id": "context_2ec4ccddc76d4df85953e1d88ef216e0",
+  "status": "test_design_completed",
+  "completed": [
+    "Read the permitted context file",
+    "Specified synthetic fixtures, baseline behavior, and expected results"
+  ],
+  "evidence_basis": {
+    "context_sections": [
+      "current_decisions",
+      "failed_approaches",
+      "open_issues",
+      "next_action"
+    ],
+    "qualification": "Prior findings are context reports, not independently reproduced."
+  },
+  "files_accessed": [
+    "examples/continuity/context.json"
+  ],
+  "files_modified": [],
+  "network_used": false,
+  "experiments_run": [],
+  "observed_experiment_results": null,
+  "proposed_decisions": [],
+  "limitations": [
+    "Fixture hashes have not been computed",
+    "Retrieval behavior remains untested",
+    "Repository binding is recorded as unbound"
+  ],
+  "next_action": "Run the specified cases in the documented development container once access to its instructions and execution assets is permitted."
+}
