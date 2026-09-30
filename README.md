@@ -27,14 +27,15 @@ The checks use synthetic data and do not mount a private workspace or host home.
 For a clean committed checkout, `bash scripts/release_check.sh` prepares a pinned
 wheelhouse and runs a separate offline installed-CLI trial. The
 [installation runbook](docs/installation.md) describes its verified target and the
-remaining private-activation gate.
+owner activation gate. Actual private deployment remains separate from development.
 
 The CLI provides `init`, `capture`, `ingest`, `proposal show`, `validate`, `approve`,
 `apply`, `recover`, `search`, `query`, `edit`, `lint`, `rebuild-index`, `backup`, `restore`,
 `client run`, `project create`, `bibliography import`, `receipt import`, `decision adopt`,
 `repository inspect`, `context`, `policy`, `release`, and `doctor`. Pass `--workspace` (or `CAIRN_WORKSPACE`) and use `--json`
-for structured command output. `init` currently requires `--synthetic`; private activation
-will require a reviewed installation rather than an editable checkout.
+for structured command output. Development `init` and `restore` use `--synthetic`.
+Private initialization and restore require a reviewed installed release, explicit owner
+acknowledgements, and a fresh worker-isolation probe.
 
 Read the [architecture](docs/architecture.md), [threat model](docs/threat-model.md),
 [processing policy](docs/privacy.md), [recovery procedure](docs/recovery.md), and

@@ -12,7 +12,9 @@ from cairn.records.continuity import ContextPack, SessionReceipt
 from cairn.records.domains import Calculation, FinancialSnapshot, LifeDossier
 from cairn.records.models import Event, Extraction, Record
 from cairn.records.release import ReleaseManifest
+from cairn.records.runtime import ProbeRequest, ProbeResult, RuntimeApproval, WorkerProfile
 from cairn.storage.backup import BackupManifest
+from cairn.storage.workspace import WorkspaceConfig
 
 if __name__ == "__main__":
     destination = Path("schemas")
@@ -39,6 +41,11 @@ if __name__ == "__main__":
         LifeDossier,
         BackupManifest,
         ReleaseManifest,
+        ProbeRequest,
+        ProbeResult,
+        WorkerProfile,
+        RuntimeApproval,
+        WorkspaceConfig,
     ):
         (destination / f"{model.__name__.lower()}-v1.json").write_text(
             json.dumps(model.model_json_schema(), indent=2, sort_keys=True) + "\n"

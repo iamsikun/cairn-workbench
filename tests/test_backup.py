@@ -22,13 +22,15 @@ def test_restore_text_blobs_and_evidence(ws: Workspace, tmp_path: Path) -> None:
     archive = tmp_path / "backups" / "workspace.zip"
     result = backup(ws, archive)
     assert result["files"] > 4
-    restored = restore(archive, tmp_path / "restored", code_roots=[tmp_path / "public-code"])
+    restored = restore(
+        archive, tmp_path / "restored", code_roots=[tmp_path / "public-code"], synthetic=True
+    )
     assert restored.config.id == ws.config.id
     assert restored.fs.read("vault/notes/thought.md") == b"Human-authored hypothesis.\n"
     assert search(restored, "evidence", scope_name="research") == before
     assert not any(path.startswith("cache/") for path in zipfile.ZipFile(archive).namelist())
     with pytest.raises(Conflict):
-        restore(archive, restored.root, code_roots=[tmp_path / "public-code"])
+        restore(archive, restored.root, code_roots=[tmp_path / "public-code"], synthetic=True)
 
 
 def test_archive_traversal_and_hash_tamper_rejected(ws: Workspace, tmp_path: Path) -> None:
@@ -36,7 +38,7 @@ def test_archive_traversal_and_hash_tamper_rejected(ws: Workspace, tmp_path: Pat
     with zipfile.ZipFile(evil, "w") as archive:
         archive.writestr("../outside", "do not write")
     with pytest.raises(Denied):
-        restore(evil, tmp_path / "out", code_roots=[tmp_path / "public-code"])
+        restore(evil, tmp_path / "out", code_roots=[tmp_path / "public-code"], synthetic=True)
     assert not (tmp_path / "outside").exists()
     good = tmp_path / "backup.zip"
     backup(ws, good)
@@ -51,5 +53,5 @@ def test_archive_traversal_and_hash_tamper_rejected(ws: Workspace, tmp_path: Pat
             changed.writestr(name, value)
     evil.write_bytes(buffer.getvalue())
     with pytest.raises(Conflict):
-        restore(evil, tmp_path / "out", code_roots=[tmp_path / "public-code"])
+        restore(evil, tmp_path / "out", code_roots=[tmp_path / "public-code"], synthetic=True)
     assert not (tmp_path / "out").exists()

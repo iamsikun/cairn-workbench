@@ -57,5 +57,7 @@ These owner commands are deliberately absent from the worker protocol. Owning fi
 access to the policy/approval store is the authority boundary; a user-selected CLI scope
 does not confine a coding agent that independently has owner shell access.
 
-Real-data operation remains disabled until the reviewed installation/activation gate
-is implemented and verified. The development checkout must never be used as a shortcut.
+Private operation requires the [reviewed activation gate](installation.md). It binds the
+installation and worker image to a durable owner review, checks a fresh worker probe,
+and rechecks installed files on subsequent access. A development checkout cannot satisfy
+the gate. Actual deployment remains separate after manual continuity and release reviews.

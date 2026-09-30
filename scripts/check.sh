@@ -18,7 +18,7 @@ cleanup() {
   if [[ -n "$lifecycle_id" ]]; then
     docker rm --force --volumes "$lifecycle_id" >/dev/null
   fi
-  rm -f "$probe_dir/canary" "$probe_dir/job.json" "$probe_dir/result.json" "$probe_dir/extraction.json"
+  rm -f "$probe_dir/canary" "$probe_dir/job.json" "$probe_dir/result.json" "$probe_dir/extraction.json" "$probe_dir/probe.json" "$probe_dir/probe-result.json"
   rmdir "$probe_dir"
 }
 trap cleanup EXIT
@@ -26,6 +26,10 @@ printf '%s\n' 'SYNTHETIC-CANARY' > "$probe_dir/canary"
 docker run "${profile[@]}" "$image_id" python scripts/isolation_probe.py "$probe_dir/canary"
 test "$(cat "$probe_dir/canary")" = 'SYNTHETIC-CANARY'
 docker run "${profile[@]}" --interactive --entrypoint python "$worker_id" - "$probe_dir/canary" < "$repo_dir/scripts/isolation_probe.py"
+docker run "${profile[@]}" "$image_id" python scripts/probe_roundtrip.py make "$probe_dir/canary" > "$probe_dir/probe.json"
+docker run "${profile[@]}" --interactive "$worker_id" < "$probe_dir/probe.json" > "$probe_dir/probe-result.json"
+cat "$probe_dir/probe.json" "$probe_dir/probe-result.json" | docker run "${profile[@]}" --interactive "$image_id" python scripts/probe_roundtrip.py verify
+test "$(cat "$probe_dir/canary")" = 'SYNTHETIC-CANARY'
 docker run "${profile[@]}" "$image_id" python scripts/worker_roundtrip.py make "$worker_id" > "$probe_dir/job.json"
 docker run "${profile[@]}" --interactive "$worker_id" < "$probe_dir/job.json" > "$probe_dir/result.json"
 cat "$probe_dir/job.json" "$probe_dir/result.json" | docker run "${profile[@]}" --interactive "$image_id" python scripts/worker_roundtrip.py verify

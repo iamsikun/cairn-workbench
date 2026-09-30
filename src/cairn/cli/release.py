@@ -37,3 +37,11 @@ def register(app: typer.Typer) -> None:
         json_output: JsonOption = False,
     ) -> None:
         emit(verify_runtime(load_release(manifest, expected_sha256=sha256)), json_output)
+
+    @release.command("check-worker")
+    @guarded
+    def worker(image: str, json_output: JsonOption = False) -> None:
+        """Run a fresh synthetic isolation probe through the local owner launcher."""
+        from cairn.storage.activation import check_worker
+
+        emit(check_worker(image), json_output)

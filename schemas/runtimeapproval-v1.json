@@ -1,0 +1,170 @@
+{
+  "$defs": {
+    "ProbeResult": {
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "title": "Checks",
+          "type": "object"
+        },
+        "nonce": {
+          "pattern": "^[0-9a-f]{32}$",
+          "title": "Nonce",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "nonce",
+        "checks"
+      ],
+      "title": "ProbeResult",
+      "type": "object"
+    },
+    "ReviewAcknowledgement": {
+      "enum": [
+        "release_review",
+        "manual_continuity",
+        "backup_restore"
+      ],
+      "title": "ReviewAcknowledgement",
+      "type": "string"
+    },
+    "WorkerProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "host_canary_preserved": {
+          "const": true,
+          "default": true,
+          "title": "Host Canary Preserved",
+          "type": "boolean"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "image": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Image",
+          "type": "string"
+        },
+        "profile_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Profile Hash",
+          "type": "string"
+        },
+        "result": {
+          "$ref": "#/$defs/ProbeResult"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "at",
+        "image",
+        "profile_hash",
+        "result"
+      ],
+      "title": "WorkerProfile",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "acknowledgements": {
+      "items": {
+        "$ref": "#/$defs/ReviewAcknowledgement"
+      },
+      "title": "Acknowledgements",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "archive_hash": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Archive Hash"
+    },
+    "at": {
+      "format": "date-time",
+      "title": "At",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "operation": {
+      "enum": [
+        "init",
+        "restore"
+      ],
+      "title": "Operation",
+      "type": "string"
+    },
+    "owner_statement": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Owner Statement",
+      "type": "string"
+    },
+    "release_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Release Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "worker": {
+      "$ref": "#/$defs/WorkerProfile"
+    },
+    "workspace_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "workspace_id",
+    "at",
+    "operation",
+    "release_hash",
+    "owner_statement",
+    "acknowledgements",
+    "worker"
+  ],
+  "title": "RuntimeApproval",
+  "type": "object"
+}

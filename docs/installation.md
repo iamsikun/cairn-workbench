@@ -1,9 +1,10 @@
 # Reviewed offline installation
 
 The public checkout is a development environment. Private initialization and private
-restore remain denied while the activation gate is being completed. The release tools
-below prepare and verify software with synthetic files; they do not activate a private
-workspace or prove that a model is useful.
+restore require a verified installation, explicit owner review, and a fresh isolation
+probe. Development trials use synthetic files only; they do not activate the owner's
+private workspace or prove that a model is useful. The manual continuity gate and the
+remaining release audit are still pending.
 
 ## Prepare a reference bundle
 
@@ -17,7 +18,7 @@ locked wheel URLs, and checked against its sizes and SHA-256 digests. No depende
 resolution or source build is permitted during installation into the fresh runtime.
 
 The resulting `dist/release-REVISION/` contains `release.json`, `release.sha256`, `uv.lock`,
-`requirements.txt`, the wheelhouse, and `trial.json`. It is an ignored public build
+`requirements.txt`, the wheelhouse, `trial.json`, and `worker-profile.json`. It is a public build
 artifact. Keep the reviewed manifest digest separately; a checksum stored alongside an
 untrusted replacement bundle is not an independent trust anchor. Inspect the local
 revision and acceptance evidence before treating an artifact as reviewed. A manifest
@@ -61,19 +62,62 @@ unreviewed `.pth`, and marks installation metadata editable, checking rejection 
 Only synthetic files are involved. Runtime verification reports `private_ready: false`:
 live worker-profile verification and explicit release activation are separate gates.
 
+The new trial attempts activation with synthetic review acknowledgements but without an
+accessible Docker engine. It requires a blocked result and no destination. The host
+script separately probes the exact manifest-bound worker image with 64 MiB scratch,
+a fresh nonce, and an unmounted synthetic canary. No daemon socket is exposed to
+contributor Python. These component checks do not claim a successful private activation
+on the owner's target machine.
+
 The reference trial for source revision `58f03a6574b56ec9221659d05786cf25d7baa867` passed:
 15 distributions and 871 files verified on `linux-aarch64`, CPython 3.13.11. The release
 manifest digest is `794b659af81e0e10907909d5cbff82f76704cb86890209b2993a7d1bbf6a7a4c`.
 The [committed synthetic report](evidence/release-trial.json) records the workflow and
 rejection checks. The local bundle is under `dist/release-58f03a6574b56ec9221659d05786cf25d7baa867/`.
 
-## Before private activation
+## Owner activation after release review
 
 Complete the manual M2 continuity evaluation, the remaining release audit, and an owner
 review of the exact installation, worker image, processing policy, and backup destination.
 Acquire dependencies and local model assets without private input. Use an owner runtime
 that can access the selected local Docker engine; never give a model worker or development
 container its socket. Workers receive only bounded packets and retain no owner mounts.
-The reviewed-installation activation command and private restore gate remain pending.
-Do not create or attach the owner's actual private workspace during these development
-trials, and do not substitute the synthetic-mode flag for real activation.
+Do not create or attach the owner's actual private workspace during development trials,
+and do not substitute the synthetic-mode flag for real activation.
+
+After completing those reviews, use the installed interpreter on a compatible owner
+machine. The paths below are generic examples. `REVIEWED_DIGEST` comes from the owner's
+independently reviewed release; each acknowledgement records a completed review.
+
+```sh
+/srv/cairn-runtime/bin/python -I -B -m cairn init \
+  --workspace /srv/cairn-private --code-root /srv/cairn-code \
+  --release /srv/cairn-release/release.json --release-sha256 REVIEWED_DIGEST \
+  --statement "I reviewed this release, continuity trial, and recovery procedure." \
+  --acknowledge release_review --acknowledge manual_continuity --acknowledge backup_restore
+```
+
+The command verifies consent and installation before probing the manifest's pinned
+worker. The probe contains only a fresh nonce and a synthetic canary path; all 13 checks
+must pass and the host canary must remain unchanged. Missing, failed, or replayed checks
+block initialization. The workspace is initialized in an owner-only sibling directory
+and published after validation. Configuration binds the exact release digest, worker
+image, and immutable `receipts/runtime/` approval. The exact manifest is retained at
+`policy/runtime-release.json`.
+
+Subsequent private-workspace opens and locked operations verify that binding and the
+installed package inventory. A changed installation or worker requires separate owner
+maintenance; it cannot silently become the runtime for existing private data.
+`--inline-synthetic` never bypasses isolation in private mode. A custom client image must
+be part of the reviewed release, not a new command-line override.
+
+`doctor --workspace PATH --probe-worker --json` reports installation, SQLite FTS5, and a
+fresh worker profile. Without the probe, readiness remains false because the current
+engine was not checked. Synthetic workspaces never report private readiness. Readiness
+covers those checks and stored owner review; it does not certify model quality or complete
+security. `release check-worker IMAGE --json` runs the same synthetic probe independently.
+Diagnostics do not download models, change policy, start services, or grant cloud access.
+
+Approval authority remains the owner process's exclusive filesystem access. These flags
+do not sandbox an agent with owner shell/daemon access. Workers have no approval, apply,
+init, restore, or release-mutation endpoint and no owner mounts.

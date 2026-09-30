@@ -1,0 +1,28 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "canary_path": {
+      "maxLength": 4096,
+      "minLength": 1,
+      "title": "Canary Path",
+      "type": "string"
+    },
+    "nonce": {
+      "pattern": "^[0-9a-f]{32}$",
+      "title": "Nonce",
+      "type": "string"
+    },
+    "operation": {
+      "const": "probe",
+      "default": "probe",
+      "title": "Operation",
+      "type": "string"
+    }
+  },
+  "required": [
+    "nonce",
+    "canary_path"
+  ],
+  "title": "ProbeRequest",
+  "type": "object"
+}

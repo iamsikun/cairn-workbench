@@ -162,7 +162,9 @@ def test_owner_changes_chain_stale_proposals_and_scope_revocation(
     assert all(row["state"] == "applied" for row in inspect_changes(ws))
     archive = tmp_path / "policy-backup.zip"
     backup(ws, archive)
-    restored = restore(archive, tmp_path / "restored", code_roots=[tmp_path / "public-code"])
+    restored = restore(
+        archive, tmp_path / "restored", code_roots=[tmp_path / "public-code"], synthetic=True
+    )
     assert inspect_changes(restored) == inspect_changes(ws)
     ws.fs.remove(f"receipts/policy/{first.id}.json")
     with pytest.raises((FileNotFoundError, Conflict)):

@@ -19,7 +19,14 @@ if [[ -e "$destination" ]]; then
 fi
 mkdir -p "$destination"
 export_id="$(docker create --network=none --read-only --entrypoint /bin/true "$image_id")"
-cleanup() { docker rm --force --volumes "$export_id" >/dev/null; }
+probe_dir=""
+cleanup() {
+  docker rm --force --volumes "$export_id" >/dev/null
+  if [[ -n "$probe_dir" ]]; then
+    rm -f "$probe_dir/canary" "$probe_dir/probe.json" "$probe_dir/result.json"
+    rmdir "$probe_dir"
+  fi
+}
 trap cleanup EXIT
 docker cp "$export_id:/opt/release/." "$destination"
 profile=(--rm --pull=never --network=none --read-only --cap-drop=ALL
@@ -29,3 +36,15 @@ profile=(--rm --pull=never --network=none --read-only --cap-drop=ALL
   --tmpfs=/runtime:rw,exec,nosuid,size=256m,mode=1777)
 docker run "${profile[@]}" "$image_id" > "$destination/trial.json"
 cat "$destination/trial.json"
+probe_dir="$(mktemp -d /tmp/cairn-release-canary.XXXXXX)"
+printf '%s\n' 'SYNTHETIC-RELEASE-CANARY' > "$probe_dir/canary"
+docker run "${profile[@]}" "$image_id" python scripts/probe_roundtrip.py make "$probe_dir/canary" > "$probe_dir/probe.json"
+worker_profile=(--rm --pull=never --network=none --log-driver=none --no-healthcheck
+  --restart=no --read-only --cap-drop=ALL --security-opt=no-new-privileges
+  --pids-limit=64 --memory=512m --cpus=1 --user=65532:65532
+  --tmpfs=/tmp:rw,noexec,nosuid,size=64m,mode=1777 --interactive)
+docker run "${worker_profile[@]}" "$worker_id" < "$probe_dir/probe.json" > "$probe_dir/result.json"
+cat "$probe_dir/probe.json" "$probe_dir/result.json" |
+  docker run "${profile[@]}" --interactive "$image_id" python scripts/probe_roundtrip.py verify "$worker_id" > "$destination/worker-profile.json"
+test "$(cat "$probe_dir/canary")" = 'SYNTHETIC-RELEASE-CANARY'
+cat "$destination/worker-profile.json"

@@ -8,6 +8,7 @@ from cairn.adapters.fake import FakeProvider
 from cairn.adapters.protocol import Job
 from cairn.ingest.extractors import extract_bytes
 from cairn.records.models import Record, canonical
+from cairn.records.runtime import ProbeRequest
 
 
 def main() -> None:
@@ -16,6 +17,11 @@ def main() -> None:
         if len(raw) > 48 * 1024 * 1024:
             raise ValueError("job too large")
         document = json.loads(raw)
+        if document.get("operation") == "probe":
+            from cairn.adapters.probe import probe
+
+            sys.stdout.buffer.write(canonical(probe(ProbeRequest.model_validate(document))))
+            return
         if document.get("operation") == "extract":
             if set(document) != {"operation", "source", "data"}:
                 raise ValueError("unexpected extraction fields")

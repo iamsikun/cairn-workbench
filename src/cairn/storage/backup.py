@@ -17,6 +17,8 @@ from cairn.proposals.models import Approval, JobEnvelope, Proposal
 from cairn.proposals.service import all_refs, target_path
 from cairn.records.json import read_json
 from cairn.records.models import ID, Digest, Event, Extraction, Model, Record, canonical, digest
+from cairn.records.runtime import ReviewAcknowledgement, RuntimeApproval
+from cairn.storage.activation import check_runtime_metadata, prepare_activation
 from cairn.storage.files import MAX_FILE_BYTES, RootFS, components, disjoint
 from cairn.storage.history_safety import check_history_config, check_history_paths
 from cairn.storage.markdown import decode
@@ -77,6 +79,8 @@ def validate_payloads(payloads: dict[str, bytes]) -> WorkspaceConfig:
         raise CairnError("backup omits workspace configuration or policy")
     try:
         config = WorkspaceConfig.model_validate(read_json(payloads["workspace.json"]))
+        if not config.synthetic:
+            check_runtime_metadata(config, payloads.__getitem__)
         policy = Policy.model_validate(read_json(payloads["policy/workspace.json"]))
         policy_changes(
             digest(payloads["policy/workspace.json"]), policy, payloads.__getitem__, config.id
@@ -135,6 +139,13 @@ def validate_payloads(payloads: dict[str, bytes]) -> WorkspaceConfig:
                 audit = RouteAudit.model_validate(read_json(raw))
                 if path != f"receipts/routes/{audit.id}.json" or audit.workspace_id != config.id:
                     raise Conflict("backup route audit identity mismatch")
+            elif path.startswith("receipts/runtime/"):
+                runtime = RuntimeApproval.model_validate(read_json(raw))
+                if (
+                    path != f"receipts/runtime/{runtime.id}.json"
+                    or runtime.workspace_id != config.id
+                ):
+                    raise Conflict("backup runtime approval identity mismatch")
             elif path.startswith("receipts/applied/"):
                 receipt = ApplyReceipt.model_validate(read_json(raw))
                 if path != f"receipts/applied/{receipt.proposal_id}.json":
@@ -257,10 +268,29 @@ def restore(
     *,
     code_roots: list[Path],
     expected_sha256: str | None = None,
+    synthetic: bool = False,
+    release: Path | None = None,
+    release_sha256: str | None = None,
+    statement: str | None = None,
+    acknowledgements: set[ReviewAcknowledgement] | None = None,
 ) -> Workspace:
     destination = check_roots(destination, code_roots)
     if destination.exists() and any(destination.iterdir()):
         raise Conflict("restore requires an empty destination")
+    if synthetic and any((release, release_sha256, statement, acknowledgements)):
+        raise Denied("synthetic restore cannot record private release approval")
+    if not synthetic and expected_sha256 is None:
+        raise Denied("private restore requires an independently recorded archive digest")
+    activation = (
+        None
+        if synthetic
+        else prepare_activation(
+            release,
+            expected_sha256=release_sha256,
+            statement=statement,
+            acknowledgements=acknowledgements,
+        )
+    )
     fd = os.open(archive_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     with os.fdopen(fd, "rb") as stream:
         RootFS._regular(os.fstat(stream.fileno()))
@@ -280,6 +310,12 @@ def restore(
             ):
                 raise CairnError("archive expands beyond limits")
             _paths([item.filename for item in members])
+            if "workspace.json" in {item.filename for item in members}:
+                archived_config = WorkspaceConfig.model_validate(
+                    read_json(archive.read("workspace.json"))
+                )
+                if archived_config.synthetic != synthetic:
+                    raise Denied("restore mode does not match the archive workspace")
             for item in members:
                 kind = stat.S_IFMT(item.external_attr >> 16)
                 if item.is_dir() or kind not in (0, stat.S_IFREG) or item.flag_bits & 1:
@@ -297,8 +333,16 @@ def restore(
     config = validate_payloads(payloads)
     if config.id != manifest.workspace_id:
         raise Conflict("backup workspace identity mismatch")
-    if not config.synthetic:
-        raise Denied("private restore requires a reviewed runtime activation")
+    if config.synthetic != synthetic:
+        raise Denied("restore mode does not match the archive workspace")
+    if activation:
+        if config.runtime_release_hash != digest(activation.raw_manifest):
+            raise Denied(
+                "private restore requires the original reviewed release; upgrade separately"
+            )
+        approval = activation.approval(config.id, "restore", archive_hash=digest(raw))
+        config.runtime_approval_id = approval.id
+        payloads[f"receipts/runtime/{approval.id}.json"] = canonical(approval)
     config.code_roots = [str(root.resolve()) for root in code_roots]
     payloads["workspace.json"] = canonical(config)
     destination.parent.mkdir(parents=True, exist_ok=True)

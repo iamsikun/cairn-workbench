@@ -12,7 +12,9 @@ from cairn.records.continuity import ContextPack, SessionReceipt
 from cairn.records.domains import Calculation, FinancialSnapshot, LifeDossier
 from cairn.records.models import Event, Extraction, Record
 from cairn.records.release import ReleaseManifest
+from cairn.records.runtime import ProbeRequest, ProbeResult, RuntimeApproval, WorkerProfile
 from cairn.storage.backup import BackupManifest
+from cairn.storage.workspace import WorkspaceConfig
 
 
 @pytest.mark.parametrize(
@@ -39,6 +41,11 @@ from cairn.storage.backup import BackupManifest
         LifeDossier,
         BackupManifest,
         ReleaseManifest,
+        ProbeRequest,
+        ProbeResult,
+        WorkerProfile,
+        RuntimeApproval,
+        WorkspaceConfig,
     ],
 )
 def test_export_matches_model(model: type[Record]) -> None:

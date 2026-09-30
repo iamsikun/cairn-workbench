@@ -58,7 +58,7 @@ def test_restore_namespace_preflight_writes_nothing(
     archive_with(ws, file, {name: b"Untrusted bytes" for name in names})
     destination = tmp_path / "restored"
     with pytest.raises(Denied):
-        restore(file, destination, code_roots=[tmp_path / "public-code"])
+        restore(file, destination, code_roots=[tmp_path / "public-code"], synthetic=True)
     assert not destination.exists()
     assert not list(tmp_path.glob(".cairn-restore-*"))
 
@@ -74,15 +74,15 @@ def test_restore_rejects_special_files_missing_manifest_and_bad_records(
     with zipfile.ZipFile(file, "w") as archive:
         archive.writestr(member, b"")
     with pytest.raises(Denied):
-        restore(file, tmp_path / "restored", code_roots=[tmp_path / "public-code"])
+        restore(file, tmp_path / "restored", code_roots=[tmp_path / "public-code"], synthetic=True)
     with zipfile.ZipFile(file, "w") as archive:
         archive.writestr("workspace.json", ws.fs.read("workspace.json"))
     with pytest.raises(CairnError, match="omits manifest"):
-        restore(file, tmp_path / "restored", code_roots=[tmp_path / "public-code"])
+        restore(file, tmp_path / "restored", code_roots=[tmp_path / "public-code"], synthetic=True)
     file.unlink()
     archive_with(ws, file, {"vault/wiki/research/concept_bad.md": b"Not a canonical record"})
     with pytest.raises(CairnError):
-        restore(file, tmp_path / "restored", code_roots=[tmp_path / "public-code"])
+        restore(file, tmp_path / "restored", code_roots=[tmp_path / "public-code"], synthetic=True)
     assert not (tmp_path / "restored").exists()
 
 
@@ -98,6 +98,7 @@ def test_restore_copy_failure_does_not_publish_partial_workspace(
             archive,
             tmp_path / "restored",
             code_roots=[tmp_path / "public-code"],
+            synthetic=True,
             expected_sha256="0" * 64,
         )
     original = RootFS.write
@@ -120,6 +121,7 @@ def test_restore_copy_failure_does_not_publish_partial_workspace(
             archive,
             tmp_path / "restored",
             code_roots=[tmp_path / "public-code"],
+            synthetic=True,
             expected_sha256=str(report["sha256"]),
         )
     assert not (tmp_path / "restored").exists()
@@ -144,7 +146,9 @@ def test_history_configuration_cannot_execute_filters(ws: Workspace, tmp_path: P
     archive = tmp_path / "malicious-history.zip"
     archive_with(ws, archive, {"history.git/config": config})
     with pytest.raises(Denied):
-        restore(archive, tmp_path / "restored", code_roots=[tmp_path / "public-code"])
+        restore(
+            archive, tmp_path / "restored", code_roots=[tmp_path / "public-code"], synthetic=True
+        )
     assert not marker.exists() and not (tmp_path / "restored").exists()
 
 
@@ -160,7 +164,9 @@ def test_large_archive_crosses_old_single_file_limit(ws: Workspace, tmp_path: Pa
     archive = tmp_path / "large.zip"
     backup(ws, archive)
     assert archive.stat().st_size > 32 * 1024 * 1024
-    restored = restore(archive, tmp_path / "restored", code_roots=[tmp_path / "public-code"])
+    restored = restore(
+        archive, tmp_path / "restored", code_roots=[tmp_path / "public-code"], synthetic=True
+    )
     for source_id in source_ids:
         meta = restored.record(source_id)[1].source
         assert meta and digest(restored.fs.read(meta.blob)) == meta.content_hash
@@ -201,7 +207,9 @@ def test_pending_transaction_backup_restores_then_requires_recovery(
     with pytest.raises(RecoveryRequired):
         backup(ws, archive)
     backup(ws, archive, include_pending=True)
-    restored = restore(archive, tmp_path / "restored", code_roots=[tmp_path / "public-code"])
+    restored = restore(
+        archive, tmp_path / "restored", code_roots=[tmp_path / "public-code"], synthetic=True
+    )
     with pytest.raises(RecoveryRequired):
         search(restored, "result", scope_name="research")
     assert len(recover(restored)) == 1
@@ -212,5 +220,5 @@ def test_pending_transaction_backup_restores_then_requires_recovery(
 
 def test_restore_staging_marker_blocks_open(ws: Workspace) -> None:
     ws.fs.write("restore.pending", b"synthetic interrupted restore")
-    with pytest.raises(RecoveryRequired, match="restore staging"):
+    with pytest.raises(RecoveryRequired, match="workspace staging"):
         Workspace(ws.root)

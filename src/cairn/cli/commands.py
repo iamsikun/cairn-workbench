@@ -18,6 +18,7 @@ from cairn.proposals.service import ingest as ingest_source
 from cairn.proposals.service import load_proposal
 from cairn.proposals.service import validate as validate_proposal
 from cairn.records.models import canonical
+from cairn.records.runtime import ReviewAcknowledgement
 from cairn.retrieval.search import query as run_query
 from cairn.retrieval.search import rebuild_index as rebuild
 from cairn.retrieval.search import search as run_search
@@ -194,11 +195,26 @@ def register(app: typer.Typer) -> None:
         destination: Annotated[Path, typer.Option()],
         code_root: Annotated[Path, typer.Option()],
         expected_sha256: str | None = None,
+        synthetic: bool = False,
+        release: Path | None = None,
+        release_sha256: str | None = None,
+        statement: str | None = None,
+        acknowledge: Annotated[list[ReviewAcknowledgement] | None, typer.Option()] = None,
         json_output: JsonOption = False,
     ) -> None:
         from cairn.storage.backup import restore
 
-        ws = restore(archive, destination, code_roots=[code_root], expected_sha256=expected_sha256)
+        ws = restore(
+            archive,
+            destination,
+            code_roots=[code_root],
+            expected_sha256=expected_sha256,
+            synthetic=synthetic,
+            release=release,
+            release_sha256=release_sha256,
+            statement=statement,
+            acknowledgements=set(acknowledge) if acknowledge else None,
+        )
         emit({"workspace_id": ws.config.id, "restored": True}, json_output)
 
     @app.command()
@@ -372,7 +388,9 @@ def register(app: typer.Typer) -> None:
 
     @app.command("doctor")
     @guarded
-    def doctor(workspace: WorkspaceOption, json_output: JsonOption = False) -> None:
+    def doctor(
+        workspace: WorkspaceOption, json_output: JsonOption = False, probe_worker: bool = False
+    ) -> None:
         ws = Workspace(workspace)
         with ws.lock():
             db = sqlite3.connect(":memory:")
@@ -383,14 +401,32 @@ def register(app: typer.Typer) -> None:
                 fts = False
             finally:
                 db.close()
+        from cairn.storage.activation import check_worker
+
+        profile = None
+        blocked = None
+        if probe_worker:
+            if ws.config.worker_image:
+                try:
+                    profile = check_worker(ws.config.worker_image)
+                except (CairnError, ValueError, OSError) as exc:
+                    blocked = str(exc) if isinstance(exc, CairnError) else "invalid_probe_result"
+            else:
+                blocked = "worker_image_unconfigured"
         report = {
             "synthetic": ws.config.synthetic,
             "fts5": fts,
             "worker_image": ws.config.worker_image,
-            "private_ready": False,
+            "runtime_verified": not ws.config.synthetic,
+            "release_hash": ws.config.runtime_release_hash,
+            "worker_profile": profile,
+            "worker_probe_status": "passed" if profile else (blocked or "not_checked"),
+            "private_ready": bool(not ws.config.synthetic and fts and profile),
+            "model_capability": "bundled worker provides extraction and fake-v1 only",
             "limitations": [
-                "Private release activation is not implemented yet.",
-                "A configured image is not proof of isolation or model capability.",
+                "Synthetic mode is not private-runtime activation.",
+                "Readiness covers the checked runtime/profile, not model quality "
+                "or universal security.",
             ],
         }
         emit(report, json_output)

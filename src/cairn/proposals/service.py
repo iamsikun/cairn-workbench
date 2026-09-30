@@ -32,6 +32,8 @@ def prepare_job(
     provider: str = "fake-v1",
     execution_image: str | None = None,
 ) -> JobEnvelope:
+    if not ws.config.synthetic and execution_image not in (None, ws.config.worker_image):
+        raise Denied("client image is not bound to the approved runtime release")
     if related_ids is None:
         from cairn.retrieval.search import search
 

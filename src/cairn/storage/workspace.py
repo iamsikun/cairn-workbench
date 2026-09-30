@@ -3,6 +3,8 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+import sys
+import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -12,7 +14,8 @@ from pydantic import Field
 
 from cairn.errors import Conflict, Denied, RecoveryRequired
 from cairn.policies.models import Policy, Scope
-from cairn.records.models import Domain, Event, Model, Record, canonical, digest, new_id
+from cairn.records.models import ID, Digest, Domain, Event, Model, Record, canonical, digest, new_id
+from cairn.records.runtime import ReviewAcknowledgement
 from cairn.storage.files import RootFS, disjoint
 from cairn.storage.markdown import decode
 
@@ -38,10 +41,12 @@ DIRECTORIES = (
 
 class WorkspaceConfig(Model):
     schema_version: Literal[1] = 1
-    id: str
+    id: ID
     synthetic: bool
     code_roots: list[str] = Field(min_length=1)
     worker_image: str | None = None
+    runtime_release_hash: Digest | None = None
+    runtime_approval_id: ID | None = None
 
 
 def check_roots(root: Path, code_roots: list[Path]) -> Path:
@@ -59,29 +64,57 @@ class Workspace:
         self.fs = RootFS(root)
         self.root = self.fs.root
         if self.fs.exists("restore.pending"):
-            raise RecoveryRequired("restore staging is incomplete; use the original archive")
+            raise RecoveryRequired("workspace staging is incomplete; use the original input")
         self.config = WorkspaceConfig.model_validate_json(self.fs.read("workspace.json"))
         check_roots(self.root, [Path(path) for path in self.config.code_roots])
+        if not self.config.synthetic:
+            from cairn.storage.activation import verify_workspace_runtime
+
+            if not disjoint(self.root, Path(sys.prefix)):
+                raise Denied("private workspace and installed runtime must be disjoint")
+            verify_workspace_runtime(self.config, self.fs.read)
 
     @classmethod
-    def init(cls, root: Path, *, code_roots: list[Path], synthetic: bool = False) -> Workspace:
+    def init(
+        cls,
+        root: Path,
+        *,
+        code_roots: list[Path],
+        synthetic: bool = False,
+        release: Path | None = None,
+        release_sha256: str | None = None,
+        statement: str | None = None,
+        acknowledgements: set[ReviewAcknowledgement] | None = None,
+    ) -> Workspace:
         root = check_roots(root, code_roots)
         if root.exists() and any(root.iterdir()):
             raise Conflict("initialization requires an empty workspace")
-        if not synthetic:
-            # The activation command will verify the reviewed release manifest and
-            # isolation evidence. Never allow checkout code to activate private data.
-            raise Denied("private activation requires the reviewed-release procedure")
-        root.mkdir(mode=0o700, parents=True, exist_ok=True)
-        fs = RootFS(root)
-        for directory in DIRECTORIES:
-            with fs.parent(f"{directory}/sentinel", create=True):
-                pass
+        from cairn.storage.activation import prepare_activation
+
+        if synthetic and any((release, release_sha256, statement, acknowledgements)):
+            raise Denied("synthetic initialization cannot record private release approval")
+        activation = (
+            None
+            if synthetic
+            else prepare_activation(
+                release,
+                expected_sha256=release_sha256,
+                statement=statement,
+                acknowledgements=acknowledgements,
+            )
+        )
+        if not synthetic and not disjoint(root, Path(sys.prefix)):
+            raise Denied("private workspace and installed runtime must be disjoint")
         config = WorkspaceConfig(
             id=new_id("workspace"),
             synthetic=synthetic,
             code_roots=[str(path.resolve()) for path in code_roots],
         )
+        approval = activation.approval(config.id, "init") if activation else None
+        if activation and approval:
+            config.worker_image = activation.manifest.worker_image
+            config.runtime_release_hash = approval.release_hash
+            config.runtime_approval_id = approval.id
         domains: tuple[Domain, ...] = ("research", "finance", "life", "shared")
         scopes: dict[str, Scope] = {
             domain: Scope(name=domain, domains={domain}, compartments={domain})
@@ -93,9 +126,33 @@ class Workspace:
             max_classification="restricted",
             compartments={"research", "finance", "life", "shared"},
         )
-        fs.write("workspace.json", canonical(config), exclusive=True)
-        fs.write("policy/workspace.json", canonical(Policy(scopes=scopes)), exclusive=True)
-        fs.write("vault/index.md", b"# Private Cairn workspace\n\nOwner navigation only.\n")
+        root.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix=".cairn-init-", dir=root.parent) as temporary:
+            staging = Path(temporary) / "workspace"
+            staging.mkdir(mode=0o700)
+            fs = RootFS(staging)
+            fs.write("restore.pending", b"initialization in progress\n", exclusive=True)
+            for directory in DIRECTORIES:
+                with fs.parent(f"{directory}/sentinel", create=True):
+                    pass
+            fs.write("workspace.json", canonical(config), exclusive=True)
+            fs.write("policy/workspace.json", canonical(Policy(scopes=scopes)), exclusive=True)
+            fs.write("vault/index.md", b"# Private Cairn workspace\n\nOwner navigation only.\n")
+            if activation and approval:
+                fs.write("policy/runtime-release.json", activation.raw_manifest, exclusive=True)
+                fs.write(
+                    f"receipts/runtime/{approval.id}.json", canonical(approval), exclusive=True
+                )
+            fs.remove("restore.pending")
+            cls(staging)
+            if root.is_symlink() or (root.exists() and any(root.iterdir())):
+                raise Conflict("initialization destination changed during staging")
+            os.replace(staging, root)
+            directory_fd = os.open(root.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
         return cls(root)
 
     @property
@@ -113,6 +170,13 @@ class Workspace:
         try:
             self.fs._regular(os.fstat(fd))
             fcntl.flock(fd, fcntl.LOCK_EX if write else fcntl.LOCK_SH)
+            if not self.config.synthetic:
+                from cairn.storage.activation import verify_workspace_runtime
+
+                current = WorkspaceConfig.model_validate_json(self.fs.read("workspace.json"))
+                if current != self.config:
+                    raise Conflict("workspace runtime configuration changed; reopen the workspace")
+                verify_workspace_runtime(current, self.fs.read)
             if not recovery:
                 for path in self.fs.files("journal"):
                     if path.endswith("/transaction.json"):

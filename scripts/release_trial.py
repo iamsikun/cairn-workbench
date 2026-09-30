@@ -84,6 +84,26 @@ def trial(bundle: Path) -> None:
     )
     verification = cli(*check_args)
     assert verification["installation_verified"] and not verification["private_ready"]
+    # The real installed verifier passes, but this isolated trial has no Docker
+    # executable/socket. It must not activate a private-mode workspace anyway.
+    denied_root = root / "activation-must-not-exist"
+    activation_args = [
+        "init",
+        "--workspace",
+        str(denied_root),
+        "--code-root",
+        "/opt/cairn",
+        "--release",
+        str(bundle / "release.json"),
+        "--release-sha256",
+        reviewed_hash,
+        "--statement",
+        "Synthetic negative activation trial.",
+    ]
+    for acknowledgement in ("release_review", "manual_continuity", "backup_restore"):
+        activation_args += ["--acknowledge", acknowledgement]
+    assert cli(*activation_args, status=5)["error"] == "blocked"
+    assert not denied_root.exists()
     imported = (
         subprocess.run(
             [str(python), "-I", "-B", "-c", "import cairn; print(cairn.__file__)"],
@@ -122,6 +142,7 @@ def trial(bundle: Path) -> None:
     restored = root / "restored"
     cli(
         "restore",
+        "--synthetic",
         str(archive),
         "--destination",
         str(restored),
@@ -173,7 +194,8 @@ def trial(bundle: Path) -> None:
                 "modified_package_rejected": True,
                 "unreviewed_pth_rejected": True,
                 "editable_installation_rejected": True,
-                "private_activation": "not_attempted",
+                "private_activation": "blocked_without_engine; no workspace created",
+                "activation_without_live_engine_rejected": True,
                 "model": "fake-v1",
             }
         ).decode(),

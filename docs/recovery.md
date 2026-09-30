@@ -46,4 +46,28 @@ normal readers still refuse that pending bundle until `cairn recover` succeeds.
 Backup hashes detect corruption; they do not authenticate an untrusted backup supplier.
 Keep the independently recorded archive digest and store backups with owner-controlled
 access. Supply that digest with `cairn restore ... --expected-sha256 DIGEST` to verify it
-before parsing or writing. Private restore and the installed-release runbook remain M3 work.
+before parsing or writing. Synthetic development archives require `--synthetic` on restore.
+Omitting it selects the private restore gate, which requires a verified installation and
+explicit review before opening the archive. A synthetic flag never converts a private
+archive into a synthetic workspace; a mode mismatch is rejected.
+
+Private restore also requires the original reviewed release manifest and its independent
+digest, an owner statement, and the review acknowledgements from the
+[installation runbook](installation.md). A fresh worker probe must pass. For example:
+
+```sh
+/srv/cairn-runtime/bin/python -I -B -m cairn restore /srv/backups/cairn.zip \
+  --destination /srv/cairn-restored --code-root /srv/cairn-code \
+  --expected-sha256 ARCHIVE_DIGEST \
+  --release /srv/cairn-release/release.json --release-sha256 REVIEWED_DIGEST \
+  --statement "I reviewed this release and restore of this exact archive." \
+  --acknowledge release_review --acknowledge manual_continuity --acknowledge backup_restore
+```
+
+Restore preserves canonical bytes, evidence, workspace identity, policy, approvals, and
+journals. It appends a new runtime approval binding the archive hash and current probe,
+retaining prior runtime approvals. This permits recovery of pending approved transactions
+under their original policy. Restoring under a different release is rejected; use the
+original installation before an explicit upgrade. Keep its wheelhouse, interpreter,
+worker image, and manifest with the recovery materials. A ZIP alone does not reconstruct
+the software environment.

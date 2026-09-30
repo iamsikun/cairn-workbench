@@ -161,3 +161,21 @@ trials, the manual-fixture generator, and real-engine lifecycle checks. CI now a
 the separate offline installation trial. Private activation/restore gates, version
 inspection/migration, the gold-set evaluation, and the final requirement matrix remain.
 The manual second-session continuity test remains pending by owner choice.
+
+Activation/restore increment: **146 tests passed**, Ruff passed, and strict mypy passed
+(52 source files) in `bash scripts/check.sh`. Both independent isolation profiles passed
+13 checks each, the installed worker's new nonce-bound probe passed all 13 checks on the
+real engine, all six installed-worker trials passed, and the lifecycle checks passed.
+
+`tests/test_activation.py` covers ten cases: required review and installed-runtime gates
+before creation; missing, failed, replayed, or unavailable probes; changed host canaries;
+release/image binding; private inline-bypass rejection; rechecks before operations;
+private-mode restore preserving source/policy bytes with a new runtime approval; staging
+failure; and doctor reporting unchecked or blocked workers. These lifecycle tests use
+synthetic data with explicitly stubbed installation/worker verification. They do not prove
+successful activation on a real owner machine. Five exported-schema checks were added.
+
+The updated offline release trial must additionally show that the installed CLI rejects
+activation when its live engine is unavailable, and the release script now probes its
+exact manifest-bound image. That clean-revision trial is pending at this commit. Actual
+owner activation, the manual continuity check, and release review remain separate.
