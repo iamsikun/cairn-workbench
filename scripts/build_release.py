@@ -129,7 +129,16 @@ def build(output: Path, revision: str, worker_image: str) -> None:
         worker_image=worker_image,
         artifacts=artifacts,
         bootstrap_files=bootstrap_files,
-        adapters={"extraction": "1", "fake_provider": "fake-v1", "client_packet": "1"},
+        adapters={
+            "extraction": "1",
+            "fake_provider": "fake-v1",
+            "client_packet": "1",
+            "library_catalog": "1",
+            "owner_device": "paper-reader-v1",
+            "subscription_verification": "clients-2026-09-30",
+            "weekly_feed": "1",
+            "streaming_backup": "zip64-v1",
+        },
     )
     raw = canonical(manifest)
     (output / "release.json").write_bytes(raw)

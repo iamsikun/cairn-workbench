@@ -141,6 +141,7 @@ def correct(ws: Workspace, paper_id: str, fields: dict[str, Any], *, scope: str)
         "priority",
         "topics",
         "note_ids",
+        "conflicts",
     }
     if not fields or not fields.keys() <= allowed:
         raise Denied("unsupported owner correction")
@@ -312,6 +313,13 @@ def scan(ws: Workspace, *, extract_metadata: bool = True, rehash: bool = False) 
                 if len(candidates) > 1:
                     report.issues[relative] = "identity_conflict"
                     report.complete = False
+                    for candidate_id in candidates:
+                        conflicting, details = papers[candidate_id]
+                        details.conflicts = sorted(
+                            set([*details.conflicts, f"identity_conflict:{relative}"])
+                        )
+                        set_metadata(conflicting, details)
+                        outputs[record_path(conflicting)] = entity_bytes(conflicting)
                     continue
                 if parts[0] not in journals:
                     journal = new_entity(parts[0], Journal(folder=parts[0]))
@@ -325,6 +333,9 @@ def scan(ws: Workspace, *, extract_metadata: bool = True, rehash: bool = False) 
                     if doi and paper.doi and paper.doi != doi:
                         report.issues[relative] = "DOI_changed_requires_review"
                         report.complete = False
+                        paper.conflicts = sorted(set([*paper.conflicts, f"DOI_changed:{relative}"]))
+                        set_metadata(record, paper)
+                        outputs[record_path(record)] = entity_bytes(record)
                         continue
                     if not location and paper.files:
                         report.moved.append(record.id)

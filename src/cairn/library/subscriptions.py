@@ -123,7 +123,7 @@ def command(provider: ProviderName, model: str, directory: Path) -> list[str]:
             "--setting-sources",
             "",
             "--settings",
-            '{"disableAllHooks":true,"apiKeyHelper":null}',
+            '{"disableAllHooks":true}',
             "--no-session-persistence",
             "--model",
             model,
