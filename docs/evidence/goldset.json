@@ -1,0 +1,1068 @@
+{
+  "baseline": "fts5 plus fake-v1 extractive workflow",
+  "checks": [
+    {
+      "check": "orchid_latency:protected_bytes",
+      "passed": true
+    },
+    {
+      "check": "orchid_latency:exact_write",
+      "passed": true
+    },
+    {
+      "check": "orchid_latency:only_approved_pages",
+      "passed": true
+    },
+    {
+      "check": "orchid_throughput:protected_bytes",
+      "passed": true
+    },
+    {
+      "check": "orchid_throughput:exact_write",
+      "passed": true
+    },
+    {
+      "check": "orchid_throughput:only_approved_pages",
+      "passed": true
+    },
+    {
+      "check": "cedar_eight:protected_bytes",
+      "passed": true
+    },
+    {
+      "check": "cedar_eight:exact_write",
+      "passed": true
+    },
+    {
+      "check": "cedar_eight:only_approved_pages",
+      "passed": true
+    },
+    {
+      "check": "cedar_thirteen:protected_bytes",
+      "passed": true
+    },
+    {
+      "check": "cedar_thirteen:exact_write",
+      "passed": true
+    },
+    {
+      "check": "cedar_thirteen:only_approved_pages",
+      "passed": true
+    },
+    {
+      "check": "maple_2024:protected_bytes",
+      "passed": true
+    },
+    {
+      "check": "maple_2024:exact_write",
+      "passed": true
+    },
+    {
+      "check": "maple_2024:only_approved_pages",
+      "passed": true
+    },
+    {
+      "check": "maple_2025:protected_bytes",
+      "passed": true
+    },
+    {
+      "check": "maple_2025:exact_write",
+      "passed": true
+    },
+    {
+      "check": "maple_2025:only_approved_pages",
+      "passed": true
+    },
+    {
+      "check": "chinese:protected_bytes",
+      "passed": true
+    },
+    {
+      "check": "chinese:exact_write",
+      "passed": true
+    },
+    {
+      "check": "chinese:only_approved_pages",
+      "passed": true
+    },
+    {
+      "check": "english:protected_bytes",
+      "passed": true
+    },
+    {
+      "check": "english:exact_write",
+      "passed": true
+    },
+    {
+      "check": "english:only_approved_pages",
+      "passed": true
+    },
+    {
+      "check": "injection:protected_bytes",
+      "passed": true
+    },
+    {
+      "check": "injection:exact_write",
+      "passed": true
+    },
+    {
+      "check": "injection:only_approved_pages",
+      "passed": true
+    },
+    {
+      "check": "scope:authorized_ranking_unchanged",
+      "passed": true
+    },
+    {
+      "check": "scope:denied_title_absent",
+      "passed": true
+    },
+    {
+      "check": "scope:denied_backlink",
+      "passed": true
+    },
+    {
+      "check": "exact_source:all_expected_sources",
+      "passed": true
+    },
+    {
+      "check": "exact_source:no_unexpected_evidence_sources",
+      "passed": true
+    },
+    {
+      "check": "exact_source:expected_status",
+      "passed": true
+    },
+    {
+      "check": "exact_source:expected_wording",
+      "passed": true
+    },
+    {
+      "check": "exact_source:dates_retained",
+      "passed": true
+    },
+    {
+      "check": "exact_source:conflict_retained",
+      "passed": true
+    },
+    {
+      "check": "exact_source:citations_supported",
+      "passed": true
+    },
+    {
+      "check": "exact_source:no_denied_content",
+      "passed": true
+    },
+    {
+      "check": "exact_source:no_synthesis_claim",
+      "passed": true
+    },
+    {
+      "check": "exact_source:original_segments",
+      "passed": true
+    },
+    {
+      "check": "multiple_sources:all_expected_sources",
+      "passed": true
+    },
+    {
+      "check": "multiple_sources:no_unexpected_evidence_sources",
+      "passed": true
+    },
+    {
+      "check": "multiple_sources:expected_status",
+      "passed": true
+    },
+    {
+      "check": "multiple_sources:expected_wording",
+      "passed": true
+    },
+    {
+      "check": "multiple_sources:dates_retained",
+      "passed": true
+    },
+    {
+      "check": "multiple_sources:conflict_retained",
+      "passed": true
+    },
+    {
+      "check": "multiple_sources:citations_supported",
+      "passed": true
+    },
+    {
+      "check": "multiple_sources:no_denied_content",
+      "passed": true
+    },
+    {
+      "check": "multiple_sources:no_synthesis_claim",
+      "passed": true
+    },
+    {
+      "check": "multiple_sources:original_segments",
+      "passed": true
+    },
+    {
+      "check": "contradictions:all_expected_sources",
+      "passed": true
+    },
+    {
+      "check": "contradictions:no_unexpected_evidence_sources",
+      "passed": true
+    },
+    {
+      "check": "contradictions:expected_status",
+      "passed": true
+    },
+    {
+      "check": "contradictions:expected_wording",
+      "passed": true
+    },
+    {
+      "check": "contradictions:dates_retained",
+      "passed": true
+    },
+    {
+      "check": "contradictions:conflict_retained",
+      "passed": true
+    },
+    {
+      "check": "contradictions:citations_supported",
+      "passed": true
+    },
+    {
+      "check": "contradictions:no_denied_content",
+      "passed": true
+    },
+    {
+      "check": "contradictions:no_synthesis_claim",
+      "passed": true
+    },
+    {
+      "check": "contradictions:original_segments",
+      "passed": true
+    },
+    {
+      "check": "outdated_rules:all_expected_sources",
+      "passed": true
+    },
+    {
+      "check": "outdated_rules:no_unexpected_evidence_sources",
+      "passed": true
+    },
+    {
+      "check": "outdated_rules:expected_status",
+      "passed": true
+    },
+    {
+      "check": "outdated_rules:expected_wording",
+      "passed": true
+    },
+    {
+      "check": "outdated_rules:dates_retained",
+      "passed": true
+    },
+    {
+      "check": "outdated_rules:conflict_retained",
+      "passed": true
+    },
+    {
+      "check": "outdated_rules:citations_supported",
+      "passed": true
+    },
+    {
+      "check": "outdated_rules:no_denied_content",
+      "passed": true
+    },
+    {
+      "check": "outdated_rules:no_synthesis_claim",
+      "passed": true
+    },
+    {
+      "check": "outdated_rules:original_segments",
+      "passed": true
+    },
+    {
+      "check": "absent_evidence:all_expected_sources",
+      "passed": true
+    },
+    {
+      "check": "absent_evidence:no_unexpected_evidence_sources",
+      "passed": true
+    },
+    {
+      "check": "absent_evidence:expected_status",
+      "passed": true
+    },
+    {
+      "check": "absent_evidence:expected_wording",
+      "passed": true
+    },
+    {
+      "check": "absent_evidence:dates_retained",
+      "passed": true
+    },
+    {
+      "check": "absent_evidence:conflict_retained",
+      "passed": true
+    },
+    {
+      "check": "absent_evidence:citations_supported",
+      "passed": true
+    },
+    {
+      "check": "absent_evidence:no_denied_content",
+      "passed": true
+    },
+    {
+      "check": "absent_evidence:no_synthesis_claim",
+      "passed": true
+    },
+    {
+      "check": "absent_evidence:original_segments",
+      "passed": true
+    },
+    {
+      "check": "chinese_two_characters:all_expected_sources",
+      "passed": true
+    },
+    {
+      "check": "chinese_two_characters:no_unexpected_evidence_sources",
+      "passed": true
+    },
+    {
+      "check": "chinese_two_characters:expected_status",
+      "passed": true
+    },
+    {
+      "check": "chinese_two_characters:expected_wording",
+      "passed": true
+    },
+    {
+      "check": "chinese_two_characters:dates_retained",
+      "passed": true
+    },
+    {
+      "check": "chinese_two_characters:conflict_retained",
+      "passed": true
+    },
+    {
+      "check": "chinese_two_characters:citations_supported",
+      "passed": true
+    },
+    {
+      "check": "chinese_two_characters:no_denied_content",
+      "passed": true
+    },
+    {
+      "check": "chinese_two_characters:no_synthesis_claim",
+      "passed": true
+    },
+    {
+      "check": "chinese_two_characters:original_segments",
+      "passed": true
+    },
+    {
+      "check": "english_to_chinese_alias:all_expected_sources",
+      "passed": true
+    },
+    {
+      "check": "english_to_chinese_alias:no_unexpected_evidence_sources",
+      "passed": true
+    },
+    {
+      "check": "english_to_chinese_alias:expected_status",
+      "passed": true
+    },
+    {
+      "check": "english_to_chinese_alias:expected_wording",
+      "passed": true
+    },
+    {
+      "check": "english_to_chinese_alias:dates_retained",
+      "passed": true
+    },
+    {
+      "check": "english_to_chinese_alias:conflict_retained",
+      "passed": true
+    },
+    {
+      "check": "english_to_chinese_alias:citations_supported",
+      "passed": true
+    },
+    {
+      "check": "english_to_chinese_alias:no_denied_content",
+      "passed": true
+    },
+    {
+      "check": "english_to_chinese_alias:no_synthesis_claim",
+      "passed": true
+    },
+    {
+      "check": "english_to_chinese_alias:original_segments",
+      "passed": true
+    },
+    {
+      "check": "source_injection:all_expected_sources",
+      "passed": true
+    },
+    {
+      "check": "source_injection:no_unexpected_evidence_sources",
+      "passed": true
+    },
+    {
+      "check": "source_injection:expected_status",
+      "passed": true
+    },
+    {
+      "check": "source_injection:expected_wording",
+      "passed": true
+    },
+    {
+      "check": "source_injection:dates_retained",
+      "passed": true
+    },
+    {
+      "check": "source_injection:conflict_retained",
+      "passed": true
+    },
+    {
+      "check": "source_injection:citations_supported",
+      "passed": true
+    },
+    {
+      "check": "source_injection:no_denied_content",
+      "passed": true
+    },
+    {
+      "check": "source_injection:no_synthesis_claim",
+      "passed": true
+    },
+    {
+      "check": "source_injection:original_segments",
+      "passed": true
+    },
+    {
+      "check": "query:durable_read_only",
+      "passed": true
+    },
+    {
+      "check": "source_injection:policy_unchanged",
+      "passed": true
+    },
+    {
+      "check": "source_injection:no_adoption",
+      "passed": true
+    },
+    {
+      "check": "project_framing:protected_bytes",
+      "passed": true
+    },
+    {
+      "check": "project_framing:exact_write",
+      "passed": true
+    },
+    {
+      "check": "project_framing:only_approved_pages",
+      "passed": true
+    },
+    {
+      "check": "session_receipt:protected_bytes",
+      "passed": true
+    },
+    {
+      "check": "session_receipt:exact_write",
+      "passed": true
+    },
+    {
+      "check": "session_receipt:only_approved_pages",
+      "passed": true
+    },
+    {
+      "check": "roles:preserved_order",
+      "passed": true
+    },
+    {
+      "check": "roles:suggestion_not_adopted",
+      "passed": true
+    },
+    {
+      "check": "owner_adoption:protected_bytes",
+      "passed": true
+    },
+    {
+      "check": "owner_adoption:exact_write",
+      "passed": true
+    },
+    {
+      "check": "owner_adoption:only_approved_pages",
+      "passed": true
+    },
+    {
+      "check": "context:decision_retained",
+      "passed": true
+    },
+    {
+      "check": "context:failure_retained",
+      "passed": true
+    },
+    {
+      "check": "context:denied_domain_absent",
+      "passed": true
+    },
+    {
+      "check": "context:budget",
+      "passed": true
+    },
+    {
+      "check": "context:citations",
+      "passed": true
+    }
+  ],
+  "continuity": {
+    "protocol": "evaluated",
+    "roles_observed": [
+      "user",
+      "assistant"
+    ],
+    "second_agent_session": "pending_manual_session",
+    "semantic_usefulness": "not_evaluated"
+  },
+  "limitations": [
+    "This is the measured mechanical baseline, not a general answer-quality score.",
+    "Multiple-source retrieval is measured; model synthesis is not evaluated.",
+    "The Cedar dispute is a fixture annotation, not automatic conflict detection.",
+    "Dated Maple revisions stay visible together; applicability is not inferred.",
+    "Human review time and edits are unmeasured; synthetic approval is not acceptance.",
+    "Zero observed violations covers only these defined cases, not universal security.",
+    "Separate isolation probes establish the processing container's network boundary.",
+    "Manual usefulness and private evaluation remain separate; no model ran."
+  ],
+  "metrics": {
+    "checks_passed": 129,
+    "checks_total": 129,
+    "citation_support": {
+      "checked": 36,
+      "meaning": "hash/locator/quote existence; not entailment",
+      "supported": 36
+    },
+    "context_estimated_tokens": 6642,
+    "context_latency_ms": 670.008,
+    "mechanical_query_rubric_passes": 8,
+    "model_calls": 0,
+    "model_cost_usd": "0.00",
+    "model_tokens": 0,
+    "query_cases": 8,
+    "review_burden": {
+      "flag_occurrences": {
+        "conflicting_evidence": 1,
+        "decision_review": 2,
+        "evidence_and_interpretation": 12,
+        "interpretation": 1,
+        "owner_adoption": 1,
+        "sensitive_record": 2
+      },
+      "human_edits": null,
+      "human_review_seconds": null,
+      "observations": [
+        {
+          "diff_lines": 57,
+          "human_edits": null,
+          "label": "orchid_latency",
+          "pages_changed": 1,
+          "review_flags": [
+            "evidence_and_interpretation"
+          ],
+          "review_seconds": null
+        },
+        {
+          "diff_lines": 57,
+          "human_edits": null,
+          "label": "orchid_throughput",
+          "pages_changed": 1,
+          "review_flags": [
+            "evidence_and_interpretation"
+          ],
+          "review_seconds": null
+        },
+        {
+          "diff_lines": 56,
+          "human_edits": null,
+          "label": "cedar_eight",
+          "pages_changed": 1,
+          "review_flags": [
+            "evidence_and_interpretation"
+          ],
+          "review_seconds": null
+        },
+        {
+          "diff_lines": 57,
+          "human_edits": null,
+          "label": "cedar_thirteen",
+          "pages_changed": 1,
+          "review_flags": [
+            "conflicting_evidence",
+            "evidence_and_interpretation"
+          ],
+          "review_seconds": null
+        },
+        {
+          "diff_lines": 65,
+          "human_edits": null,
+          "label": "maple_2024",
+          "pages_changed": 1,
+          "review_flags": [
+            "evidence_and_interpretation",
+            "sensitive_record"
+          ],
+          "review_seconds": null
+        },
+        {
+          "diff_lines": 65,
+          "human_edits": null,
+          "label": "maple_2025",
+          "pages_changed": 1,
+          "review_flags": [
+            "evidence_and_interpretation",
+            "sensitive_record"
+          ],
+          "review_seconds": null
+        },
+        {
+          "diff_lines": 56,
+          "human_edits": null,
+          "label": "chinese",
+          "pages_changed": 1,
+          "review_flags": [
+            "evidence_and_interpretation"
+          ],
+          "review_seconds": null
+        },
+        {
+          "diff_lines": 56,
+          "human_edits": null,
+          "label": "english",
+          "pages_changed": 1,
+          "review_flags": [
+            "evidence_and_interpretation"
+          ],
+          "review_seconds": null
+        },
+        {
+          "diff_lines": 60,
+          "human_edits": null,
+          "label": "injection",
+          "pages_changed": 1,
+          "review_flags": [
+            "evidence_and_interpretation"
+          ],
+          "review_seconds": null
+        },
+        {
+          "diff_lines": 35,
+          "human_edits": null,
+          "label": "project_framing",
+          "pages_changed": 1,
+          "review_flags": [
+            "evidence_and_interpretation"
+          ],
+          "review_seconds": null
+        },
+        {
+          "diff_lines": 126,
+          "human_edits": null,
+          "label": "session_receipt",
+          "pages_changed": 2,
+          "review_flags": [
+            "decision_review",
+            "evidence_and_interpretation",
+            "interpretation"
+          ],
+          "review_seconds": null
+        },
+        {
+          "diff_lines": 45,
+          "human_edits": null,
+          "label": "owner_adoption",
+          "pages_changed": 1,
+          "review_flags": [
+            "decision_review",
+            "evidence_and_interpretation",
+            "owner_adoption"
+          ],
+          "review_seconds": null
+        }
+      ],
+      "page_changes": 13,
+      "proposals": 12
+    },
+    "total_elapsed_seconds": 13.522,
+    "unauthorized_disclosures_observed": 0,
+    "write_violations_observed": 0
+  },
+  "provenance": {
+    "corpus_sha256": "801662388f1d463bf138113bcb339b4ce82408121bbf00c6ae354450fa3eb0e3",
+    "platform": "Linux-aarch64",
+    "python": "3.13.11",
+    "script_sha256": "a369375d1a2f8ffa34077a7df1fe6c40a1c98a7ee556ef1cfdd5829509d51850",
+    "source_tree_sha256": "86439fb18361b3a4f69eedfb23962bbfd19afe5e8dc5cd8c8a861cecfbf7b2bb",
+    "sqlite": "3.40.1"
+  },
+  "query_cases": [
+    {
+      "checks": {
+        "all_expected_sources": true,
+        "citations_supported": true,
+        "conflict_retained": true,
+        "dates_retained": true,
+        "expected_status": true,
+        "expected_wording": true,
+        "no_denied_content": true,
+        "no_synthesis_claim": true,
+        "no_unexpected_evidence_sources": true,
+        "original_segments": true
+      },
+      "citations_checked": 3,
+      "citations_supported": 3,
+      "conflict_count": 0,
+      "dates": [
+        "2025-01-03"
+      ],
+      "evidence_hits": 1,
+      "expected_sources": [
+        "orchid_latency"
+      ],
+      "id": "exact_source",
+      "latency_ms": {
+        "median": 50.185,
+        "samples": [
+          51.357,
+          50.185,
+          49.828
+        ]
+      },
+      "mechanical_rubric_passed": true,
+      "model_synthesis": "not_performed",
+      "question": "latency",
+      "retrieved_sources": [
+        "orchid_latency"
+      ],
+      "scope": "research",
+      "semantic_answer_quality": "not_evaluated",
+      "source_precision": 1.0,
+      "source_recall": 1.0,
+      "synthesis_hits": 1
+    },
+    {
+      "checks": {
+        "all_expected_sources": true,
+        "citations_supported": true,
+        "conflict_retained": true,
+        "dates_retained": true,
+        "expected_status": true,
+        "expected_wording": true,
+        "no_denied_content": true,
+        "no_synthesis_claim": true,
+        "no_unexpected_evidence_sources": true,
+        "original_segments": true
+      },
+      "citations_checked": 6,
+      "citations_supported": 6,
+      "conflict_count": 0,
+      "dates": [
+        "2025-01-03",
+        "2025-01-04"
+      ],
+      "evidence_hits": 2,
+      "expected_sources": [
+        "orchid_latency",
+        "orchid_throughput"
+      ],
+      "id": "multiple_sources",
+      "latency_ms": {
+        "median": 50.15,
+        "samples": [
+          49.695,
+          50.809,
+          50.15
+        ]
+      },
+      "mechanical_rubric_passed": true,
+      "model_synthesis": "not_performed",
+      "question": "Orchid",
+      "retrieved_sources": [
+        "orchid_latency",
+        "orchid_throughput"
+      ],
+      "scope": "research",
+      "semantic_answer_quality": "not_evaluated",
+      "source_precision": 1.0,
+      "source_recall": 1.0,
+      "synthesis_hits": 2
+    },
+    {
+      "checks": {
+        "all_expected_sources": true,
+        "citations_supported": true,
+        "conflict_retained": true,
+        "dates_retained": true,
+        "expected_status": true,
+        "expected_wording": true,
+        "no_denied_content": true,
+        "no_synthesis_claim": true,
+        "no_unexpected_evidence_sources": true,
+        "original_segments": true
+      },
+      "citations_checked": 6,
+      "citations_supported": 6,
+      "conflict_count": 1,
+      "dates": [
+        "2025-02-01",
+        "2025-02-02"
+      ],
+      "evidence_hits": 2,
+      "expected_sources": [
+        "cedar_eight",
+        "cedar_thirteen"
+      ],
+      "id": "contradictions",
+      "latency_ms": {
+        "median": 51.223,
+        "samples": [
+          50.186,
+          51.223,
+          52.455
+        ]
+      },
+      "mechanical_rubric_passed": true,
+      "model_synthesis": "not_performed",
+      "question": "Cedar",
+      "retrieved_sources": [
+        "cedar_eight",
+        "cedar_thirteen"
+      ],
+      "scope": "research",
+      "semantic_answer_quality": "not_evaluated",
+      "source_precision": 1.0,
+      "source_recall": 1.0,
+      "synthesis_hits": 2
+    },
+    {
+      "checks": {
+        "all_expected_sources": true,
+        "citations_supported": true,
+        "conflict_retained": true,
+        "dates_retained": true,
+        "expected_status": true,
+        "expected_wording": true,
+        "no_denied_content": true,
+        "no_synthesis_claim": true,
+        "no_unexpected_evidence_sources": true,
+        "original_segments": true
+      },
+      "citations_checked": 6,
+      "citations_supported": 6,
+      "conflict_count": 1,
+      "dates": [
+        "2024-01-01",
+        "2025-01-01"
+      ],
+      "evidence_hits": 2,
+      "expected_sources": [
+        "maple_2024",
+        "maple_2025"
+      ],
+      "id": "outdated_rules",
+      "latency_ms": {
+        "median": 49.411,
+        "samples": [
+          49.609,
+          49.411,
+          49.349
+        ]
+      },
+      "mechanical_rubric_passed": true,
+      "model_synthesis": "not_performed",
+      "question": "Maple",
+      "retrieved_sources": [
+        "maple_2024",
+        "maple_2025"
+      ],
+      "scope": "finance",
+      "semantic_answer_quality": "not_evaluated",
+      "source_precision": 1.0,
+      "source_recall": 1.0,
+      "synthesis_hits": 2
+    },
+    {
+      "checks": {
+        "all_expected_sources": true,
+        "citations_supported": true,
+        "conflict_retained": true,
+        "dates_retained": true,
+        "expected_status": true,
+        "expected_wording": true,
+        "no_denied_content": true,
+        "no_synthesis_claim": true,
+        "no_unexpected_evidence_sources": true,
+        "original_segments": true
+      },
+      "citations_checked": 0,
+      "citations_supported": 0,
+      "conflict_count": 0,
+      "dates": [],
+      "evidence_hits": 0,
+      "expected_sources": [],
+      "id": "absent_evidence",
+      "latency_ms": {
+        "median": 50.523,
+        "samples": [
+          50.557,
+          50.48,
+          50.523
+        ]
+      },
+      "mechanical_rubric_passed": true,
+      "model_synthesis": "not_performed",
+      "question": "unicornabsent",
+      "retrieved_sources": [],
+      "scope": "research",
+      "semantic_answer_quality": "not_evaluated",
+      "source_precision": null,
+      "source_recall": null,
+      "synthesis_hits": 0
+    },
+    {
+      "checks": {
+        "all_expected_sources": true,
+        "citations_supported": true,
+        "conflict_retained": true,
+        "dates_retained": true,
+        "expected_status": true,
+        "expected_wording": true,
+        "no_denied_content": true,
+        "no_synthesis_claim": true,
+        "no_unexpected_evidence_sources": true,
+        "original_segments": true
+      },
+      "citations_checked": 6,
+      "citations_supported": 6,
+      "conflict_count": 0,
+      "dates": [],
+      "evidence_hits": 2,
+      "expected_sources": [
+        "chinese",
+        "english"
+      ],
+      "id": "chinese_two_characters",
+      "latency_ms": {
+        "median": 50.375,
+        "samples": [
+          50.375,
+          50.418,
+          50.348
+        ]
+      },
+      "mechanical_rubric_passed": true,
+      "model_synthesis": "not_performed",
+      "question": "检索",
+      "retrieved_sources": [
+        "chinese",
+        "english"
+      ],
+      "scope": "research",
+      "semantic_answer_quality": "not_evaluated",
+      "source_precision": 1.0,
+      "source_recall": 1.0,
+      "synthesis_hits": 2
+    },
+    {
+      "checks": {
+        "all_expected_sources": true,
+        "citations_supported": true,
+        "conflict_retained": true,
+        "dates_retained": true,
+        "expected_status": true,
+        "expected_wording": true,
+        "no_denied_content": true,
+        "no_synthesis_claim": true,
+        "no_unexpected_evidence_sources": true,
+        "original_segments": true
+      },
+      "citations_checked": 6,
+      "citations_supported": 6,
+      "conflict_count": 0,
+      "dates": [],
+      "evidence_hits": 2,
+      "expected_sources": [
+        "chinese",
+        "english"
+      ],
+      "id": "english_to_chinese_alias",
+      "latency_ms": {
+        "median": 50.479,
+        "samples": [
+          50.479,
+          50.31,
+          51.041
+        ]
+      },
+      "mechanical_rubric_passed": true,
+      "model_synthesis": "not_performed",
+      "question": "retrieval",
+      "retrieved_sources": [
+        "chinese",
+        "english"
+      ],
+      "scope": "research",
+      "semantic_answer_quality": "not_evaluated",
+      "source_precision": 1.0,
+      "source_recall": 1.0,
+      "synthesis_hits": 2
+    },
+    {
+      "checks": {
+        "all_expected_sources": true,
+        "citations_supported": true,
+        "conflict_retained": true,
+        "dates_retained": true,
+        "expected_status": true,
+        "expected_wording": true,
+        "no_denied_content": true,
+        "no_synthesis_claim": true,
+        "no_unexpected_evidence_sources": true,
+        "original_segments": true
+      },
+      "citations_checked": 3,
+      "citations_supported": 3,
+      "conflict_count": 0,
+      "dates": [],
+      "evidence_hits": 1,
+      "expected_sources": [
+        "injection"
+      ],
+      "id": "source_injection",
+      "latency_ms": {
+        "median": 51.175,
+        "samples": [
+          51.374,
+          50.502,
+          51.175
+        ]
+      },
+      "mechanical_rubric_passed": true,
+      "model_synthesis": "not_performed",
+      "question": "Juniper",
+      "retrieved_sources": [
+        "injection"
+      ],
+      "scope": "research",
+      "semantic_answer_quality": "not_evaluated",
+      "source_precision": 1.0,
+      "source_recall": 1.0,
+      "synthesis_hits": 1
+    }
+  ],
+  "schema_version": 1,
+  "status": "passed",
+  "synthetic": true
+}

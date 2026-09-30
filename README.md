@@ -15,8 +15,9 @@ decision adoption, bounded context packs, and repository-staleness checks. Its m
 second-agent usefulness gate is pending. M3 now includes structured financial snapshots,
 exact Decimal calculations, dated financial notes, sourced life hubs, and direct evidence
 review, audited owner scopes/grants, and complete-request route checks. Cloud execution
-remains unavailable. Explicit backed-up workspace migration is implemented; the remaining
-evaluation and requirements audit is in progress.
+remains unavailable. Explicit backed-up workspace migration and the
+[synthetic evaluation report](docs/evaluation.md) are implemented. The final requirements
+audit is in progress.
 
 Python package: `cairn`; command: `cairn`. Development uses synthetic workspaces outside
 the checkout. A private deployment requires a reviewed, pinned installation and a

@@ -8,7 +8,7 @@ artifact, not just code presence. Private activation and M4 are outside this goa
 | M0 | Passed reference acceptance | 24 tests, lint, strict typing, 13 isolation checks |
 | M1 | Passed reference acceptance | 48 tests, installed worker protocols, both isolation profiles |
 | M2 | Mechanics implemented; manual semantic gate pending | Separate-session continuity evaluation chosen by owner |
-| M3 | In progress | Domains, restore, routes, installation, and migration pass; evaluation and final audit remain |
+| M3 | In progress | Domains, restore, routes, installation, migration, and synthetic evaluation pass; final audit remains |
 
 The brief's hard gates will be mapped to named tests as implementation proceeds.
 
@@ -218,3 +218,18 @@ worker passed all 13 real-engine isolation checks. Evidence is retained in
 The manifest SHA256 is `af540becc04763a2dac6b459dd798ffbe97de4b6f040df7cfe1471724c221bfd`.
 This remains a Linux-aarch64 reference trial, not owner-machine activation or semantic
 acceptance. Gold-set reporting, the final requirements audit, and the manual M2 gate remain.
+
+Synthetic evaluation increment: `bash scripts/check.sh` again passed **169 tests**, Ruff,
+strict mypy (55 files), both sets of 13 isolation checks, the installed worker probe,
+all six worker trials, fixture generation, and real-engine lifecycle checks. The newly
+integrated gold-set evaluator passed **129/129 checks** in the installed development
+image. The retained public report binds its source tree, corpus, and script hashes.
+
+Eight query cases retained all expected sources and exact wording, dates, and explicit
+conflicts. All 36 citation occurrences passed hash/locator/quote checks; the defined
+scope and write checks observed zero violations. The fixture generated 12 proposals and
+13 page changes. It records latency samples, review flags, and zero model calls/cost;
+human edits/time and semantic quality are explicitly unmeasured. Conversation roles,
+unadopted suggestions, and the adopted decision/failure context workflow were exercised.
+See `docs/evaluation.md` and `docs/evidence/goldset.json`. This does not satisfy the
+owner-selected manual second-agent gate or establish entailment or complete security.

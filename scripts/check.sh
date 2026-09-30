@@ -41,6 +41,7 @@ for kind in bibliography receipt finance life; do
     docker run "${profile[@]}" --interactive "$image_id" python scripts/worker_roundtrip.py "verify-$kind"
 done
 docker run "${profile[@]}" "$image_id" python scripts/prepare_continuity.py --output /tmp/manual-handoff
+docker run "${profile[@]}" "$image_id" python scripts/evaluate_goldset.py --output /tmp/goldset.json
 
 # Real-engine lifecycle check. All contributor Python executes inside the no-mount
 # worker; no Docker socket or owner filesystem is exposed to any container.

@@ -42,10 +42,12 @@ Before release review, finish the following public, synthetic-only work:
    The offline installed CLI migration/restore trial at `1b72f1b` passed (15 distributions,
    877 verified files), with all 13 exact-image isolation checks. Its reports are in
    `docs/evidence/migration-release-trial.json` and `migration-worker-profile.json`.
-6. Run and retain the synthetic gold-set report for exact source, multiple sources,
-   contradictions, outdated rules, absent evidence, roles, Chinese/English retrieval, and
-   project continuity. Record observed citation support, write correctness, unauthorized
-   disclosures, pages/review flags, latency, and honest model-cost/semantic limitations.
+6. Completed synthetic gold-set report: 129 mechanical checks, eight query cases, 36
+   supported citation occurrences, zero observed disclosure/write violations, and 12
+   fixture proposals changing 13 pages. Latencies, flags, and zero model calls/cost are
+   retained in `docs/evidence/goldset.json`; human review duration/edits and semantic
+   usefulness remain explicitly unmeasured. See `docs/evaluation.md`. Actual second-session
+   continuity remains the separate manual M2 gate; this report does not satisfy it.
 7. Map every brief hard gate to an executed test, manual gate, or named unsupported
    capability. Finish installation, privacy, recovery, and agent-integration documentation.
 
