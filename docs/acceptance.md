@@ -1,5 +1,18 @@
 # Acceptance evidence
 
+## Journal library extension (2026-09-30, in progress)
+
+Catalog hardening preserves bibliographic observations as source snapshots, resolves
+pre-existing journal identities in place, supports folder aliases/publication series,
+and treats an empty previously populated route as uncertain. The catalog/discovery
+boundary tests use synthetic journals and PDFs. No private library was used by tests.
+
+The integrated development-container run currently passes **217 tests**, lint and
+strict typing across 76 modules before the final cancellation changes. The physical
+260MiB streaming backup trial, final isolation/release checks, workstation GPU pilot,
+and live subscription trial are separate gates. Synthetic readers/verifiers do not
+establish semantic quality. The workstation SSH connection still times out.
+
 M0–M3 reference acceptance is complete. A checked item requires an executed test or
 inspected artifact, not just code presence. Private activation and M4 are outside this
 goal. Entries below retain the chronological evidence, including earlier pending gates.

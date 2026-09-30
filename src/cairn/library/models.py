@@ -45,6 +45,8 @@ class Journal(Model):
     schema_version: Literal[1] = 1
     kind: Literal["journal"] = "journal"
     folder: str
+    folder_aliases: list[str] = Field(default_factory=list)
+    publication_series: list[str] = Field(default_factory=list)
     resolved: bool = False
     issns: list[str] = Field(default_factory=list)
     discovery: list[DiscoverySource] = Field(default_factory=list)
@@ -58,6 +60,11 @@ class Journal(Model):
         if len(components(value)) != 1 or value.startswith("."):
             raise ValueError("journal folder must be one visible directory")
         return value
+
+    @field_validator("folder_aliases")
+    @classmethod
+    def aliases(cls, values: list[str]) -> list[str]:
+        return [cls.folder_name(value) for value in values]
 
 
 class FileLocation(Model):

@@ -36,8 +36,10 @@ def record_path(record: Record) -> str:
 
 
 def validate_entry(entry: Entry) -> None:
-    if digest(entry.after.encode()) != entry.after_hash or (
-        entry.before is not None and digest(entry.before.encode()) != entry.before_hash
+    if (
+        (entry.before is None) != (entry.before_hash is None)
+        or digest(entry.after.encode()) != entry.after_hash
+        or (entry.before is not None and digest(entry.before.encode()) != entry.before_hash)
     ):
         raise Conflict("library journal checksum mismatch")
     if entry.path.startswith("vault/wiki/research/"):

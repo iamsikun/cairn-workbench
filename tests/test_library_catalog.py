@@ -131,3 +131,28 @@ def test_model_cannot_replace_catalog(ws: Workspace, tmp_path: Path) -> None:
                 ],
             ),
         )
+
+
+def test_resolving_journal_preserves_identity_and_empty_scan_is_uncertain(ws, tmp_path) -> None:
+    from cairn.library.catalog import register_journal
+    from cairn.library.models import Journal
+
+    root = library(ws, tmp_path)
+    file = root / "Example Journal/a.pdf"
+    file.write_bytes(pdf())
+    scan(ws)
+    original = list_entities(ws, "research", "journal")[0]
+    resolved = register_journal(
+        ws,
+        "Synthetic Journal of Examples",
+        Journal(
+            folder="Example Journal", resolved=True, publication_series=["Series A", "Series B"]
+        ),
+    )
+    assert resolved.id == original.id
+    assert len(list_entities(ws, "research", "journal")) == 1
+    paper = list_entities(ws, "research", "paper")[0]
+    assert metadata(paper).metadata_evidence["title"].source_id
+    file.unlink()
+    result = scan(ws)
+    assert not result.complete and not result.missing

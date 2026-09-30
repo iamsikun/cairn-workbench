@@ -78,17 +78,19 @@ def register_journal(ws: Workspace, title: str, value: Journal) -> Record:
     with ws.lock(write=True):
         config = config_unlocked(ws)
         records = entities_unlocked(ws, config.scope)
-        match = next(
-            (
-                r
-                for r in records
-                if isinstance(m := metadata(r), Journal)
-                and m.folder == value.folder
-                and r.title == title
-            ),
-            None,
-        )
+        matches = [
+            r
+            for r in records
+            if isinstance(m := metadata(r), Journal)
+            and value.folder in (m.folder, *m.folder_aliases)
+        ]
+        match = next((r for r in matches if r.title == title), None)
+        if match is None and len(matches) > 1:
+            raise Conflict("journal folder has multiple identities; resolve explicitly")
+        match = match or (matches[0] if matches else None)
         record = match or new_entity(title, value)
+        record.title = title
+        record.updated_at = now()
         ws.policy.scope(config.scope).require(record)
         set_metadata(record, value)
         commit_unlocked(ws, {record_path(record): entity_bytes(record)}, "register_journal")
@@ -206,6 +208,8 @@ def scan(ws: Workspace, *, extract_metadata: bool = True, rehash: bool = False) 
         value = metadata(record)
         if isinstance(value, Journal):
             journals.setdefault(value.folder, []).append(record)
+            for alias in value.folder_aliases:
+                journals.setdefault(alias, []).append(record)
         elif isinstance(value, Paper):
             papers[record.id] = record, value
             if value.doi:
@@ -329,6 +333,24 @@ def scan(ws: Workspace, *, extract_metadata: bool = True, rehash: bool = False) 
                     else None,
                 )
                 paper.files = [f for f in paper.files if f.path != relative] + [new_location]
+                snapshot = None
+                if observed:
+                    from cairn.ingest.service import capture_bytes
+
+                    snapshot = capture_bytes(
+                        ws,
+                        canonical({"pdf_hash": content_hash, "observed": observed}),
+                        origin=f"pdf-metadata:{content_hash}",
+                        identity=f"library-pdf-metadata:{content_hash}",
+                        title="Observed PDF bibliographic metadata",
+                        domain="research",
+                        source_type="bibliography",
+                        scope_name=config.scope,
+                        classification=record.classification,
+                        compartments=record.compartments,
+                        project_ids=record.project_ids,
+                    )
+                    paper.source_ids = sorted(set([*paper.source_ids, snapshot.id]))
                 for key in ("title", "authors", "doi", "year"):
                     val = observed.get(key)
                     if val and key not in paper.owner_fields:
@@ -338,6 +360,7 @@ def scan(ws: Workspace, *, extract_metadata: bool = True, rehash: bool = False) 
                             setattr(paper, key, val)
                         paper.metadata_evidence[key] = MetadataEvidence(
                             origin=f"pdf:{content_hash}",
+                            source_id=snapshot.id if snapshot else None,
                             observed_at=report.at,
                         )
                 if old != canonical(paper):
@@ -351,6 +374,9 @@ def scan(ws: Workspace, *, extract_metadata: bool = True, rehash: bool = False) 
             except (OSError, CairnError, ValueError):
                 report.complete = False
                 report.issues[relative] = "unavailable_or_unsafe"
+    if by_path and not seen:
+        report.complete = False
+        report.issues["library"] = "empty_scan_cannot_confirm_online_availability"
     if report.complete:
         for record, paper in papers.values():
             changed = False
@@ -371,6 +397,11 @@ def scan(ws: Workspace, *, extract_metadata: bool = True, rehash: bool = False) 
         }
         if current != initial_hashes:
             raise Conflict("catalog changed during scan; retry without overwriting owner edits")
+        from cairn.storage.markdown import decode
+
+        for output_path, data in outputs.items():
+            if output_path.startswith("vault/"):
+                ws.policy.scope(config.scope).require(decode(data)[0])
         outputs[f"receipts/library/scans/{report.id}.json"] = canonical(report)
         if report.complete:
             outputs["receipts/library/last_scan.json"] = canonical(report)

@@ -303,11 +303,14 @@ def discover(
     journal_id: str | None = None,
     page_budget: int = 100,
 ) -> list[DiscoveryReport]:
+    if fetch is not None and not ws.config.synthetic:
+        raise Denied("injected publication fetcher is synthetic-only")
     if fetch is None:
         from cairn.library.fetcher import fetch_isolated
 
         def fetch(url: str, hosts: set[str]) -> bytes:
             return fetch_isolated(ws, url, hosts)
+
     if page_budget < 1 or page_budget > 10000:
         raise ValueError("invalid discovery page budget")
     with ws.lock():
@@ -394,7 +397,7 @@ def discover(
                         commit_unlocked(ws, {checkpoint: canonical(state)}, "discovery_checkpoint")
                     if completed:
                         break
-            except (CairnError, ValueError, KeyError, ET.ParseError):
+            except (CairnError, ValueError, KeyError, OSError, ET.ParseError):
                 report.issue = "source_failed_retryable"
             if not completed:
                 all_complete = False

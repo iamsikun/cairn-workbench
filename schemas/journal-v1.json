@@ -77,6 +77,13 @@
       "title": "Folder",
       "type": "string"
     },
+    "folder_aliases": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Folder Aliases",
+      "type": "array"
+    },
     "issns": {
       "items": {
         "type": "string"
@@ -89,6 +96,13 @@
       "default": "journal",
       "title": "Kind",
       "type": "string"
+    },
+    "publication_series": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Publication Series",
+      "type": "array"
     },
     "resolved": {
       "default": false,
