@@ -24,3 +24,13 @@ USER 65532:65532
 ENV RUFF_CACHE_DIR=/tmp/ruff MYPY_CACHE_DIR=/tmp/mypy
 ENTRYPOINT []
 CMD ["pytest", "-p", "no:cacheprovider", "-m", "not isolation"]
+
+# Acquisition is a public-only build step; the resulting bundle is tested offline.
+FROM development AS release
+USER root
+ARG CAIRN_REVISION
+ARG CAIRN_WORKER_IMAGE
+RUN python scripts/build_release.py --output /opt/release \
+    --revision "$CAIRN_REVISION" --worker-image "$CAIRN_WORKER_IMAGE"
+USER 65532:65532
+CMD ["python", "scripts/release_trial.py", "/opt/release"]

@@ -11,6 +11,7 @@ from cairn.proposals.models import Approval, Proposal
 from cairn.records.continuity import ContextPack, SessionReceipt
 from cairn.records.domains import Calculation, FinancialSnapshot, LifeDossier
 from cairn.records.models import Event, Extraction, Record
+from cairn.records.release import ReleaseManifest
 from cairn.storage.backup import BackupManifest
 
 
@@ -37,6 +38,7 @@ from cairn.storage.backup import BackupManifest
         Calculation,
         LifeDossier,
         BackupManifest,
+        ReleaseManifest,
     ],
 )
 def test_export_matches_model(model: type[Record]) -> None:

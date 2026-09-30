@@ -144,3 +144,9 @@ Cloud grants describe consent only. There is no cloud adapter, and an otherwise 
 cloud request is explicitly blocked without transmission. Release installation, version
 inspection/migration, and the gold-set report remain required independent work. The
 owner-selected manual continuity session is still pending.
+
+Release preparation now has a typed manifest, locked wheel acquisition, bundle inventory
+checks, and installed-runtime verification. Its 31 focused schema/release/CLI tests and
+strict typing pass. The offline installed-wheel trial is pending execution at this
+commit; it must pass before release packaging is recorded as verified. Private activation
+is still denied.

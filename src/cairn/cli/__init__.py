@@ -10,6 +10,7 @@ from cairn import __version__
 from cairn.cli.commands import register
 from cairn.cli.domains import register as register_domains
 from cairn.cli.policy import register as register_policy
+from cairn.cli.release import register as register_release
 from cairn.cli.research import register as register_research
 from cairn.errors import CairnError
 from cairn.storage.workspace import Workspace
@@ -19,6 +20,7 @@ register(app)
 register_research(app)
 register_domains(app)
 register_policy(app)
+register_release(app)
 
 
 @app.command()

@@ -1,0 +1,136 @@
+{
+  "$defs": {
+    "WheelArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "title": "Filename",
+          "type": "string"
+        },
+        "installed_files": {
+          "additionalProperties": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "minProperties": 1,
+          "title": "Installed Files",
+          "type": "object"
+        },
+        "name": {
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^[0-9][a-zA-Z0-9.+_-]*$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "filename",
+        "sha256",
+        "installed_files"
+      ],
+      "title": "WheelArtifact",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "adapters": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Adapters",
+      "type": "object"
+    },
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/WheelArtifact"
+      },
+      "minItems": 1,
+      "title": "Artifacts",
+      "type": "array"
+    },
+    "bootstrap_files": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Bootstrap Files",
+      "type": "object"
+    },
+    "code_revision": {
+      "pattern": "^[0-9a-f]{40,64}$",
+      "title": "Code Revision",
+      "type": "string"
+    },
+    "lock_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Lock Hash",
+      "type": "string"
+    },
+    "platform": {
+      "title": "Platform",
+      "type": "string"
+    },
+    "product": {
+      "const": "cairn-workbench",
+      "default": "cairn-workbench",
+      "title": "Product",
+      "type": "string"
+    },
+    "python_executable_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Python Executable Hash",
+      "type": "string"
+    },
+    "python_implementation": {
+      "title": "Python Implementation",
+      "type": "string"
+    },
+    "python_version": {
+      "title": "Python Version",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "source_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Hash",
+      "type": "string"
+    },
+    "worker_image": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Worker Image",
+      "type": "string"
+    }
+  },
+  "required": [
+    "code_revision",
+    "source_hash",
+    "lock_hash",
+    "python_version",
+    "python_implementation",
+    "python_executable_hash",
+    "platform",
+    "worker_image",
+    "artifacts",
+    "bootstrap_files",
+    "adapters"
+  ],
+  "title": "ReleaseManifest",
+  "type": "object"
+}
