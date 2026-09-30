@@ -18,9 +18,9 @@ Run these owner commands from the approved installed runtime, with no concurrent
 editor writes. Example paths are synthetic:
 
 ```sh
-/srv/cairn-runtime/bin/python -I -B -m cairn schema inspect --workspace /srv/cairn-private
-/srv/cairn-runtime/bin/python -I -B -m cairn schema preview --workspace /srv/cairn-private
-/srv/cairn-runtime/bin/python -I -B -m cairn schema apply --workspace /srv/cairn-private \
+/srv/cairn-runtime/bin/python -I -B -m cairn schema inspect --workspace /srv/cairn
+/srv/cairn-runtime/bin/python -I -B -m cairn schema preview --workspace /srv/cairn
+/srv/cairn-runtime/bin/python -I -B -m cairn schema apply --workspace /srv/cairn \
   --plan-sha256 REVIEWED_PREVIEW_DIGEST --backup /srv/backups/before-schema-v2.zip \
   --statement "I reviewed this format change and the pending-approval invalidation."
 ```
@@ -43,7 +43,7 @@ committed migration; status lives under `receipts/maintenance/`.
 After an interruption:
 
 ```sh
-/srv/cairn-runtime/bin/python -I -B -m cairn schema recover --workspace /srv/cairn-private
+/srv/cairn-runtime/bin/python -I -B -m cairn schema recover --workspace /srv/cairn
 ```
 
 Normal readers refuse a prepared schema migration. Recovery checks the supported

@@ -60,7 +60,7 @@ digest, an owner statement, and the review acknowledgements from the
 
 ```sh
 /srv/cairn-runtime/bin/python -I -B -m cairn restore /srv/backups/cairn.zip \
-  --destination /srv/cairn-restored --code-root /srv/cairn-code \
+  --destination /srv/cairn-restored --code-root /srv/cairn-workbench \
   --expected-sha256 ARCHIVE_DIGEST \
   --release /srv/cairn-release/release.json --release-sha256 REVIEWED_DIGEST \
   --statement "I reviewed this release and restore of this exact archive." \

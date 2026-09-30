@@ -6,6 +6,9 @@ deployment and owner release acceptance remain separate.
 
 This plan translates `KNOWLEDGE_WORKBENCH_BUILD_BRIEF.md` into an implementation sequence. The brief remains the requirements baseline. Product name, Python import package, and CLI name will be `Cairn`, `cairn`, and `cairn`. Public examples must use synthetic identities, records, and paths.
 
+The software repository is named `cairn-workbench`; the separate private knowledge-base
+directory is named `cairn`. These names do not change the Python package or CLI.
+
 ## 1. Intended result and scope
 
 Cairn will be a local knowledge compiler with a review queue. It will preserve evidence and human thinking, propose bounded improvements to a Markdown wiki, and supply scoped, source-aware context to existing agent clients.
@@ -25,7 +28,7 @@ The first useful demonstration is:
 
 ## 2. Physical separation and installation
 
-Keep two independent roots: a public software checkout and an owner-controlled private workspace. The user's intended deployment places the private workspace alongside the parent research directory, outside the checkout. Store the actual absolute paths only in machine-local configuration. Documentation examples can use `/srv/cairn-code` and `/srv/cairn-private`.
+Keep two independent roots: a public software checkout and an owner-controlled private workspace. The user's intended deployment places the private `cairn` workspace alongside the parent research directory, outside the checkout. Store the actual absolute paths only in machine-local configuration. Documentation examples use `/srv/cairn-workbench` and `/srv/cairn`.
 
 Initialization must resolve both roots and reject equal roots, ancestor/descendant overlap, traversal, and symlink escape. Check configured auxiliary roots too: blobs, temporary files, logs, history, and caches must not bridge the boundary. Reject a private root inside any development checkout even if ignored by Git. Apply containment checks again at file access, rather than trusting initialization alone. Reject proposal-created symlinks, hard links, special files, absolute destinations, and ambiguous case/Unicode path collisions; use descriptor-relative, no-follow operations where supported.
 
@@ -64,7 +67,7 @@ V1 requires owner approval for every canonical synthesis change. Sensitive inter
 Use Python with a `src` layout, `uv`, Typer for the CLI, Pydantic for typed validation and generated JSON Schema, and a safe YAML parser for front matter. Prefer `sqlite3`, `hashlib`, `decimal`, `pathlib`, and other standard-library facilities elsewhere. Pin exact dependency versions during implementation. Do not introduce an ORM, plugin discovery from source documents, or an agent framework.
 
 ```text
-cairn/                         # public software checkout
+cairn-workbench/               # public software checkout
   pyproject.toml
   uv.lock
   src/cairn/
@@ -87,7 +90,7 @@ cairn/                         # public software checkout
 ```
 
 ```text
-cairn-private/                 # synthetic example; configured separately
+cairn/                        # private knowledge base; configured separately
   vault/
     inbox/
     sources/                   # source manifests; trusted append/versioning

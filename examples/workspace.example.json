@@ -3,7 +3,7 @@
   "record_schema_version": 1,
   "id": "workspace_synthetic_example",
   "synthetic": true,
-  "code_roots": ["/srv/cairn-code"],
+  "code_roots": ["/srv/cairn-workbench"],
   "worker_image": null,
   "runtime_release_hash": null,
   "runtime_approval_id": null

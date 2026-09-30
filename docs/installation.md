@@ -100,7 +100,7 @@ independently reviewed release; each acknowledgement records a completed review.
 
 ```sh
 /srv/cairn-runtime/bin/python -I -B -m cairn init \
-  --workspace /srv/cairn-private --code-root /srv/cairn-code \
+  --workspace /srv/cairn --code-root /srv/cairn-workbench \
   --release /srv/cairn-release/release.json --release-sha256 REVIEWED_DIGEST \
   --statement "I reviewed this release, continuity trial, and recovery procedure." \
   --acknowledge release_review --acknowledge manual_continuity --acknowledge backup_restore

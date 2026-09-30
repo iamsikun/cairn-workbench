@@ -305,3 +305,8 @@ bindings to the passing 129-check gold report. A Git comparison against the inst
 trial's `6bcad55` revision confirmed no changes to runtime, tests, schemas, build scripts,
 dependencies, container configuration, CI, or templates. This documentation/evidence-only
 increment did not rerun or change the previously passing 175-test release validation.
+
+Repository naming update: the software repository is `cairn-workbench`; the separately
+configured private knowledge base is `cairn`. Documentation and the synthetic example
+configuration use those names. Runtime code, Python package, CLI, and schemas are
+unchanged; this documentation/configuration-only change passes `git diff --check`.

@@ -1,8 +1,11 @@
-# Cairn
+# Cairn Workbench
 
 Cairn compiles selected evidence into a reviewable Markdown wiki and scoped project
 context. Sources and human notes are preserved. Models propose changes; the owner
 approves and applies them.
+
+The software repository is named `cairn-workbench`. The separately configured private
+knowledge-base directory is named `cairn`. The Python package and CLI remain `cairn`.
 
 M0–M3 reference acceptance is complete. See [the build plan](CAIRN_BUILD_PLAN.md) and
 [acceptance tracking](docs/acceptance.md). Do not use this checkout with private data.
