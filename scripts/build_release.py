@@ -88,7 +88,12 @@ def build(output: Path, revision: str, worker_image: str) -> None:
         if len(raw) != selected["size"] or f"sha256:{digest(raw)}" != selected["hash"]:
             raise ValueError("locked artifact hash/size mismatch")
         (wheels / filename).write_bytes(raw)
-    subprocess.run(["uv", "build", "--wheel", "--out-dir", str(wheels)], check=True)
+    with tempfile.TemporaryDirectory(prefix="cairn-wheel-build-") as temporary:
+        subprocess.run(["uv", "build", "--wheel", "--out-dir", temporary], check=True)
+        built = list(Path(temporary).glob("*.whl"))
+        if len(built) != 1:
+            raise ValueError("project build did not produce exactly one wheel")
+        shutil.copyfile(built[0], wheels / built[0].name)
     artifacts = [describe_wheel(file) for file in sorted(wheels.iterdir())]
     if {item.name for item in artifacts} != required:
         raise ValueError("release artifacts differ from production dependency closure")

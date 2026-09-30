@@ -83,8 +83,14 @@ def verify_runtime(manifest: ReleaseManifest) -> dict[str, str | int | bool]:
         if distribution.version != artifact.version:
             raise Denied("installed dependency version mismatch")
         direct = distribution.read_text("direct_url.json")
-        if direct and read_json(direct.encode()).get("dir_info", {}).get("editable"):
-            raise Denied("editable installations cannot process private data")
+        if direct:
+            metadata_url = read_json(direct.encode())
+            if not isinstance(metadata_url, dict) or not isinstance(
+                metadata_url.get("dir_info", {}), dict
+            ):
+                raise Denied("invalid installation origin metadata")
+            if metadata_url.get("dir_info", {}).get("editable"):
+                raise Denied("editable installations cannot process private data")
         metadata = [
             path for path in artifact.installed_files if path.endswith(".dist-info/METADATA")
         ]
