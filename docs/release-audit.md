@@ -27,7 +27,8 @@ Before release review, finish the following public, synthetic-only work:
    runbook. Activation/restore gates are now implemented: explicit review, installed-file
    checks, a fresh worker probe, and durable release/profile binding. Doctor distinguishes
    unchecked, blocked, and passed probes. Lifecycle tests use synthetic verification
-   stand-ins; the updated offline negative-activation and exact-image trial remains to run.
+   stand-ins. The updated offline negative-activation and exact-image trial passed at
+   revision `330ce6b` (15 distributions, 874 file hashes, 13 real worker probe checks).
    The bundle is not a macOS installation; target compatibility remains explicit. Actual
    owner activation is outside this goal and still requires the pending manual review.
 5. Add versioned schema inspection/migration support with backups and rejection of unknown

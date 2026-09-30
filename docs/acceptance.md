@@ -175,7 +175,11 @@ failure; and doctor reporting unchecked or blocked workers. These lifecycle test
 synthetic data with explicitly stubbed installation/worker verification. They do not prove
 successful activation on a real owner machine. Five exported-schema checks were added.
 
-The updated offline release trial must additionally show that the installed CLI rejects
-activation when its live engine is unavailable, and the release script now probes its
-exact manifest-bound image. That clean-revision trial is pending at this commit. Actual
-owner activation, the manual continuity check, and release review remain separate.
+The clean-revision offline trial at `330ce6b6be116e8e8eaa9e79fbb99f3a5737da2d` passed:
+15 distributions and 874 files verified; installed CLI workflow through restore passed;
+tampered installation, unreviewed `.pth`, and editable metadata were rejected. The
+installed CLI blocked activation with no live engine and created no workspace. Separately,
+the exact manifest-bound worker image passed all 13 real-engine probe checks with 64 MiB
+scratch and an unmounted synthetic canary. Reports are retained in
+`docs/evidence/activation-release-trial.json` and `activation-worker-profile.json`.
+Actual owner activation, the manual continuity check, and release review remain separate.

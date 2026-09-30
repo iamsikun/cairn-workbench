@@ -75,6 +75,14 @@ manifest digest is `794b659af81e0e10907909d5cbff82f76704cb86890209b2993a7d1bbf6a
 The [committed synthetic report](evidence/release-trial.json) records the workflow and
 rejection checks. The local bundle is under `dist/release-58f03a6574b56ec9221659d05786cf25d7baa867/`.
 
+The later activation-gate trial at `330ce6b6be116e8e8eaa9e79fbb99f3a5737da2d` also passed,
+with 15 distributions and 874 files. Its manifest digest is
+`e210c5727b9dc9ef9a5fb4a2da32017ecd6922d706c5fd65a5b68ac2c3dc5127`.
+The [installed trial](evidence/activation-release-trial.json) records rejection of
+activation without a live engine; the [worker report](evidence/activation-worker-profile.json)
+records all 13 checks passing for the exact image named in that manifest. Neither report
+asserts activation of the owner's real workspace or completion of manual continuity review.
+
 ## Owner activation after release review
 
 Complete the manual M2 continuity evaluation, the remaining release audit, and an owner
