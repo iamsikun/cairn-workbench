@@ -61,6 +61,12 @@ unreviewed `.pth`, and marks installation metadata editable, checking rejection 
 Only synthetic files are involved. Runtime verification reports `private_ready: false`:
 live worker-profile verification and explicit release activation are separate gates.
 
+The reference trial for source revision `58f03a6574b56ec9221659d05786cf25d7baa867` passed:
+15 distributions and 871 files verified on `linux-aarch64`, CPython 3.13.11. The release
+manifest digest is `794b659af81e0e10907909d5cbff82f76704cb86890209b2993a7d1bbf6a7a4c`.
+The [committed synthetic report](evidence/release-trial.json) records the workflow and
+rejection checks. The local bundle is under `dist/release-58f03a6574b56ec9221659d05786cf25d7baa867/`.
+
 ## Before private activation
 
 Complete the manual M2 continuity evaluation, the remaining release audit, and an owner

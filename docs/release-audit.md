@@ -1,7 +1,7 @@
 # Remaining M3 release audit
 
 M0/M1 reference gates pass. M2 mechanics pass; its second-agent semantic trial is manual
-and pending by owner choice. M3 now passes 127 cumulative tests plus installed worker,
+and pending by owner choice. M3 now passes 131 cumulative tests plus installed worker,
 isolation, and real-engine lifecycle trials. These results do not close the full goal.
 
 Before release review, finish the following public, synthetic-only work:
@@ -19,11 +19,14 @@ Before release review, finish the following public, synthetic-only work:
    endpoints and implicit volumes are rejected, and owned-container cleanup is required.
    Real-engine create/start/removal and synthetic launcher failure tests pass. Full private
    installation verification remains separate; no daemon socket was mounted in a worker.
-4. Deliver an offline installed-wheel trial and release manifest containing the reviewed
-   code commit, wheel/dependency hashes, lock hash, versions, and pinned worker images.
-   Verify installed imports rather than editable-checkout imports. Supply an explicit
-   reviewed-installation activation/restore procedure and make doctor report actual gates.
-   Exercise it with synthetic files only; do not create the real private workspace.
+4. Offline packaging and installation verification now pass for the reference
+   `linux-aarch64`/CPython 3.13.11 target: 15 pinned wheels and 871 installed file hashes;
+   installed CLI capture through restore; modified packages, extra `.pth` files, and
+   editable metadata rejected. The manifest binds revision `58f03a6`, lock/byte hashes,
+   interpreter and worker image. See `docs/evidence/release-trial.json` and the installation
+   runbook. Still supply the reviewed-installation activation/restore gate and make doctor
+   report actual gates. The bundle is not a macOS installation; target compatibility must
+   remain explicit. Exercise remaining work with synthetic files only.
 5. Add versioned schema inspection/migration support with backups and rejection of unknown
    versions. Existing durable version-one additions must remain readable; no silent
    destructive rewriting, relabeling, or approval reuse after a migration.

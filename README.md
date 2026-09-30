@@ -24,11 +24,15 @@ verified execution boundary. No network or cloud processing is enabled by defaul
 Run `bash scripts/check.sh` to build the pinned development and worker images and execute
 the tests, lint, strict typing, isolation probes, and installed packet/extraction trials.
 The checks use synthetic data and do not mount a private workspace or host home.
+For a clean committed checkout, `bash scripts/release_check.sh` prepares a pinned
+wheelhouse and runs a separate offline installed-CLI trial. The
+[installation runbook](docs/installation.md) describes its verified target and the
+remaining private-activation gate.
 
 The CLI provides `init`, `capture`, `ingest`, `proposal show`, `validate`, `approve`,
 `apply`, `recover`, `search`, `query`, `edit`, `lint`, `rebuild-index`, `backup`, `restore`,
 `client run`, `project create`, `bibliography import`, `receipt import`, `decision adopt`,
-`repository inspect`, `context`, `policy`, and `doctor`. Pass `--workspace` (or `CAIRN_WORKSPACE`) and use `--json`
+`repository inspect`, `context`, `policy`, `release`, and `doctor`. Pass `--workspace` (or `CAIRN_WORKSPACE`) and use `--json`
 for structured command output. `init` currently requires `--synthetic`; private activation
 will require a reviewed installation rather than an editable checkout.
 

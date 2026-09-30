@@ -146,7 +146,18 @@ inspection/migration, and the gold-set report remain required independent work. 
 owner-selected manual continuity session is still pending.
 
 Release preparation now has a typed manifest, locked wheel acquisition, bundle inventory
-checks, and installed-runtime verification. Its 31 focused schema/release/CLI tests and
-strict typing pass. The offline installed-wheel trial is pending execution at this
-commit; it must pass before release packaging is recorded as verified. Private activation
-is still denied.
+checks, and installed-runtime verification. The initial 31 focused schema/release/CLI
+tests passed. The subsequent offline trial at revision
+`58f03a6574b56ec9221659d05786cf25d7baa867` passed with **15 distributions and 871 verified
+files**, imported from the new environment's site-packages. Synthetic capture, approval,
+apply, query, backup, and restore passed through the installed CLI with network disabled.
+The trial rejected modified package bytes, an unreviewed `.pth`, and editable metadata.
+See `docs/evidence/release-trial.json` and `docs/installation.md` for the exact manifest
+digest and target. This is a `linux-aarch64` reference bundle, not a macOS installation.
+
+The final `bash scripts/check.sh` run after release-code changes passed **131 tests**,
+Ruff, strict mypy (49 files), both sets of 13 isolation probes, six installed-worker
+trials, the manual-fixture generator, and real-engine lifecycle checks. CI now also runs
+the separate offline installation trial. Private activation/restore gates, version
+inspection/migration, the gold-set evaluation, and the final requirement matrix remain.
+The manual second-session continuity test remains pending by owner choice.

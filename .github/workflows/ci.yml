@@ -12,3 +12,5 @@ jobs:
           persist-credentials: false
       - name: Check public code in isolated containers
         run: bash scripts/check.sh
+      - name: Verify offline installed release with synthetic data
+        run: bash scripts/release_check.sh
