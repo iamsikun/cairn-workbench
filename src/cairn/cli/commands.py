@@ -77,7 +77,28 @@ def register(app: typer.Typer) -> None:
         scope: Annotated[str, typer.Option()],
         locator: str | None = None,
         json_output: JsonOption = False,
+        format: str | None = None,
+        output: Path | None = None,
+        save_view: bool = False,
+        feedback: bool = False,
+        inline_synthetic: bool = False,
     ) -> None:
+        from cairn.presentation.cli_support import html_output
+
+        if html_output(
+            Workspace(workspace),
+            "evidence",
+            format=format,
+            output=output,
+            scope=scope,
+            object_id=source_id,
+            question=locator or "",
+            save=save_view,
+            feedback=feedback,
+            inline_synthetic=inline_synthetic,
+            conflicting=json_output,
+        ):
+            return
         from cairn.errors import CairnError
         from cairn.ingest.service import load_extraction
 
@@ -277,8 +298,28 @@ def register(app: typer.Typer) -> None:
         workspace: WorkspaceOption,
         json_output: JsonOption = False,
         markdown: bool = False,
+        format: str | None = None,
+        output: Path | None = None,
+        save_view: bool = False,
+        feedback: bool = False,
+        inline_synthetic: bool = False,
     ) -> None:
         """Show current diffs, source provenance and required owner review; optionally Markdown."""
+        from cairn.presentation.cli_support import html_output
+
+        if html_output(
+            Workspace(workspace),
+            "proposal",
+            format=format,
+            output=output,
+            scope="owner",
+            object_id=proposal_id,
+            save=save_view,
+            feedback=feedback,
+            inline_synthetic=inline_synthetic,
+            conflicting=json_output or markdown,
+        ):
+            return
         from cairn.proposals.review import render_review
 
         if json_output and markdown:
@@ -367,7 +408,29 @@ def register(app: typer.Typer) -> None:
         workspace: WorkspaceOption,
         scope: Annotated[str, typer.Option()],
         json_output: JsonOption = False,
+        question_labels: Path | None = None,
+        format: str | None = None,
+        output: Path | None = None,
+        save_view: bool = False,
+        feedback: bool = False,
+        inline_synthetic: bool = False,
     ) -> None:
+        from cairn.presentation.cli_support import html_output
+
+        if html_output(
+            Workspace(workspace),
+            "query",
+            format=format,
+            output=output,
+            scope=scope,
+            question=question,
+            save=save_view,
+            feedback=feedback,
+            inline_synthetic=inline_synthetic,
+            conflicting=json_output,
+            question_labels=question_labels,
+        ):
+            return
         result = run_query(Workspace(workspace), question, scope_name=scope)
         text = result["answer"] or "Insufficient evidence in this scope."
         emit(

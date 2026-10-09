@@ -65,11 +65,31 @@ def register(app: typer.Typer) -> None:
     @feeds.command("export")
     @guarded
     def feed_export(
-        output: Path, workspace: WorkspaceOption, scope: str = "research", format: str = "atom"
+        output: Path,
+        workspace: WorkspaceOption,
+        scope: str = "research",
+        format: str = "atom",
+        save_view: bool = False,
+        feedback: bool = False,
+        inline_synthetic: bool = False,
     ) -> None:
         from cairn.errors import Blocked
         from cairn.library.feed import history, render
 
+        if format == "html":
+            from cairn.presentation.cli_support import html_output
+
+            html_output(
+                Workspace(workspace),
+                "feed",
+                format=format,
+                output=output,
+                scope=scope,
+                save=save_view,
+                feedback=feedback,
+                inline_synthetic=inline_synthetic,
+            )
+            return
         values = history(Workspace(workspace), scope, 1)
         if not values:
             raise Blocked("no_saved_digest")
@@ -292,8 +312,31 @@ def register(app: typer.Typer) -> None:
 
     @library.command("show")
     @guarded
-    def show(paper_id: str, workspace: WorkspaceOption, scope: str = "research") -> None:
+    def show(
+        paper_id: str,
+        workspace: WorkspaceOption,
+        scope: str = "research",
+        format: str | None = None,
+        output: Path | None = None,
+        save_view: bool = False,
+        feedback: bool = False,
+        inline_synthetic: bool = False,
+    ) -> None:
+        from cairn.presentation.cli_support import html_output
+
         ws = Workspace(workspace)
+        if html_output(
+            ws,
+            "paper",
+            format=format,
+            output=output,
+            scope=scope,
+            object_id=paper_id,
+            save=save_view,
+            feedback=feedback,
+            inline_synthetic=inline_synthetic,
+        ):
+            return
         with ws.lock():
             record, value = catalog.get_paper(ws, paper_id, scope)
             emit({"record": record, "paper": value}, True)
@@ -332,9 +375,26 @@ def register(app: typer.Typer) -> None:
         output: Annotated[Path, typer.Option()],
         scope: str = "research",
         format: str = "html",
+        save_view: bool = False,
+        feedback: bool = False,
+        inline_synthetic: bool = False,
     ) -> None:
         from cairn.records.models import canonical
 
+        if format == "html":
+            from cairn.presentation.cli_support import html_output
+
+            html_output(
+                Workspace(workspace),
+                "catalog",
+                format=format,
+                output=output,
+                scope=scope,
+                save=save_view,
+                feedback=feedback,
+                inline_synthetic=inline_synthetic,
+            )
+            return
         rows = papers(Workspace(workspace), scope=scope)
         if format not in ("html", "json"):
             raise ValueError("unsupported format")

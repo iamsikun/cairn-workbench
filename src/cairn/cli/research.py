@@ -129,8 +129,32 @@ def register(app: typer.Typer) -> None:
         repository_root: Path | None = None,
         save: bool = False,
         json_output: JsonOption = False,
+        question_labels: Path | None = None,
+        format: str | None = None,
+        output: Path | None = None,
+        feedback: bool = False,
+        inline_synthetic: bool = False,
     ) -> None:
         ws = Workspace(workspace)
+        from cairn.presentation.cli_support import html_output
+
+        if html_output(
+            ws,
+            "project",
+            format=format,
+            output=output,
+            scope=scope,
+            object_id=project_id,
+            question=question,
+            budget=budget,
+            repository_root=repository_root,
+            save=save,
+            feedback=feedback,
+            inline_synthetic=inline_synthetic,
+            conflicting=json_output,
+            question_labels=question_labels,
+        ):
+            return
         result = context_pack(
             ws,
             project_id,

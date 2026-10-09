@@ -1,4 +1,4 @@
-"""Read-only owner reports with escaped text and links derived from safe local paths."""
+"""Shared read-only review model and terminal/Markdown presentation."""
 
 from __future__ import annotations
 
@@ -9,7 +9,8 @@ from urllib.parse import quote
 
 from cairn.errors import CairnError, Denied
 from cairn.ingest.service import load_extraction
-from cairn.proposals.models import Proposal
+from cairn.presentation.models import ReviewChange, ReviewReport
+from cairn.proposals.models import Approval, Proposal
 from cairn.proposals.service import (
     all_refs,
     check_reference,
@@ -17,17 +18,15 @@ from cairn.proposals.service import (
     target_path,
     validate_unlocked,
 )
-from cairn.records.models import EvidenceRef, canonical, digest
+from cairn.records.models import Event, EvidenceRef, canonical, digest
 from cairn.storage.markdown import decode
 from cairn.storage.workspace import Workspace
 
 
 def _controls(value: str) -> str:
     return "".join(
-        f"\\u{ord(character):04x}"
-        if unicodedata.category(character) in ("Cc", "Cf") and character not in "\n\t"
-        else character
-        for character in value
+        f"\\u{ord(c):04x}" if unicodedata.category(c) in ("Cc", "Cf") and c not in "\n\t" else c
+        for c in value
     )
 
 
@@ -40,20 +39,54 @@ def _block(value: str, language: str, markdown: bool) -> str:
     value = _controls(value)
     if not markdown:
         return value
-    fence = "`" * max(3, 1 + max((len(run) for run in re.findall(r"`+", value)), default=0))
-    value = value.removesuffix("\n")
-    return f"{fence}{language}\n{value}\n{fence}"
+    fence = "`" * max(3, 1 + max((len(x) for x in re.findall(r"`+", value)), default=0))
+    return f"{fence}{language}\n{value.removesuffix(chr(10))}\n{fence}"
 
 
-def render_review(ws: Workspace, proposal: Proposal, *, markdown: bool = False) -> str:
-    """Caller holds the owner lock. No approvals, events, or caches are written."""
+def review_stage(ws: Workspace, proposal: Proposal) -> str:
+    from cairn.transactions.apply import ApplyReceipt
+
+    key = digest(canonical(proposal))
+    applied = f"receipts/applied/{proposal.id}.json"
+    approved = f"approvals/{proposal.id}.json"
+    if ws.fs.exists(applied):
+        receipt = ApplyReceipt.model_validate_json(ws.fs.read(applied))
+        if receipt.proposal_hash == key:
+            return "applied"
+    if ws.fs.exists(approved):
+        approval = Approval.model_validate_json(ws.fs.read(approved))
+        if approval.proposal_hash == key and approval.policy_hash == ws.policy_hash:
+            return "owner approved"
+    for path in ws.fs.files("receipts/events"):
+        event = Event.model_validate_json(ws.fs.read(path))
+        if (
+            event.attempt_id == proposal.id
+            and event.stage == "validated"
+            and event.hashes.get("proposal") == key
+        ):
+            return "validated previously; current validity shown separately"
+    return "proposed"
+
+
+def review_snapshot(ws: Workspace, proposal: Proposal) -> str:
+    envelope = load_job(ws, proposal.job_id)
+    paths = set(envelope.input_hashes) | set(envelope.protected_hashes)
+    paths.update((f"approvals/{proposal.id}.json", f"receipts/applied/{proposal.id}.json"))
+    for path in ws.fs.files("receipts/events"):
+        if Event.model_validate_json(ws.fs.read(path)).attempt_id == proposal.id:
+            paths.add(path)
+    return digest(
+        canonical({p: digest(ws.fs.read(p)) if ws.fs.exists(p) else None for p in sorted(paths)})
+    )
+
+
+def review_model(ws: Workspace, proposal: Proposal) -> ReviewReport:
+    """Caller holds the owner lock. No approval, validation event, or durable write."""
     job = load_job(ws, proposal.job_id).job
     scope = ws.policy.scope(job.scope_name)
-    # A previously sealed job does not override later scope revocation. Check current
-    # input membership before exposing either proposed text or imported titles.
-    for record_id in [job.source.id, *(page.record.id for page in job.related)]:
+    for record_id in [job.source.id, *(p.record.id for p in job.related)]:
         ws.record(record_id, scope)
-    records = [decode(change.content.encode())[0] for change in proposal.changes]
+    records = [decode(c.content.encode())[0] for c in proposal.changes]
     refs: dict[bytes, EvidenceRef] = {}
     for record in records:
         scope.require(record)
@@ -67,20 +100,7 @@ def render_review(ws: Workspace, proposal: Proposal, *, markdown: bool = False) 
         raise
     except CairnError as exc:
         validation = f"Not valid for apply: {exc.code}: {exc}"
-    heading = "# " if markdown else ""
-    lines = [
-        f"{heading}Proposal {_text(proposal.id, markdown)}",
-        "",
-        _text(validation, markdown),
-        f"Proposal SHA256: {digest(canonical(proposal))}",
-        f"Provider: {_text(proposal.provider, markdown)}; route: {proposal.route}; "
-        f"scope: {_text(job.scope_name, markdown)}",
-        f"Pages affected: {len(proposal.changes)}",
-        "Required acknowledgements: " + _text(", ".join(sorted(proposal.review_flags)), markdown),
-        "Quote matches establish presence, not entailment. Reviewed does not mean true.",
-        "Diffs below compare the proposed bytes with the current canonical files.",
-        "",
-    ]
+    changes = []
     for change, record in zip(proposal.changes, records, strict=True):
         path = target_path(record)
         before = ws.fs.read(path).decode() if ws.fs.exists(path) else ""
@@ -93,52 +113,88 @@ def render_review(ws: Workspace, proposal: Proposal, *, markdown: bool = False) 
                 tofile=f"proposed/{path}",
             )
         )
+        changes.append(
+            ReviewChange(
+                id=record.id,
+                title=record.title,
+                target=path,
+                base_hash=change.base_hash,
+                current_hash=digest(before.encode()) if before else None,
+                proposed_hash=digest(change.content.encode()),
+                rationale=change.rationale,
+                period=record.period,
+                diff=actual_diff,
+                assertions=record.assertions,
+                conflicts=[
+                    f"Conflict: {a.id}; {a.verification}; disputes={','.join(a.disputes)}; "
+                    f"supersedes={','.join(a.supersedes)}; rationale={a.rationale or 'unknown'}"
+                    for a in record.assertions
+                    if a.disputes or a.supersedes or a.verification in ("disputed", "superseded")
+                ],
+            )
+        )
+    return ReviewReport(
+        id=proposal.id,
+        proposal_hash=digest(canonical(proposal)),
+        provider=proposal.provider,
+        route=proposal.route,
+        scope=job.scope_name,
+        validation=validation,
+        stage=review_stage(ws, proposal),
+        review_flags=sorted(proposal.review_flags),
+        changes=changes,
+        references=list(refs.values()),
+    )
+
+
+def render_review(ws: Workspace, proposal: Proposal, *, markdown: bool = False) -> str:
+    report = review_model(ws, proposal)
+    lines = [
+        ("# " if markdown else "") + f"Proposal {report.id}",
+        "",
+        _text(report.validation, markdown),
+        f"Proposal SHA256: {report.proposal_hash}",
+        f"Stage: {report.stage}",
+        f"Provider: {_text(report.provider, markdown)}; "
+        f"route: {report.route}; scope: {report.scope}",
+        f"Pages affected: {len(report.changes)}",
+        "Required acknowledgements: " + _text(", ".join(report.review_flags), markdown),
+        "Quote matches establish presence, not entailment. Reviewed does not mean true.",
+        "Diffs below compare the proposed bytes with the current canonical files.",
+        "",
+    ]
+    for c in report.changes:
+        period = (
+            "; ".join(
+                f"{key.replace('_', ' ')}: {value}"
+                for key, value in c.period.model_dump(mode="json", exclude_none=True).items()
+            )
+            if c.period
+            else "unknown"
+        )
         lines.extend(
             [
-                ("## " if markdown else "") + _text(record.title, markdown),
+                ("## " if markdown else "") + _text(c.title, markdown),
                 "",
-                f"Record: {_text(record.id, markdown)}; target: {_text(path, markdown)}",
-                f"Expected base: {change.base_hash or 'new file'}; "
-                f"current: {digest(before.encode()) if before else 'absent or empty'}",
-                f"Proposed SHA256: {digest(change.content.encode())}",
-                "Rationale: " + _text(change.rationale, markdown),
-                "Applicability: "
-                + _text(
-                    "; ".join(
-                        f"{key.replace('_', ' ')}: {value}"
-                        for key, value in record.period.model_dump(
-                            mode="json", exclude_none=True
-                        ).items()
-                    )
-                    if record.period
-                    else "unknown",
-                    markdown,
-                ),
+                f"Record: {c.id}; target: {c.target}",
+                f"Expected base: {c.base_hash or 'new file'}; "
+                f"current: {c.current_hash or 'absent or empty'}",
+                f"Proposed SHA256: {c.proposed_hash}",
+                "Rationale: " + _text(c.rationale, markdown),
+                "Applicability: " + _text(period, markdown),
+                *(_text(x, markdown) for x in c.conflicts),
+                "",
+                _block(c.diff, "diff", markdown),
+                "",
             ]
         )
-        for assertion in record.assertions:
-            if (
-                assertion.disputes
-                or assertion.supersedes
-                or assertion.verification in ("disputed", "superseded")
-            ):
-                lines.append(
-                    _text(
-                        f"Conflict: {assertion.id}; {assertion.verification}; "
-                        f"disputes={','.join(assertion.disputes)}; "
-                        f"supersedes={','.join(assertion.supersedes)}; "
-                        f"rationale={assertion.rationale or 'unknown'}",
-                        markdown,
-                    )
-                )
-        lines.extend(["", _block(actual_diff, "diff", markdown), ""])
     lines.extend([("## " if markdown else "") + "Evidence", ""])
-    for ref in refs.values():
-        source_path, source, _ = ws.record(ref.id, scope)
+    for ref in report.references:
+        source_path, source, _ = ws.record(ref.id, ws.policy.scope(report.scope))
         assert source.source
         extraction, evidence_hash = load_extraction(ws, source)
         try:
-            check_reference(ws, ref, job.scope_name)
+            check_reference(ws, ref, report.scope)
             support = "Hash, locator, and any quote match."
         except CairnError as exc:
             support = f"Unsupported citation: {exc}"
@@ -161,7 +217,6 @@ def render_review(ws: Workspace, proposal: Proposal, *, markdown: bool = False) 
             ("Original bytes", source.source.blob),
             (f"Evidence at {ref.locator}", f"evidence/{evidence_hash}.json"),
         ):
-            # RootFS validates paths, including links/hardlinks, before making them clickable.
             ws.fs.read(path)
             link = quote(str(ws.root / path), safe="/")
             lines.append(f"[{_text(label, True)}](<{link}>)" if markdown else f"{label}: {link}")

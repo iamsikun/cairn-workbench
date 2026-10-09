@@ -407,3 +407,19 @@ Skipped upstream checks: reused foreign-owner PID detection (PID 1 is signalable
 the container UID) and the separate marketing-site build test (site/dist not built).
 Neither is a Cairn isolation or browser gate. Live agent-product compatibility, private
 workspace deployment, cloud narration and GPU inference are not established here.
+
+### Knowledge-view and review milestone
+
+The seven typed views and shared terminal/Markdown/HTML proposal review model passed
+their targeted synthetic tests. Fresh diffs, exact proposal hashes, assertion kinds,
+verification, owner adoption and personal reading are displayed separately. Added
+regressions cover denied-scope leakage in serialized bundles and HTML, markup injection,
+render failure, stale records/library status/approval state, revoked scope, interrupted
+replacement and retries leaving one deliverable. Retrieval of a historical saved view
+still rechecks authorization. Viewing emits no approval or validation event.
+
+The full development/container check at this milestone passed **255 tests**, Ruff,
+strict mypy, schema parity, worker canary/network/credential probes, hostile subprocess
+containment, real worker lifecycle cleanup, and a no-mount HTML JSON roundtrip. A final
+release trial follows the complete packet/feedback milestone; this result alone is
+not private deployment approval.

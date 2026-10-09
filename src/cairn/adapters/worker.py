@@ -17,6 +17,24 @@ def main() -> None:
         if len(raw) > 48 * 1024 * 1024:
             raise ValueError("job too large")
         document = json.loads(raw)
+        if document.get("operation") == "render_view":
+            from cairn.presentation.models import RenderJob
+            from cairn.presentation.render import run_renderer
+            from cairn.presentation.service import renderer_identity
+            from cairn.records.models import digest
+
+            render_job = RenderJob.model_validate(document)
+            html = run_renderer(render_job.document)
+            sys.stdout.buffer.write(
+                canonical(
+                    {
+                        "html": base64.b64encode(html).decode(),
+                        "document_hash": digest(canonical(render_job.document)),
+                        "renderer": renderer_identity(),
+                    }
+                )
+            )
+            return
         if document.get("operation") == "render_pages":
             from cairn.library.reader_worker import page_image
 
