@@ -456,3 +456,62 @@ The first synthetic trial preparation failed because its consent text differed f
 its owner statement. The fixture was corrected to identical explicit text and rerun;
 the authorization check was retained. An earlier writer interruption test and build
 path comparison are recorded above rather than counted as passing attempts.
+
+### Final release evidence
+
+The complete source implementation is commit
+`5428abeade70a48ae3e0a619ed6d246bedeb816f`. The final acceptance commit changes only
+this record and the documented validation entry point; it does not claim a different
+runtime was exercised.
+
+**Executed and passed:**
+
+- `bash scripts/check.sh`: **255 passed**, zero skipped/failed; Ruff passed; strict
+  mypy passed for 89 source files; generated-schema parity passed. Actual dev/worker
+  isolation probes, hostile subprocess containment, lifecycle removal and renderer
+  JSON roundtrip all passed. Goldset control-flow checks passed 129/129; fake-provider
+  outputs remain control-flow evidence rather than semantic-quality evidence.
+- `bash scripts/check_html.sh`: complete renderer suite **786 passed, zero failed,
+  two upstream skips** out of 788; required Chromium and isolation gates passed.
+  Both generic and Cairn packaged CLIs passed all six Node/install-path combinations.
+  Application rebuilds matched the checked-in bytes. Two independently generated
+  portable ZIPs matched byte for byte. The actual exported synthetic Quill packet
+  also rendered through the packaged CLI after its request/document checksum checks.
+- Chromium **154.0.8037.92**, Linux ARM64: desktop/narrow light/dark screenshots were
+  reviewed; controls, JavaScript-disabled content, print and zero unintended requests
+  passed. The accepted synthetic explanation was additionally rendered and inspected.
+- Skill frontmatter/reference review and the installed skill-creator validator passed.
+  Existing generic renderer bytes still match their prior pinned checksum; installed
+  Quill guidance still matches its pinned copy. Neither installation was replaced.
+- `bash scripts/release_check.sh`: fresh offline installation of 15 distributions,
+  **919 verified installed files**, HTML render/retry/saved-view backup/restore, existing
+  Markdown review, capture/approval/apply/query, library/feed and migration trials
+  passed. Modified renderer/package bytes, unreviewed .pth files and editable installs
+  were rejected. Activation without the required owner engine remained blocked.
+- Release manifest SHA256:
+  `51c5fe3e7ba4faf79b598c9e6c47f5ec601fbb8c25d2580c2d38943c7e75e652`.
+  Its worker image is
+  `sha256:4de955dfdb10666e154403c14a7ded2f93a9e69f87f0e90926def1668e901fa7`.
+  That exact image passed all 13 installed-worker isolation checks and an additional
+  no-mount HTML render roundtrip. The pinned production Node runtime is **24.21.0**;
+  compatibility smoke runtimes were **20.19.0, 22.14.0 and 24.0.0**.
+- Portable `cairn-html.zip` SHA256:
+  `fb5b7a1934661b231e963a125b9e20b9187c4fc365813ee3b72f3bd94d392a06`.
+  Source/runtime/license hashes and the maintained renderer commit are in the packaged
+  provenance. Public-code review found only source, licensed vendor resources,
+  documentation and synthetic tests; no real workspace, credentials or owner paths
+  were added. The first-party diff passed `git diff --check`.
+
+**Failed checks:** none unresolved. Earlier failed attempts and their corrections are
+recorded above. Docker initially needed permission to update host build metadata;
+it was rerun with that permission, without broadening processing-container access.
+
+**Skipped checks:** only the two identified upstream PID/marketing-site cases.
+No required isolation or browser check was skipped or substituted with a fake result.
+Native Windows/macOS rendering and other agent products were not exercised.
+
+**Live deployment:** not performed. No private inputs, subscription transports, local
+writing model, GPU reader, scheduled jobs or installation changes were activated.
+Manual packet responses do not attest local execution; local-only writing remains
+blocked without a reviewed adapter. The semantic review covers one synthetic Codex
+response. Owner release acceptance and any private deployment remain separate.

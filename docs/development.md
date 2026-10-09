@@ -119,3 +119,9 @@ package reviewable. Existing installed skills are separate and remain unchanged 
 workbench maintenance. Keep prior release bundles as rollback artifacts. Never add
 remotes, update installations, export private inputs or publish packages as an
 implicit part of this process.
+
+`bash scripts/check_html.sh` combines the renderer, required browser/isolation,
+rebuild and portable-runtime checks above once the separate renderer image and
+`cairn-dev:local` have been acquired. It mounts only the public checkout read-only
+and its synthetic `dist` output directory writable, and selects immutable local image
+IDs. It fails if the required image/browser or any mandatory check is unavailable.
