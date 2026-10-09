@@ -17,3 +17,9 @@
 !Dockerfile
 **/__pycache__/
 **/*.pyc
+
+!vendor/
+!vendor/answer-me-with-html/
+!vendor/answer-me-with-html/**
+!skills/
+!skills/**

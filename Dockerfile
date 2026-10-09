@@ -1,5 +1,17 @@
+FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS node
+FROM node AS renderer-dependencies
+WORKDIR /renderer
+COPY vendor/answer-me-with-html/package.json vendor/answer-me-with-html/package-lock.json ./
+RUN npm ci --ignore-scripts
+FROM renderer-dependencies AS renderer-build
+COPY vendor/answer-me-with-html/src/ src/
+COPY vendor/answer-me-with-html/bin/ bin/
+COPY vendor/answer-me-with-html/scripts/ scripts/
+RUN --network=none node scripts/build-application.mjs /application.mjs
+
 # Reviewed base pinned by digest; build has network, processing never does.
 FROM ghcr.io/astral-sh/uv@sha256:531f855bda2c73cd6ef67d56b733b357cea384185b3022bd09f05e002cd144ca AS base
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
 WORKDIR /opt/cairn
 ENV UV_COMPILE_BYTECODE=1 UV_NO_PROGRESS=1 PYTHONDONTWRITEBYTECODE=1
 RUN apt-get update && apt-get install -y --no-install-recommends git \
@@ -7,6 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git \
 COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --locked --no-install-project --no-dev --extra reader
 COPY src/ src/
+COPY --from=renderer-build /application.mjs src/cairn/presentation/resources/application.mjs
 RUN uv sync --locked --no-dev --no-editable --extra reader
 ENV PATH="/opt/cairn/.venv/bin:$PATH"
 USER 65532:65532

@@ -369,3 +369,41 @@ unresolved journals/feed-only coverage, and failed-page watermark preservation.
 These are mechanical tests, not paper-reading quality evidence. Workstation SSH timed out;
 GPU inference, subscription verification, release activation, and private-library deployment
 are not yet verified. No real paper or private workspace has been used by contributor code.
+
+## Cairn HTML follow-on — foundation evidence (2026-10-09)
+
+The application renderer is built from maintained source, with a complete licensed
+source snapshot and lockfile in `vendor/answer-me-with-html`. The generic CLI and both
+installed skills remain unchanged. The standalone renderer source is synchronized at
+`0a13bfcaaa5081b87e6cd191537426261da8c1df`; its upstream base is
+`19b2b5b07676d3e65c83ca9a7b6621f300b54c92` (0.5.0). Quill resources are pinned at
+`d6bc7de15d1779c58286cbdec1a54eec52bdef22` (0.3.0, MIT). Resource hashes are recorded in
+`src/cairn/presentation/resources/provenance.json`.
+
+Executed in the isolated renderer development container with synthetic inputs:
+
+- Full renderer suite: **788 tests, 786 passed, zero failed, two skipped**.
+- Mandatory Chromium application checks passed: 1440/390 widths, light/dark, keyboard
+  focus, evidence disclosures, diagram controls/Escape, filtering, feedback JSON
+  download, no persistent storage, reduced motion, print and JavaScript-disabled
+  readability. Request monitoring recorded zero HTTP(S) requests. Screenshots were
+  inspected; the narrow diagram was changed to wrap rather than require scrolling.
+- Actual container probe passed: non-root, read-only root, no network interface beyond
+  loopback, no credentials, capabilities or Docker socket. Browser coverage was not
+  skipped or counted as passing by absence.
+- Node 20.19.0, 22.14.0 and 24.0.0 exercised generic rendering/patches/captions and the
+  Cairn package from ordinary and space/non-ASCII install paths with no agent variables.
+- Application rebuilds matched each other and the committed runtime byte for byte.
+  Generic CLI rebuilds matched in its documented original build-directory layout.
+
+Failed checks during development, resolved: an interrupted-write test initially
+expected raw OSError rather than the writer's existing Denied wrapper; it was corrected
+and rerun. A generic CLI checksum comparison from a deeper scratch directory differed
+only in 230 esbuild dependency-path comment lines. Repeating the documented original
+layout matched exactly; no generated file was hand-edited. Lint issues were fixed
+before the passing suite.
+
+Skipped upstream checks: reused foreign-owner PID detection (PID 1 is signalable by
+the container UID) and the separate marketing-site build test (site/dist not built).
+Neither is a Cairn isolation or browser gate. Live agent-product compatibility, private
+workspace deployment, cloud narration and GPU inference are not established here.
