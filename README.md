@@ -63,3 +63,12 @@ separate reviewer assessment retain the manual trial. The owner's verdict remain
 The [personal domain workflows](docs/personal-domains.md) cover `finance import`,
 `finance calculate`, `finance note`, `life import`, and `evidence`. Calculation inputs
 come from preserved structured sources, with owner/account/date/unit/currency separation.
+
+## Requested HTML and writing packets
+
+Cairn now provides explicit offline HTML views for project context, extractive queries,
+evidence, paper readings, proposals, catalogs and journal feeds. Quill-guided explanation
+and feedback packets preserve owner approval and scoped evidence. See
+[HTML views](docs/html-views.md) for commands and [acceptance](docs/acceptance.md) for
+executed checks and deployment limits. The portable `cairn-html` skill consumes owner
+exports; it grants no workspace access and does not generate unsolicited pages.

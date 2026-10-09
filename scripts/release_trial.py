@@ -208,6 +208,36 @@ def trial(bundle: Path) -> None:
     cli("library", "update", *library_options, "--read-budget", "0")
     assert cli("feed", "latest", *library_options, "--json")["entries"] == []
     answer = cli("query", "42", "--scope", "research", *options)
+    # Exercise installed presentation resources, saved snapshots and atomic retries.
+    html_output = root / "reports with spaces" / "知识.html"
+    html_args = (
+        "query",
+        "42",
+        "--scope",
+        "research",
+        "--workspace",
+        str(workspace),
+        "--format",
+        "html",
+        "--output",
+        str(html_output),
+        "--save-view",
+        "--inline-synthetic",
+    )
+    view = cli(*html_args)
+    assert "exact value 42" in html_output.read_text()
+    assert "connect-src 'none'" in html_output.read_text()
+    assert html_output.stat().st_mode & 0o777 == 0o600
+    cli(
+        "view",
+        "render",
+        view["bundle_id"],
+        str(html_output),
+        "--workspace",
+        str(workspace),
+        "--inline-synthetic",
+    )
+    assert len(list(html_output.parent.iterdir())) == 1
     archive = root / "backup.zip"
     backed_up = cli("backup", str(archive), *options)
     restored = root / "restored"
@@ -230,6 +260,11 @@ def trial(bundle: Path) -> None:
         cli("library", "show", paper_id, "--workspace", str(restored))["paper"]["reading"] == "read"
     )
 
+    assert (
+        cli("view", "show", view["bundle_id"], "--workspace", str(restored))["id"]
+        == view["bundle_id"]
+    )
+
     # Actual installed files are tested, never package mocks or PYTHONPATH substitutions.
     site = runtime / "lib" / f"python{sysconfig.get_python_version()}" / "site-packages"
     module = site / "cairn/__init__.py"
@@ -237,6 +272,11 @@ def trial(bundle: Path) -> None:
     module.write_bytes(original + b"\n# synthetic modified installation\n")
     assert cli(*check_args, status=4)["error"] == "conflict"
     module.write_bytes(original)
+    renderer = site / "cairn/presentation/resources/application.mjs"
+    saved_renderer = renderer.read_bytes()
+    renderer.write_bytes(saved_renderer + b"\n// synthetic modification\n")
+    assert cli(*check_args, status=4)["error"] == "conflict"
+    renderer.write_bytes(saved_renderer)
     extra = site / "synthetic-unreviewed.pth"
     extra.write_text("# synthetic inventory mismatch, no executable content\n")
     assert cli(*check_args, status=3)["error"] == "denied"
@@ -268,6 +308,8 @@ def trial(bundle: Path) -> None:
                 "synthetic_schema_migration_with_backup": "passed",
                 "installed_library_scan_mark_feed_streaming_restore": "passed",
                 "installed_markdown_source_review": "passed",
+                "installed_html_render_retry_restore": "passed",
+                "modified_renderer_rejected": True,
                 "modified_package_rejected": True,
                 "unreviewed_pth_rejected": True,
                 "editable_installation_rejected": True,

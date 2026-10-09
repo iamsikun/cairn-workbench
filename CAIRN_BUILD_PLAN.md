@@ -11,6 +11,16 @@ directory is named `cairn`. These names do not change the Python package or CLI.
 
 ## 1. Intended result and scope
 
+### Authorized HTML follow-on
+
+The HTML follow-on adds auxiliary versioned presentation bundles, seven offline views,
+Quill-guided agent packets and feedback proposals. It does not add a canonical record
+type or change owner approval/apply authority. Rendering runs as a bounded JSON operation
+in the reviewed offline worker. External writing packets require generation and client
+export grants for the complete request. See `docs/html-views.md` and `docs/acceptance.md`.
+The user explicitly authorized the `codex/cairn-html` branch and a push to the existing
+origin after required validation; no main merge, PR or private activation is included.
+
 ### Authorized journal-library follow-on
 
 The follow-on adds an owner-maintained journal/paper catalog, public publication

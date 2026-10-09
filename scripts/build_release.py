@@ -115,7 +115,11 @@ def build(output: Path, revision: str, worker_image: str) -> None:
         if len(sites) != 1:
             raise ValueError("unsupported bootstrap layout")
         bootstrap_files = {file.name: digest(file.read_bytes()) for file in sites[0].iterdir()}
-    source_files = [Path("pyproject.toml"), Path("uv.lock"), *sorted(Path("src").rglob("*.py"))]
+    source_files = [
+        Path("pyproject.toml"),
+        Path("uv.lock"),
+        *sorted(p for p in Path("src").rglob("*") if p.is_file() and "__pycache__" not in p.parts),
+    ]
     manifest = ReleaseManifest(
         code_revision=revision,
         source_hash=digest(
@@ -137,6 +141,11 @@ def build(output: Path, revision: str, worker_image: str) -> None:
             "owner_device": "paper-reader-v1",
             "subscription_verification": "clients-2026-09-30",
             "weekly_feed": "1",
+            "html_views": "cairn-view-v1",
+            "quill_writing": "d6bc7de15d1779c58286cbdec1a54eec52bdef22",
+            "html_renderer": digest(
+                Path("src/cairn/presentation/resources/application.mjs").read_bytes()
+            ),
             "streaming_backup": "zip64-v1",
         },
     )

@@ -26,6 +26,15 @@ from cairn.library.verification_models import (
 )
 from cairn.policies.audit import PolicyChange, RouteAudit, RouteRequest
 from cairn.policies.models import Policy, RouteGrant, Scope
+from cairn.presentation.models import RenderJob, ReviewReport, ViewBundle, ViewDocument
+from cairn.presentation.writing_models import (
+    ExplanationResponse,
+    ExportReceipt,
+    Feedback,
+    FeedbackReceipt,
+    RevisionResponse,
+    WritingJob,
+)
 from cairn.proposals.models import Approval, Proposal
 from cairn.records.continuity import ContextPack, SessionReceipt
 from cairn.records.domains import Calculation, FinancialSnapshot, LifeDossier
@@ -45,6 +54,16 @@ if __name__ == "__main__":
     destination = Path("schemas")
     destination.mkdir(exist_ok=True)
     for model in (
+        ViewBundle,
+        ViewDocument,
+        RenderJob,
+        ReviewReport,
+        WritingJob,
+        ExplanationResponse,
+        RevisionResponse,
+        Feedback,
+        FeedbackReceipt,
+        ExportReceipt,
         DeviceConfig,
         DeviceProbe,
         PaperSummary,

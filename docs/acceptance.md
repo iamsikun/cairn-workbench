@@ -423,3 +423,36 @@ strict mypy, schema parity, worker canary/network/credential probes, hostile sub
 containment, real worker lifecycle cleanup, and a no-mount HTML JSON roundtrip. A final
 release trial follows the complete packet/feedback milestone; this result alone is
 not private deployment approval.
+
+### Writing and feedback milestone
+
+A synthetic Quill packet was prepared by `scripts/html_packet_trial.py`, exported,
+read and answered by **Codex in this development chat**, then imported/rendered after
+restoring the synthetic backup. Canonical records and approvals were unchanged.
+Manual comparison retained 12 simulated datasets, condition C, errors 12% versus
+15%, the −3 percentage-point difference and 95% interval [−7, +1]. It distinguished
+a point estimate from a clear superiority/equivalence claim and missing excerpt
+coverage from an assertion that other conditions were never studied. This is one
+manually inspected synthetic case, not a semantic-quality benchmark or a verified
+local-execution attestation. No other agent product was exercised live.
+
+The packet/feedback tests exercise grants for both generation and client export,
+private-question defaults, local-only blocking, job/input identity, exact quotations,
+missing/foreign citations, forged approval/status fields, revoked policy, response
+idempotency, immutable source/catalog targets and comments awaiting action. A synthetic
+feedback revision stages through normal proposals, remains unapplied without owner
+approval, applies after explicit test-owner approval, and rejects stale replay. Saved
+view/writing/feedback receipts participate in backup validation; modified excerpt bytes
+are rejected even if a forged bundle ID is recomputed.
+
+Skill review covered explicit HTML (render supplied document), ordinary questions
+(no page), maintenance (edit skill only), presentation edits (same packet/output),
+knowledge changes (new bundle), explanations (structured Quill response), feedback
+(selected-target proposal) and video requests (outside this skill's scope; no implicit
+cloud call). The entry point and relative references use the Agent Skills format.
+The existing generic HTML and Quill installations were not changed.
+
+The first synthetic trial preparation failed because its consent text differed from
+its owner statement. The fixture was corrected to identical explicit text and rerun;
+the authorization check was retained. An earlier writer interruption test and build
+path comparison are recorded above rather than counted as passing attempts.

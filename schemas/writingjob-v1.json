@@ -1,0 +1,2718 @@
+{
+  "$defs": {
+    "Assertion": {
+      "additionalProperties": false,
+      "properties": {
+        "amounts": {
+          "items": {
+            "$ref": "#/$defs/Money"
+          },
+          "title": "Amounts",
+          "type": "array"
+        },
+        "context_role": {
+          "anyOf": [
+            {
+              "enum": [
+                "tried",
+                "relevant_literature",
+                "failed_approaches",
+                "open_issues",
+                "next_action"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context Role"
+        },
+        "disputes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Disputes",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "reported_result",
+            "inference",
+            "hypothesis",
+            "owner_decision"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Period"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rationale"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "supersedes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Supersedes",
+          "type": "array"
+        },
+        "text": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "verification": {
+          "default": "unreviewed",
+          "enum": [
+            "unreviewed",
+            "reviewed",
+            "disputed",
+            "superseded"
+          ],
+          "title": "Verification",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "kind"
+      ],
+      "title": "Assertion",
+      "type": "object"
+    },
+    "CatalogItem": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis": {
+          "title": "Analysis",
+          "type": "string"
+        },
+        "authors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Authors",
+          "type": "array"
+        },
+        "availability": {
+          "title": "Availability",
+          "type": "string"
+        },
+        "doi": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Doi"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "reading": {
+          "title": "Reading",
+          "type": "string"
+        },
+        "review": {
+          "title": "Review",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "year": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Year"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "authors",
+        "year",
+        "doi",
+        "reading",
+        "analysis",
+        "review",
+        "availability"
+      ],
+      "title": "CatalogItem",
+      "type": "object"
+    },
+    "CatalogPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "catalog",
+          "default": "catalog",
+          "title": "Kind",
+          "type": "string"
+        },
+        "papers": {
+          "items": {
+            "$ref": "#/$defs/CatalogItem"
+          },
+          "title": "Papers",
+          "type": "array"
+        }
+      },
+      "required": [
+        "papers"
+      ],
+      "title": "CatalogPayload",
+      "type": "object"
+    },
+    "ContextItem": {
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coverage"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "source_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Date"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "verification": {
+          "default": "unreviewed",
+          "title": "Verification",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "title": "ContextItem",
+      "type": "object"
+    },
+    "ContextPack": {
+      "additionalProperties": false,
+      "properties": {
+        "budget": {
+          "maximum": 200000,
+          "minimum": 1000,
+          "title": "Budget",
+          "type": "integer"
+        },
+        "budget_method": {
+          "default": "UTF-8 byte count; conservative estimate, not model tokenization",
+          "title": "Budget Method",
+          "type": "string"
+        },
+        "classification": {
+          "default": "private",
+          "enum": [
+            "public",
+            "private",
+            "restricted"
+          ],
+          "title": "Classification",
+          "type": "string"
+        },
+        "compartments": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Compartments",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "domain": {
+          "enum": [
+            "research",
+            "finance",
+            "life",
+            "shared"
+          ],
+          "title": "Domain",
+          "type": "string"
+        },
+        "estimated_tokens": {
+          "default": 0,
+          "title": "Estimated Tokens",
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "input_hashes": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_]{2,95}$": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          "title": "Input Hashes",
+          "type": "object"
+        },
+        "omitted_sections": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Omitted Sections",
+          "type": "object"
+        },
+        "policy_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Policy Hash",
+          "type": "string"
+        },
+        "processing": {
+          "default": "local_only",
+          "enum": [
+            "local_only",
+            "cloud_eligible"
+          ],
+          "title": "Processing",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "question": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "repository": {
+          "$ref": "#/$defs/RepositoryState"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sections": {
+          "additionalProperties": {
+            "items": {
+              "$ref": "#/$defs/ContextItem"
+            },
+            "type": "array"
+          },
+          "title": "Sections",
+          "type": "object"
+        },
+        "source_ids": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "domain",
+        "id",
+        "project_id",
+        "question",
+        "created_at",
+        "policy_hash",
+        "budget",
+        "sections",
+        "source_ids",
+        "input_hashes",
+        "repository"
+      ],
+      "title": "ContextPack",
+      "type": "object"
+    },
+    "EvidenceItem": {
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {
+          "title": "Coverage",
+          "type": "string"
+        },
+        "images_inspected": {
+          "title": "Images Inspected",
+          "type": "boolean"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "reference": {
+          "$ref": "#/$defs/EvidenceRef"
+        },
+        "source_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Date"
+        },
+        "support": {
+          "default": "Hash and locator checked; quote presence does not establish entailment.",
+          "title": "Support",
+          "type": "string"
+        },
+        "tables_inspected": {
+          "title": "Tables Inspected",
+          "type": "boolean"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "key",
+        "reference",
+        "title",
+        "text",
+        "coverage",
+        "tables_inspected",
+        "images_inspected"
+      ],
+      "title": "EvidenceItem",
+      "type": "object"
+    },
+    "EvidencePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "evidence",
+          "default": "evidence",
+          "title": "Kind",
+          "type": "string"
+        },
+        "source_id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Source Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id"
+      ],
+      "title": "EvidencePayload",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Evidence Hash",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "locator": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Locator",
+          "type": "string"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "maxLength": 10000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quote"
+        },
+        "source_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source_hash",
+        "evidence_hash",
+        "locator"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "Extraction": {
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {
+          "enum": [
+            "full_text",
+            "excerpt",
+            "abstract_only",
+            "failed"
+          ],
+          "title": "Coverage",
+          "type": "string"
+        },
+        "images_inspected": {
+          "default": false,
+          "title": "Images Inspected",
+          "type": "boolean"
+        },
+        "method": {
+          "title": "Method",
+          "type": "string"
+        },
+        "method_version": {
+          "title": "Method Version",
+          "type": "string"
+        },
+        "normalization": {
+          "const": "none",
+          "default": "none",
+          "title": "Normalization",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "segments": {
+          "items": {
+            "$ref": "#/$defs/Segment"
+          },
+          "title": "Segments",
+          "type": "array"
+        },
+        "source_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Hash",
+          "type": "string"
+        },
+        "source_id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "tables_inspected": {
+          "default": false,
+          "title": "Tables Inspected",
+          "type": "boolean"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source_id",
+        "source_hash",
+        "method",
+        "method_version",
+        "coverage",
+        "segments"
+      ],
+      "title": "Extraction",
+      "type": "object"
+    },
+    "ExtractionMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {
+          "enum": [
+            "full_text",
+            "excerpt",
+            "abstract_only",
+            "failed"
+          ],
+          "title": "Coverage",
+          "type": "string"
+        },
+        "evidence_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Evidence Hash",
+          "type": "string"
+        },
+        "images_inspected": {
+          "default": false,
+          "title": "Images Inspected",
+          "type": "boolean"
+        },
+        "method": {
+          "title": "Method",
+          "type": "string"
+        },
+        "method_version": {
+          "title": "Method Version",
+          "type": "string"
+        },
+        "tables_inspected": {
+          "default": false,
+          "title": "Tables Inspected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "evidence_hash",
+        "method",
+        "method_version",
+        "coverage"
+      ],
+      "title": "ExtractionMetadata",
+      "type": "object"
+    },
+    "FeedDigest": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/FeedEntry"
+          },
+          "title": "Entries",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "issues": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Issues",
+          "type": "array"
+        },
+        "notification": {
+          "default": "pending",
+          "enum": [
+            "pending",
+            "acknowledged"
+          ],
+          "title": "Notification",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "scope": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "scope",
+        "at",
+        "entries"
+      ],
+      "title": "FeedDigest",
+      "type": "object"
+    },
+    "FeedEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_status": {
+          "default": "not_started",
+          "title": "Analysis Status",
+          "type": "string"
+        },
+        "availability": {
+          "title": "Availability",
+          "type": "string"
+        },
+        "citation": {
+          "title": "Citation",
+          "type": "string"
+        },
+        "coverage": {
+          "default": "Not read",
+          "title": "Coverage",
+          "type": "string"
+        },
+        "doi": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Doi"
+        },
+        "event": {
+          "$ref": "#/$defs/FeedEvent"
+        },
+        "journal_ids": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Journal Ids",
+          "type": "array"
+        },
+        "journals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Journals",
+          "type": "array"
+        },
+        "proposal_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{2,95}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Proposal Id"
+        },
+        "reading_status": {
+          "default": "unknown",
+          "title": "Reading Status",
+          "type": "string"
+        },
+        "review_state": {
+          "default": "unreviewed",
+          "title": "Review State",
+          "type": "string"
+        },
+        "source_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Hash"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "verification": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Verification",
+          "type": "array"
+        }
+      },
+      "required": [
+        "event",
+        "title",
+        "citation",
+        "journal_ids",
+        "journals",
+        "availability"
+      ],
+      "title": "FeedEntry",
+      "type": "object"
+    },
+    "FeedEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "new_publication",
+            "newly_discovered",
+            "box_addition",
+            "box_revision"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "paper_id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Paper Id",
+          "type": "string"
+        },
+        "reading_requested": {
+          "default": false,
+          "title": "Reading Requested",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "paper_id",
+        "kind",
+        "at"
+      ],
+      "title": "FeedEvent",
+      "type": "object"
+    },
+    "FeedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "$ref": "#/$defs/FeedDigest"
+        },
+        "kind": {
+          "const": "feed",
+          "default": "feed",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest"
+      ],
+      "title": "FeedPayload",
+      "type": "object"
+    },
+    "Hit": {
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coverage"
+        },
+        "disputes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Disputes",
+          "type": "array"
+        },
+        "finance_category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finance Category"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "evidence",
+            "synthesis"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "locator": {
+          "title": "Locator",
+          "type": "string"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Period"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "review_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review Date"
+        },
+        "source_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Date"
+        },
+        "source_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Version"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "status": {
+          "default": "draft",
+          "title": "Status",
+          "type": "string"
+        },
+        "supersedes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Supersedes",
+          "type": "array"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "verification": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Verification",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "text",
+        "locator",
+        "sources"
+      ],
+      "title": "Hit",
+      "type": "object"
+    },
+    "Job": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Evidence Hash",
+          "type": "string"
+        },
+        "execution_image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Execution Image"
+        },
+        "extraction": {
+          "$ref": "#/$defs/Extraction"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "max_changes": {
+          "default": 4,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Max Changes",
+          "type": "integer"
+        },
+        "operation": {
+          "const": "ingest",
+          "default": "ingest",
+          "title": "Operation",
+          "type": "string"
+        },
+        "policy_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Policy Hash",
+          "type": "string"
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        },
+        "related": {
+          "items": {
+            "$ref": "#/$defs/Page"
+          },
+          "maxItems": 20,
+          "title": "Related",
+          "type": "array"
+        },
+        "route": {
+          "default": "local",
+          "enum": [
+            "local",
+            "cloud",
+            "owner_device"
+          ],
+          "title": "Route",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "scope_name": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Scope Name",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/Record"
+        }
+      },
+      "required": [
+        "id",
+        "policy_hash",
+        "scope_name",
+        "provider",
+        "source",
+        "extraction",
+        "evidence_hash"
+      ],
+      "title": "Job",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Labels": {
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "default": "private",
+          "enum": [
+            "public",
+            "private",
+            "restricted"
+          ],
+          "title": "Classification",
+          "type": "string"
+        },
+        "compartments": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Compartments",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "domain": {
+          "enum": [
+            "research",
+            "finance",
+            "life",
+            "shared"
+          ],
+          "title": "Domain",
+          "type": "string"
+        },
+        "processing": {
+          "default": "local_only",
+          "enum": [
+            "local_only",
+            "cloud_eligible"
+          ],
+          "title": "Processing",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "title": "Labels",
+      "type": "object"
+    },
+    "Money": {
+      "additionalProperties": false,
+      "properties": {
+        "account_alias": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{2,95}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Account Alias"
+        },
+        "as_of": {
+          "format": "date",
+          "title": "As Of",
+          "type": "string"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currency"
+        },
+        "owner_alias": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{2,95}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Owner Alias"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "unit": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "value",
+        "unit",
+        "as_of",
+        "sources"
+      ],
+      "title": "Money",
+      "type": "object"
+    },
+    "Page": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "maxLength": 200000,
+          "title": "Body",
+          "type": "string"
+        },
+        "record": {
+          "$ref": "#/$defs/Record"
+        }
+      },
+      "required": [
+        "record",
+        "body"
+      ],
+      "title": "Page",
+      "type": "object"
+    },
+    "PaperClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quote"
+        },
+        "text": {
+          "maxLength": 5000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "page"
+      ],
+      "title": "PaperClaim",
+      "type": "object"
+    },
+    "PaperPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {
+          "default": "Not read",
+          "title": "Coverage",
+          "type": "string"
+        },
+        "inspected_pages": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Inspected Pages",
+          "type": "array"
+        },
+        "kind": {
+          "const": "paper",
+          "default": "paper",
+          "title": "Kind",
+          "type": "string"
+        },
+        "page_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page Count"
+        },
+        "paper": {
+          "$ref": "#/$defs/CatalogItem"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PaperSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "visual_pages": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Visual Pages",
+          "type": "array"
+        }
+      },
+      "required": [
+        "paper"
+      ],
+      "title": "PaperPayload",
+      "type": "object"
+    },
+    "PaperSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "assumptions": {
+          "items": {
+            "$ref": "#/$defs/PaperClaim"
+          },
+          "maxItems": 20,
+          "title": "Assumptions",
+          "type": "array"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/PaperClaim"
+          },
+          "maxItems": 40,
+          "title": "Findings",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "$ref": "#/$defs/PaperClaim"
+          },
+          "maxItems": 20,
+          "title": "Limitations",
+          "type": "array"
+        },
+        "methods": {
+          "items": {
+            "$ref": "#/$defs/PaperClaim"
+          },
+          "maxItems": 20,
+          "title": "Methods",
+          "type": "array"
+        },
+        "research_question": {
+          "items": {
+            "$ref": "#/$defs/PaperClaim"
+          },
+          "maxItems": 20,
+          "title": "Research Question",
+          "type": "array"
+        },
+        "summary": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "summary"
+      ],
+      "title": "PaperSummary",
+      "type": "object"
+    },
+    "Period": {
+      "additionalProperties": false,
+      "properties": {
+        "account_alias": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{2,95}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Account Alias"
+        },
+        "as_of": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "As Of"
+        },
+        "jurisdiction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Jurisdiction"
+        },
+        "owner_alias": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{2,95}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Owner Alias"
+        },
+        "statement_period": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Statement Period"
+        },
+        "tax_year": {
+          "anyOf": [
+            {
+              "maximum": 9999,
+              "minimum": 1900,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tax Year"
+        },
+        "valid_from": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid From"
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        }
+      },
+      "title": "Period",
+      "type": "object"
+    },
+    "ProjectPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "assertion_kinds": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_]{2,95}$": {
+              "type": "string"
+            }
+          },
+          "title": "Assertion Kinds",
+          "type": "object"
+        },
+        "context": {
+          "$ref": "#/$defs/ContextPack"
+        },
+        "kind": {
+          "const": "project",
+          "default": "project",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "context"
+      ],
+      "title": "ProjectPayload",
+      "type": "object"
+    },
+    "ProposalPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "proposal",
+          "default": "proposal",
+          "title": "Kind",
+          "type": "string"
+        },
+        "report": {
+          "$ref": "#/$defs/ReviewReport"
+        }
+      },
+      "required": [
+        "report"
+      ],
+      "title": "ProposalPayload",
+      "type": "object"
+    },
+    "QueryPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "assertions": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_]{2,95}$": {
+              "items": {
+                "$ref": "#/$defs/Assertion"
+              },
+              "type": "array"
+            }
+          },
+          "title": "Assertions",
+          "type": "object"
+        },
+        "hits": {
+          "items": {
+            "$ref": "#/$defs/Hit"
+          },
+          "title": "Hits",
+          "type": "array"
+        },
+        "kind": {
+          "const": "query",
+          "default": "query",
+          "title": "Kind",
+          "type": "string"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "mode": {
+          "const": "extractive",
+          "default": "extractive",
+          "title": "Mode",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "hits",
+        "limitations"
+      ],
+      "title": "QueryPayload",
+      "type": "object"
+    },
+    "Record": {
+      "additionalProperties": false,
+      "properties": {
+        "aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Aliases",
+          "type": "array"
+        },
+        "assertions": {
+          "items": {
+            "$ref": "#/$defs/Assertion"
+          },
+          "title": "Assertions",
+          "type": "array"
+        },
+        "classification": {
+          "default": "private",
+          "enum": [
+            "public",
+            "private",
+            "restricted"
+          ],
+          "title": "Classification",
+          "type": "string"
+        },
+        "compartments": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Compartments",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "domain": {
+          "enum": [
+            "research",
+            "finance",
+            "life",
+            "shared"
+          ],
+          "title": "Domain",
+          "type": "string"
+        },
+        "finance_category": {
+          "anyOf": [
+            {
+              "enum": [
+                "educational",
+                "official_rule",
+                "account_snapshot",
+                "owner_decision"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finance Category"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Period"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "processing": {
+          "default": "local_only",
+          "enum": [
+            "local_only",
+            "cloud_eligible"
+          ],
+          "title": "Processing",
+          "type": "string"
+        },
+        "project_ids": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Project Ids",
+          "type": "array"
+        },
+        "related": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Related",
+          "type": "array"
+        },
+        "repository": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RepositoryBinding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "review_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review Date"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sections": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Sections",
+          "type": "object"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceMetadata"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "status": {
+          "default": "draft",
+          "enum": [
+            "draft",
+            "active",
+            "disputed",
+            "superseded"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "source",
+            "concept",
+            "project",
+            "decision",
+            "entity",
+            "playbook"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "id",
+        "type",
+        "title",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "Record",
+      "type": "object"
+    },
+    "RepositoryBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Alias",
+          "type": "string"
+        },
+        "commit": {
+          "pattern": "^[0-9a-f]{40,64}$",
+          "title": "Commit",
+          "type": "string"
+        },
+        "run_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Run Ids",
+          "type": "array"
+        },
+        "worktree_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Worktree Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "commit",
+        "worktree_hash"
+      ],
+      "title": "RepositoryBinding",
+      "type": "object"
+    },
+    "RepositoryState": {
+      "additionalProperties": false,
+      "properties": {
+        "explanation": {
+          "title": "Explanation",
+          "type": "string"
+        },
+        "observed": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RepositoryBinding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "recorded": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RepositoryBinding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "enum": [
+            "unbound",
+            "unverified",
+            "current",
+            "stale"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "explanation"
+      ],
+      "title": "RepositoryState",
+      "type": "object"
+    },
+    "ReviewChange": {
+      "additionalProperties": false,
+      "properties": {
+        "assertions": {
+          "items": {
+            "$ref": "#/$defs/Assertion"
+          },
+          "title": "Assertions",
+          "type": "array"
+        },
+        "base_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Base Hash"
+        },
+        "conflicts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Conflicts",
+          "type": "array"
+        },
+        "current_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Current Hash"
+        },
+        "diff": {
+          "title": "Diff",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Period"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "proposed_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Proposed Hash",
+          "type": "string"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "target",
+        "base_hash",
+        "current_hash",
+        "proposed_hash",
+        "rationale",
+        "period",
+        "conflicts",
+        "diff"
+      ],
+      "title": "ReviewChange",
+      "type": "object"
+    },
+    "ReviewReport": {
+      "additionalProperties": false,
+      "properties": {
+        "changes": {
+          "items": {
+            "$ref": "#/$defs/ReviewChange"
+          },
+          "title": "Changes",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "proposal_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Proposal Hash",
+          "type": "string"
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        },
+        "references": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "References",
+          "type": "array"
+        },
+        "review_flags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Review Flags",
+          "type": "array"
+        },
+        "route": {
+          "title": "Route",
+          "type": "string"
+        },
+        "scope": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Scope",
+          "type": "string"
+        },
+        "stage": {
+          "default": "proposed",
+          "title": "Stage",
+          "type": "string"
+        },
+        "validation": {
+          "title": "Validation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "proposal_hash",
+        "provider",
+        "route",
+        "scope",
+        "validation",
+        "review_flags",
+        "changes",
+        "references"
+      ],
+      "title": "ReviewReport",
+      "type": "object"
+    },
+    "Segment": {
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "title": "Locator",
+          "type": "string"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "enum": [
+                "system",
+                "developer",
+                "user",
+                "assistant",
+                "tool"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "locator",
+        "text"
+      ],
+      "title": "Segment",
+      "type": "object"
+    },
+    "SourceMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "authors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Authors",
+          "type": "array"
+        },
+        "bibliography": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bibliography"
+        },
+        "blob": {
+          "title": "Blob",
+          "type": "string"
+        },
+        "captured_at": {
+          "format": "date-time",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "citation_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Citation Key"
+        },
+        "content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "external_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "External Id"
+        },
+        "extraction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExtractionMetadata"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "identity": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Identity",
+          "type": "string"
+        },
+        "library_alias": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{2,95}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Library Alias"
+        },
+        "origin": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Origin",
+          "type": "string"
+        },
+        "source_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Date"
+        },
+        "source_type": {
+          "enum": [
+            "text",
+            "markdown",
+            "pdf",
+            "conversation",
+            "bibliography",
+            "receipt",
+            "finance_snapshot",
+            "life_dossier"
+          ],
+          "title": "Source Type",
+          "type": "string"
+        },
+        "supersedes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Supersedes",
+          "type": "array"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "identity",
+        "origin",
+        "source_type",
+        "captured_at",
+        "content_hash",
+        "blob"
+      ],
+      "title": "SourceMetadata",
+      "type": "object"
+    },
+    "ViewAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "maxLength": 7000000,
+          "title": "Data",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "mime": {
+          "enum": [
+            "image/png",
+            "image/jpeg",
+            "image/webp"
+          ],
+          "title": "Mime",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "mime",
+        "data",
+        "sha256"
+      ],
+      "title": "ViewAsset",
+      "type": "object"
+    },
+    "ViewBundle": {
+      "additionalProperties": false,
+      "properties": {
+        "assets": {
+          "items": {
+            "$ref": "#/$defs/ViewAsset"
+          },
+          "maxItems": 8,
+          "title": "Assets",
+          "type": "array"
+        },
+        "classification": {
+          "default": "private",
+          "enum": [
+            "public",
+            "private",
+            "restricted"
+          ],
+          "title": "Classification",
+          "type": "string"
+        },
+        "compartments": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Compartments",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "domain": {
+          "enum": [
+            "research",
+            "finance",
+            "life",
+            "shared"
+          ],
+          "title": "Domain",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceItem"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "input_hashes": {
+          "additionalProperties": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "object"
+        },
+        "library_state_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Library State Hash"
+        },
+        "payload": {
+          "discriminator": {
+            "mapping": {
+              "catalog": "#/$defs/CatalogPayload",
+              "evidence": "#/$defs/EvidencePayload",
+              "feed": "#/$defs/FeedPayload",
+              "paper": "#/$defs/PaperPayload",
+              "project": "#/$defs/ProjectPayload",
+              "proposal": "#/$defs/ProposalPayload",
+              "query": "#/$defs/QueryPayload"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ProjectPayload"
+            },
+            {
+              "$ref": "#/$defs/QueryPayload"
+            },
+            {
+              "$ref": "#/$defs/EvidencePayload"
+            },
+            {
+              "$ref": "#/$defs/PaperPayload"
+            },
+            {
+              "$ref": "#/$defs/ProposalPayload"
+            },
+            {
+              "$ref": "#/$defs/CatalogPayload"
+            },
+            {
+              "$ref": "#/$defs/FeedPayload"
+            }
+          ],
+          "title": "Payload"
+        },
+        "policy_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Policy Hash",
+          "type": "string"
+        },
+        "processing": {
+          "default": "local_only",
+          "enum": [
+            "local_only",
+            "cloud_eligible"
+          ],
+          "title": "Processing",
+          "type": "string"
+        },
+        "question": {
+          "maxLength": 20000,
+          "title": "Question",
+          "type": "string"
+        },
+        "record_ids": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Record Ids",
+          "type": "array"
+        },
+        "renderer": {
+          "title": "Renderer",
+          "type": "string"
+        },
+        "review_state_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review State Hash"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "scope": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Scope",
+          "type": "string"
+        },
+        "template_version": {
+          "const": "cairn-view-v1",
+          "default": "cairn-view-v1",
+          "title": "Template Version",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 1000,
+          "title": "Title",
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "workspace_id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "id",
+        "workspace_id",
+        "scope",
+        "policy_hash",
+        "created_at",
+        "question",
+        "title",
+        "input_hashes",
+        "record_ids",
+        "evidence",
+        "payload",
+        "renderer"
+      ],
+      "title": "ViewBundle",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "bundle": {
+      "$ref": "#/$defs/ViewBundle"
+    },
+    "destination": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Destination",
+      "type": "string"
+    },
+    "feedback_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Feedback Id"
+    },
+    "guidance": {
+      "maxLength": 100000,
+      "title": "Guidance",
+      "type": "string"
+    },
+    "guidance_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Guidance Hash",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "provider": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Provider",
+      "type": "string"
+    },
+    "purpose": {
+      "enum": [
+        "explanation",
+        "revision"
+      ],
+      "title": "Purpose",
+      "type": "string"
+    },
+    "quill_revision": {
+      "const": "d6bc7de15d1779c58286cbdec1a54eec52bdef22",
+      "default": "d6bc7de15d1779c58286cbdec1a54eec52bdef22",
+      "title": "Quill Revision",
+      "type": "string"
+    },
+    "request": {
+      "maxLength": 20000,
+      "title": "Request",
+      "type": "string"
+    },
+    "request_labels": {
+      "$ref": "#/$defs/Labels"
+    },
+    "revision": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Job"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "route": {
+      "enum": [
+        "local",
+        "cloud"
+      ],
+      "title": "Route",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "target_ids": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]{2,95}$",
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Target Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "purpose",
+    "bundle",
+    "request",
+    "request_labels",
+    "guidance",
+    "guidance_hash",
+    "route",
+    "provider",
+    "destination"
+  ],
+  "title": "WritingJob",
+  "type": "object"
+}

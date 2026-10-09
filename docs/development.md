@@ -44,3 +44,78 @@ fictional paths and synthetic mode. It is not a complete workspace or private ap
 Use `cairn init --synthetic` to create development fixtures; use the separately reviewed
 installation/activation procedure for private operation. No actual owner paths or runtime
 approvals belong in the public checkout.
+
+## Presentation resources and portable package
+
+The Docker build acquires the pinned Node 24 image and locked npm dependencies in
+separate stages, then runs the application build with `RUN --network=none`. The
+worker receives just the Node binary and generated application runtime alongside
+Cairn. A checkout builds without a sibling renderer project or an installed skill.
+`check.sh` includes a real no-mount JSON renderer roundtrip and required isolation
+probes; a skip cannot satisfy these gates.
+
+For renderer regression tests and Chromium, acquire the separate development image
+as documented in `vendor/answer-me-with-html/docs/development-portable.md`. It pins
+Node 20.19.0, 22.14.0 and 24.0.0 for compatibility trials. Run processing with that
+document's offline, non-root, read-only profile, public checkout only, and executable
+synthetic scratch. Copy the vendor tree into scratch and link the acquired
+`/opt/dependencies/node_modules`. From the vendor directory run:
+
+```text
+node scripts/build-application.mjs /work/src/cairn/presentation/resources/application.mjs
+node scripts/check-isolation.mjs
+node --test --test-concurrency=2 --test-timeout=180000 test/*.test.js
+```
+
+Set `AM_E2E=1` and point `AM_CHROME` at the supplied isolated Chromium wrapper.
+`AM_BROWSER_OUTPUT` can select a public synthetic screenshot directory. The Cairn
+application browser test fails when Chromium is unavailable. Its Chromium wrapper
+is for the outer isolated container only. Capture and inspect light/dark screenshots
+at desktop and narrow widths, feedback downloads, print output and request logs.
+
+Build twice and compare the application runtime byte for byte with the committed
+resource. The unchanged generic CLI's historical bundle includes esbuild dependency
+path comments: reproduce its original one-level build directory (`/build`) and
+`/opt/dependencies/node_modules` layout when comparing its exact checksum. A different
+working-directory depth changes those comments, not behavior. Never hand-edit a
+bundle to force equality.
+
+After rebuilding, use the Cairn development container with only the public checkout
+writable to run:
+
+```text
+python scripts/html_provenance.py
+python scripts/package_html.py
+python scripts/package_html.py --output dist/cairn-html-repeat.zip
+```
+
+Compare the two ZIPs. Extract one under synthetic scratch and run
+`node scripts/html_smoke.mjs EXTRACTED/cairn-html` in the renderer development image.
+This exercises the packaged renderer on all three Node versions with ordinary and
+space/non-ASCII install paths and without agent environment variables. The skill's
+runtime/Quill directories are assembled in the portable ZIP; the repository keeps
+one canonical resource copy under `src/cairn/presentation/resources`.
+
+The separate `html_packet_trial.py prepare --output DIRECTORY` exports an entirely
+synthetic packet and a checksummed synthetic backup. Supply a real agent's response
+as `response.json`, then run `html_packet_trial.py import --output DIRECTORY` in the
+same isolated profile. It verifies import and unchanged canonical files; a manual
+review of claims, numbers and uncertainty is still required. It cannot establish a
+local execution attestation or broad semantic quality.
+
+## Maintaining the renderer and Quill snapshot
+
+The licensed renderer source snapshot is pinned to upstream 0.5.0 commit
+`19b2b5b07676d3e65c83ca9a7b6621f300b54c92`, plus the maintained portable changes and
+application profile. `resources/provenance.json` records the maintained commit,
+every source hash, lockfile, generated runtime and Quill files. Quill is pinned to
+`d6bc7de15d1779c58286cbdec1a54eec52bdef22` (0.3.0, MIT).
+
+For updates, acquire public source/dependencies separately; compare upstream changes;
+retain offline defaults, explicit request routing and local modifications; synchronize
+the standalone maintained renderer source; rebuild; regenerate provenance and schemas;
+run regression, browser, isolation, release and package checks; then make the new
+package reviewable. Existing installed skills are separate and remain unchanged by
+workbench maintenance. Keep prior release bundles as rollback artifacts. Never add
+remotes, update installations, export private inputs or publish packages as an
+implicit part of this process.

@@ -48,3 +48,12 @@ future export of a complete request, including the question and derived context.
 M2 adds bounded project context packs and session receipts. The protocol's deterministic
 tests establish mechanical correctness only; a separate synthetic agent trial is needed
 to evaluate whether a later session actually uses approved decisions and failed approaches.
+
+## HTML and Quill packets
+
+The [Cairn HTML workflow](html-views.md) adds a bounded writing packet route. Agents
+receive approved evidence and a response schema, never vault mounts or owner apply
+authority. `skills/cairn-html` is agent-neutral and explicit about HTML intent. Manual
+packets cannot prove local execution; local-only data remains blocked without a reviewed
+local adapter. The owner rechecks grants and input hashes on import, and feedback
+revisions still enter the existing proposal queue.

@@ -1,0 +1,61 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "at": {
+      "format": "date-time",
+      "title": "At",
+      "type": "string"
+    },
+    "destination": {
+      "title": "Destination",
+      "type": "string"
+    },
+    "input_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Input Hash",
+      "type": "string"
+    },
+    "job_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Job Id",
+      "type": "string"
+    },
+    "policy_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Policy Hash",
+      "type": "string"
+    },
+    "processing_verified": {
+      "const": false,
+      "default": false,
+      "title": "Processing Verified",
+      "type": "boolean"
+    },
+    "provider": {
+      "title": "Provider",
+      "type": "string"
+    },
+    "route": {
+      "const": "cloud",
+      "default": "cloud",
+      "title": "Route",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "job_id",
+    "input_hash",
+    "policy_hash",
+    "provider",
+    "destination",
+    "at"
+  ],
+  "title": "ExportReceipt",
+  "type": "object"
+}
