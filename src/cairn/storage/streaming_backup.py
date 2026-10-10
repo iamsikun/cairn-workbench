@@ -17,7 +17,7 @@ from cairn.records.models import canonical, digest
 from cairn.records.runtime import ReviewAcknowledgement
 from cairn.storage.activation import prepare_activation
 from cairn.storage.backup import DURABLE_DIRS, BackupManifest, _paths, validate_payloads
-from cairn.storage.files import MAX_FILE_BYTES, RootFS, disjoint
+from cairn.storage.files import MAX_FILE_BYTES, RootFS, disjoint, sync
 from cairn.storage.workspace import Workspace, check_roots
 
 MAX_TOTAL = 1024**4
@@ -122,7 +122,7 @@ def _backup(
                             archive.writestr(item, data)
                         archive.writestr("manifest.json", manifest)
                     stream.flush()
-                    os.fsync(stream.fileno())
+                    sync(stream.fileno())
                     stream.seek(0)
                     checksum = stream_hash(stream)
                 # Hard-link publication is atomic and refuses an existing destination.
@@ -131,7 +131,7 @@ def _backup(
                 except FileExistsError as exc:
                     raise Conflict("backup destination already exists") from exc
                 os.unlink(temporary, dir_fd=fd)
-                os.fsync(fd)
+                sync(fd)
             finally:
                 try:
                     os.unlink(temporary, dir_fd=fd)
@@ -254,7 +254,7 @@ def restore(
                         destination.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
                     )
                     try:
-                        os.fsync(parent_fd)
+                        sync(parent_fd)
                     finally:
                         os.close(parent_fd)
         except (zipfile.BadZipFile, KeyError, RuntimeError, NotImplementedError) as exc:

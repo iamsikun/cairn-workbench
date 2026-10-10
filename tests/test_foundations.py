@@ -109,3 +109,29 @@ def test_public_evidence_does_not_authorize_private_question(ws: Workspace) -> N
 def test_schema_rejects_unreferenced_numbers() -> None:
     with pytest.raises(ValidationError):
         Money(value=1.1, unit="balance", currency="USD", as_of="2026-01-01", sources=[])
+
+
+def test_sync_uses_full_flush_where_available(monkeypatch: pytest.MonkeyPatch) -> None:
+    import types
+
+    import cairn.storage.files as files
+
+    calls: list[str] = []
+
+    def full(fd: int, op: int) -> int:
+        calls.append("full")
+        if fd == 2:
+            raise OSError("synthetic unsupported filesystem")
+        return 0
+
+    monkeypatch.setattr(files, "fcntl", types.SimpleNamespace(F_FULLFSYNC=51, fcntl=full))
+    monkeypatch.setattr(files.os, "fsync", lambda fd: calls.append("fsync"))
+    files.sync(1)
+    assert calls == ["full"]
+    calls.clear()
+    files.sync(2)
+    assert calls == ["full", "fsync"]
+    calls.clear()
+    monkeypatch.setattr(files, "fcntl", types.SimpleNamespace(fcntl=full))
+    files.sync(1)
+    assert calls == ["fsync"]

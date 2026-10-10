@@ -20,7 +20,7 @@ from cairn.records.json import read_json
 from cairn.records.models import ID, Digest, Event, Extraction, Model, Record, canonical, digest
 from cairn.records.runtime import ReviewAcknowledgement, RuntimeApproval
 from cairn.storage.activation import check_runtime_metadata, prepare_activation
-from cairn.storage.files import MAX_FILE_BYTES, RootFS, components, disjoint
+from cairn.storage.files import MAX_FILE_BYTES, RootFS, components, disjoint, sync
 from cairn.storage.history_safety import check_history_config, check_history_paths
 from cairn.storage.markdown import decode
 from cairn.storage.workspace import Workspace, WorkspaceConfiguration, check_roots, parse_config
@@ -405,7 +405,7 @@ def restore(
         os.replace(staging, destination)
         directory = os.open(destination.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         try:
-            os.fsync(directory)
+            sync(directory)
         finally:
             os.close(directory)
     return Workspace(destination)

@@ -17,7 +17,7 @@ from cairn.policies.models import Policy, Scope
 from cairn.records.json import read_json
 from cairn.records.models import ID, Digest, Domain, Event, Model, Record, canonical, digest, new_id
 from cairn.records.runtime import ReviewAcknowledgement
-from cairn.storage.files import RootFS, disjoint
+from cairn.storage.files import RootFS, disjoint, sync
 from cairn.storage.markdown import decode
 
 DIRECTORIES = (
@@ -176,7 +176,7 @@ class Workspace:
             os.replace(staging, root)
             directory_fd = os.open(root.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
             try:
-                os.fsync(directory_fd)
+                sync(directory_fd)
             finally:
                 os.close(directory_fd)
         return cls(root)
