@@ -346,6 +346,9 @@ def trial(bundle: Path) -> None:
     )
     assert not (workspace / "approvals" / (finch_receipt["proposal_id"] + ".json")).exists()
     answer = cli("query", "42", "--scope", "research", *options)
+    # The new export consent advanced policy; prior views must be regenerated.
+    assert cli("view", "show", view["bundle_id"], *finch_options, status=4)["error"] == "conflict"
+    view = cli(*html_args)
     archive = root / "backup.zip"
     backed_up = cli("backup", str(archive), *options)
     restored = root / "restored"

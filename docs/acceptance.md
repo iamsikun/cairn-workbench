@@ -25,7 +25,10 @@ selected project inheritance, denied context, durable bindings and CLI round tri
 Schemas are regenerated from the typed models. Unrelated protected workspace paths
 remain in owner-only guards rather than exported packets.
 
-Fresh installed-release validation is pending at this implementation milestone. Live
+Fresh installed-release validation is pending at this implementation milestone. Its
+first run completed the installed Finch handoff but correctly rejected the older HTML
+view after the trial added an export grant. The trial now expects that stale-view rejection
+and regenerates the view before backup/restore; a complete rerun is required. Live
 reading quality, private runtime activation and host skill/launcher configuration remain
 separate owner deployment gates. This instruction-based lifecycle does not monitor
 unconfigured chats. Missing packets/launchers report `cairn_handoff_pending`; no real
