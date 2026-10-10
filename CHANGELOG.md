@@ -9,6 +9,11 @@ increases.
 - **Minor** releases add commands, workflows or guidance.
 - **Patch** releases fix defects without changing behavior otherwise.
 
+## 0.1.1 — 2026-10-10
+
+- Documentation: rewrite the README for clarity and add the MIT license. No change in
+  behavior.
+
 ## 0.1.0 — 2026-10-10
 
 - First release on the `stable` channel: M0–M3 workflows, Finch reading, Quill writing,
