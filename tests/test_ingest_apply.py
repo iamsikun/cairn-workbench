@@ -82,6 +82,39 @@ def test_revisions_and_declared_version_conflicts(ws: Workspace, tmp_path: Path)
     assert one.source and ws.fs.read(one.source.blob) == b"old synthetic text"
 
 
+def test_unversioned_revert_records_a_new_lineage_head(ws: Workspace, tmp_path: Path) -> None:
+    file = tmp_path / "reverting.txt"
+    file.write_text("original synthetic text")
+    first = capture(ws, file, domain="research")
+    file.write_text("revised synthetic text")
+    revised = capture(ws, file, domain="research")
+    file.write_text("original synthetic text")
+    reverted = capture(ws, file, domain="research")
+    assert reverted.id not in (first.id, revised.id)
+    assert reverted.source and {first.id, revised.id} <= set(reverted.source.supersedes)
+    # Repeating the revert is a no-op, not more churn.
+    assert capture(ws, file, domain="research").id == reverted.id
+
+
+def test_project_order_does_not_duplicate_sources(ws: Workspace, tmp_path: Path) -> None:
+    timestamp = now()
+    for project_id in ("project_alpha", "project_beta"):
+        project = Record(
+            id=project_id,
+            type="project",
+            title=f"Synthetic {project_id}",
+            domain="research",
+            created_at=timestamp,
+            updated_at=timestamp,
+        )
+        ws.fs.write(f"vault/wiki/research/{project_id}.md", encode(project, "Synthetic.\n"))
+    file = tmp_path / "shared.txt"
+    file.write_text("Synthetic shared evidence.")
+    one = capture(ws, file, domain="research", project_ids=["project_alpha", "project_beta"])
+    two = capture(ws, file, domain="research", project_ids=["project_beta", "project_alpha"])
+    assert one.id == two.id
+
+
 def test_failed_extraction_preserves_capture(ws: Workspace, tmp_path: Path) -> None:
     empty = source(ws, tmp_path, "")
     with pytest.raises(Blocked):
@@ -158,6 +191,42 @@ def test_stale_wiki_update_cannot_overwrite_owner_edit(ws: Workspace, tmp_path: 
     assert ws.fs.read(target) == owner_bytes
 
 
+def test_edit_after_validation_is_rejected_before_journaling(
+    ws: Workspace, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import cairn.transactions.apply as transactions
+
+    target = next(iter(apply(ws, approved(ws, tmp_path)).files))
+    source_id = capture(ws, tmp_path / "paper.txt", domain="research").id
+    envelope = prepare_job(ws, source_id, scope_name="research", related_ids=[])
+    result = FakeProvider().generate(envelope.job)
+    result.candidates[0].body += "\nProposed extension.\n"
+    proposal = stage_result(ws, result)
+    assert proposal
+    approve(ws, proposal.id, acknowledgements=proposal.review_flags, statement="Synthetic review")
+    record, _ = decode(ws.fs.read(target))
+    owner_bytes = encode(record, "Written by an editor that ignores the writer lock.\n")
+    original = transactions.validate_unlocked
+
+    def validate_then_edit(*args: object, **kwargs: object) -> object:
+        envelope = original(*args, **kwargs)  # type: ignore[arg-type]
+        ws.fs.write(target, owner_bytes)
+        return envelope
+
+    journals = set(ws.fs.files("journal"))
+    with monkeypatch.context() as patch:
+        patch.setattr(transactions, "validate_unlocked", validate_then_edit)
+        with pytest.raises(Conflict, match="changed after validation"):
+            apply(ws, proposal.id)
+    assert ws.fs.read(target) == owner_bytes
+    assert set(ws.fs.files("journal")) == journals
+    # The workspace is not wedged: recovery has nothing to do and the stale proposal
+    # is rejected by ordinary validation.
+    assert recover(ws) == []
+    with pytest.raises(Conflict, match="stale"):
+        apply(ws, proposal.id)
+
+
 def test_index_failure_leaves_durable_apply_and_retries(
     ws: Workspace, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -232,3 +301,66 @@ def test_recovery_preserves_unexpected_owner_bytes(ws: Workspace, tmp_path: Path
     with pytest.raises(Conflict, match="owner edit"):
         recover(ws)
     assert ws.fs.read(target) == b"Owner edit during outage; preserve me"
+
+
+def _staged_variant(ws: Workspace, tmp_path: Path, mutate) -> object:
+    source_id = source(ws, tmp_path)
+    extract(ws, source_id, scope_name="research", inline_synthetic=True)
+    envelope = prepare_job(ws, source_id, scope_name="research", related_ids=[])
+    result = FakeProvider().generate(envelope.job)
+    mutate(result.candidates[0].record)
+    return stage_result(ws, result)
+
+
+def test_structured_amounts_outside_finance_must_be_observed(
+    ws: Workspace, tmp_path: Path
+) -> None:
+    from datetime import date
+    from decimal import Decimal
+
+    from cairn.records.models import Money
+
+    def add_amount(record: Record) -> None:
+        assertion = record.assertions[0]
+        assertion.amounts = [
+            Money(
+                value=Decimal("999999"),
+                unit="USD",
+                currency="USD",
+                as_of=date(2026, 1, 1),
+                sources=[assertion.sources[0]],
+            )
+        ]
+
+    staged = _staged_variant(ws, tmp_path, add_amount)
+    assert staged
+    with pytest.raises(CairnError, match="exact preserved financial observation"):
+        validate(ws, staged.id)
+
+
+def test_empty_quote_cannot_support_a_citation(ws: Workspace, tmp_path: Path) -> None:
+    def empty_quote(record: Record) -> None:
+        record.assertions[0].sources[0].quote = "  "
+
+    staged = _staged_variant(ws, tmp_path, empty_quote)
+    assert staged
+    with pytest.raises(CairnError, match="empty quotes"):
+        validate(ws, staged.id)
+
+
+def test_model_supplied_verification_requires_acknowledgement(
+    ws: Workspace, tmp_path: Path
+) -> None:
+    def reviewed(record: Record) -> None:
+        record.assertions[0].verification = "reviewed"
+
+    staged = _staged_variant(ws, tmp_path, reviewed)
+    assert staged and "verification_change" in staged.review_flags
+    with pytest.raises(Denied):
+        approve(
+            ws,
+            staged.id,
+            acknowledgements=staged.review_flags - {"verification_change"},
+            statement="Synthetic review",
+        )
+    approve(ws, staged.id, acknowledgements=staged.review_flags, statement="Synthetic review")

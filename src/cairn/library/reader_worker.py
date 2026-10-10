@@ -15,7 +15,13 @@ from typing import Any
 
 from pypdf import PdfReader
 
-from cairn.library.reader_models import PaperSummary, ReaderJob, ReaderResult
+from cairn.library.reader_models import (
+    PAGE_TEXT_BUDGET,
+    VISUAL_ONLY,
+    PaperSummary,
+    ReaderJob,
+    ReaderResult,
+)
 from cairn.reading.skill import guidance, guidance_hash
 from cairn.records.models import Extraction, Segment, canonical, digest
 
@@ -112,14 +118,14 @@ def read(
             text = document.pages[number - 1].extract_text() or "" if document else raw.decode()
             if document and not text.strip():
                 warnings.append(f"Page {number}: visual evidence only; no extracted text")
-            if len(text) > 12000:
+            if len(text) > PAGE_TEXT_BUDGET:
                 warnings.append(
                     f"Page {number}: extracted text truncated to context budget; image inspected"
                 )
-            text = text[:12000]
+            text = text[:PAGE_TEXT_BUDGET]
             segments.append(
                 Segment(
-                    locator=f"page {number}", text=text or "[Visual evidence; no extracted text]"
+                    locator=f"page {number}", text=text or VISUAL_ONLY
                 )
             )
             content.append({"type": "text", "text": f"Page {number}\n{text}"})
@@ -131,8 +137,8 @@ def read(
                     }
                 )
         chunks.append(generate(content))
-    # Combine bounded chunks hierarchically. Preserve page references; every final
-    # quote is rechecked against deterministic extraction on the owner side.
+    # Combine bounded chunks hierarchically. Preserve page references; the owner
+    # accepts page text only if it matches deterministic extraction on its side.
     while len(chunks) > 1:
         merged = []
         for offset in range(0, len(chunks), 4):

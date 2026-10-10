@@ -28,6 +28,31 @@ def test_weekly_baseline_additions_deduplicate_and_recover(ws: Workspace, tmp_pa
         update(ws, scope="finance")
 
 
+def test_failing_reading_does_not_hold_update_in_read_phase(
+    ws: Workspace, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from test_library_reader import enrolled, text_pdf
+
+    from cairn.errors import Blocked
+    from cairn.library import reader
+
+    root = library(ws, tmp_path)
+    (root / "Example Journal/a.pdf").write_bytes(text_pdf())
+    device = enrolled(ws)
+    update(ws, read_budget=0)
+    (root / "Example Journal/b.pdf").write_bytes(text_pdf("Synthetic added paper."))
+
+    def interrupted(*args: object, **kwargs: object) -> object:
+        raise Blocked("read_running_use_explicit_retry_after_interruption")
+
+    monkeypatch.setattr(reader, "run", interrupted)
+    result = update(ws, device_id=device.id)
+    assert result["digest"]
+    assert any("read_running" in issue for issue in result["issues"])
+    # The checkpoint advanced; the next update completes instead of raising again.
+    assert update(ws, device_id=device.id)["run"] != result["run"]
+
+
 def test_streaming_backup_exceeds_legacy_limit(ws: Workspace, tmp_path: Path, monkeypatch) -> None:
     # Lower the old limit to exercise the boundary without a 256MiB fixture.
     monkeypatch.setattr(legacy, "MAX_BACKUP_BYTES", 1024)
@@ -65,3 +90,40 @@ def test_streaming_restore_rejects_bad_members(ws: Workspace, tmp_path: Path) ->
             archive, tmp_path / "restore", code_roots=[tmp_path / "public-code"], synthetic=True
         )
     assert not (tmp_path / "restore").exists()
+
+
+def test_streaming_restore_uses_the_digest_checked_bytes(
+    ws: Workspace, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from contextlib import contextmanager
+
+    import cairn.storage.streaming_backup as streaming
+
+    archive = tmp_path / "original.zip"
+    report = backup(ws, archive)
+    other = Workspace.init(
+        tmp_path / "other", code_roots=[tmp_path / "public-code"], synthetic=True
+    )
+    other.fs.write("vault/notes/swapped.md", b"Swapped synthetic content.\n")
+    swapped = tmp_path / "swapped.zip"
+    backup(other, swapped)
+    original = streaming._private_copy
+
+    @contextmanager
+    def swap_after_hash(path: Path, directory: Path):  # type: ignore[no-untyped-def]
+        with original(path, directory) as pair:
+            # A concurrent writer replaces the archive after its digest was checked.
+            path.write_bytes(swapped.read_bytes())
+            yield pair
+
+    monkeypatch.setattr(streaming, "_private_copy", swap_after_hash)
+    restored = restore(
+        archive,
+        tmp_path / "restored",
+        code_roots=[tmp_path / "public-code"],
+        synthetic=True,
+        expected_sha256=report["sha256"],
+    )
+    assert restored.config.id == ws.config.id
+    assert not restored.fs.exists("vault/notes/swapped.md")
+    assert not list(tmp_path.glob(".cairn-archive-*"))

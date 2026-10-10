@@ -165,3 +165,31 @@ def test_catalog_survives_oversized_disposable_cache(ws, tmp_path, monkeypatch) 
     monkeypatch.setattr("cairn.library.index.MAX_FILE_BYTES", 1)
     assert len(papers(ws, scope="research", query="   ")) == 1
     assert not ws.fs.files("cache/library")
+
+
+def test_catalog_json_export_refuses_symlinked_workspace_target(
+    ws: Workspace, tmp_path: Path
+) -> None:
+    import json
+
+    from typer.testing import CliRunner
+
+    from cairn.cli import app
+
+    root = library(ws, tmp_path)
+    (root / "Example Journal" / "paper.pdf").write_bytes(pdf())
+    scan(ws)
+    before = ws.fs.read("workspace.json")
+    link = tmp_path / "innocent.json"
+    link.symlink_to(ws.root / "workspace.json")
+    runner = CliRunner()
+    args = ["library", "export", "--workspace", str(ws.root), "--format", "json"]
+    result = runner.invoke(app, [*args, "--output", str(link)])
+    assert result.exit_code != 0
+    assert ws.fs.read("workspace.json") == before
+    inside = runner.invoke(app, [*args, "--output", str(ws.root / "vault" / "catalog.json")])
+    assert inside.exit_code != 0 and not ws.fs.exists("vault/catalog.json")
+    output = tmp_path / "exports" / "catalog.json"
+    ok = runner.invoke(app, [*args, "--output", str(output)])
+    assert ok.exit_code == 0, ok.output
+    assert len(json.loads(output.read_bytes())) == 1

@@ -17,7 +17,7 @@
   },
   "renderer": {
     "build": "node scripts/build-application.mjs OUTPUT (in vendor directory)",
-    "generated_sha256": "405b42ac069d38d20993b9a5c94afb0a5a8443bff181164d5b9cbfbbebe0594d",
+    "generated_sha256": "4f4e9d49e686b9489debb484a7f2a19aaa37aa68f9358c45076359189fdf254f",
     "license": "MIT",
     "maintained_base_commit": "de54bc1fe9653a5c505bb90e8d30b62b4343b9f0",
     "maintained_commit": "0a13bfcaaa5081b87e6cd191537426261da8c1df",
@@ -48,7 +48,7 @@
       "bench/results/video/results.json": "69485e8125ef7ce1426799967fd22f2fb8b754265c09f8e72499440b31ab1471",
       "bench/run.mjs": "be3b1b28a31c9d75654a76e591362840b1a1b987807082f0fbf2cdad37a7f9fc",
       "bin/am.js": "a461362130becb155385b4ef08d9036ea7977761deb42034f39ff783dafbc322",
-      "bin/application.js": "334ca35f1922cf192efb35e04dd33de0ebf680c623aa1a208482cb6a4be9ebd3",
+      "bin/application.js": "b789c91879e78b835cc12c1c0d2c4fbd9f626b0348e736dd9bca0286b4acb733",
       "commands/clean.md": "7fdf6bad64b3484f237ad6db67a6a3ee07da1509e49b0cd1948a4b35ed05cc82",
       "commands/config.md": "70c5f77fb89ab46213950c902fbf2b6fcd3a629478e15598121b5683c0599565",
       "dev/Dockerfile": "da34c2bd704811cbb334d008a7a46631e174fe131e8019f09fb4d64af35c375c",

@@ -8,8 +8,9 @@ import stat
 import tempfile
 import zipfile
 from collections.abc import Callable, Iterator, Mapping
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
+from typing import BinaryIO
 from uuid import uuid4
 
 from cairn.errors import CairnError, Conflict, Denied
@@ -17,7 +18,7 @@ from cairn.records.models import canonical, digest
 from cairn.records.runtime import ReviewAcknowledgement
 from cairn.storage.activation import prepare_activation
 from cairn.storage.backup import DURABLE_DIRS, BackupManifest, _paths, validate_payloads
-from cairn.storage.files import MAX_FILE_BYTES, RootFS, disjoint
+from cairn.storage.files import MAX_FILE_BYTES, RootFS, disjoint, sync
 from cairn.storage.workspace import Workspace, check_roots
 
 MAX_TOTAL = 1024**4
@@ -122,7 +123,7 @@ def _backup(
                             archive.writestr(item, data)
                         archive.writestr("manifest.json", manifest)
                     stream.flush()
-                    os.fsync(stream.fileno())
+                    sync(stream.fileno())
                     stream.seek(0)
                     checksum = stream_hash(stream)
                 # Hard-link publication is atomic and refuses an existing destination.
@@ -131,7 +132,7 @@ def _backup(
                 except FileExistsError as exc:
                     raise Conflict("backup destination already exists") from exc
                 os.unlink(temporary, dir_fd=fd)
-                os.fsync(fd)
+                sync(fd)
             finally:
                 try:
                     os.unlink(temporary, dir_fd=fd)
@@ -144,6 +145,30 @@ def _backup(
         "payload_bytes": size,
         "format": "zip64",
     }
+
+
+@contextmanager
+def _private_copy(archive_path: Path, directory: Path) -> Iterator[tuple[BinaryIO, str]]:
+    """Hash the archive while copying it once into an owner-only file; yield the copy."""
+    fd = os.open(archive_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, "rb") as source:
+        RootFS._regular(os.fstat(source.fileno()))
+        if os.fstat(source.fileno()).st_size > MAX_TOTAL:
+            raise Denied("archive exceeds one-terabyte safety budget")
+        directory.chmod(0o700)
+        copy = directory / "archive.zip"
+        hasher = hashlib.sha256()
+        size = 0
+        out = os.open(copy, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(out, "wb") as target:
+            for block in iter(lambda: source.read(1024 * 1024), b""):
+                size += len(block)
+                if size > MAX_TOTAL:
+                    raise Denied("archive exceeds one-terabyte safety budget")
+                hasher.update(block)
+                target.write(block)
+    with copy.open("rb") as stream:
+        yield stream, hasher.hexdigest()
 
 
 def restore(
@@ -175,15 +200,15 @@ def restore(
             acknowledgements=acknowledgements,
         )
     )
-    fd = os.open(archive_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-    with os.fdopen(fd, "rb") as stream:
-        RootFS._regular(os.fstat(stream.fileno()))
-        if os.fstat(stream.fileno()).st_size > MAX_TOTAL:
-            raise Denied("archive exceeds one-terabyte safety budget")
-        checksum = stream_hash(stream)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with (
+        tempfile.TemporaryDirectory(prefix=".cairn-archive-", dir=destination.parent) as private,
+        _private_copy(archive_path, Path(private)) as (stream, checksum),
+    ):
+        # Restore reads only this owner-private copy, so the archive cannot be swapped
+        # between the digest check and extraction.
         if expected_sha256 is not None and checksum != expected_sha256:
             raise Conflict("archive differs from independently recorded digest")
-        stream.seek(0)
         try:
             with zipfile.ZipFile(stream) as archive:
                 members = archive.infolist()
@@ -222,7 +247,6 @@ def restore(
                     additions[f"receipts/runtime/{approval.id}.json"] = canonical(approval)
                 config.code_roots = [str(root.resolve()) for root in code_roots]
                 additions["workspace.json"] = canonical(config)
-                destination.parent.mkdir(parents=True, exist_ok=True)
                 with tempfile.TemporaryDirectory(
                     prefix=".cairn-restore-", dir=destination.parent
                 ) as temporary:
@@ -254,7 +278,7 @@ def restore(
                         destination.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
                     )
                     try:
-                        os.fsync(parent_fd)
+                        sync(parent_fd)
                     finally:
                         os.close(parent_fd)
         except (zipfile.BadZipFile, KeyError, RuntimeError, NotImplementedError) as exc:

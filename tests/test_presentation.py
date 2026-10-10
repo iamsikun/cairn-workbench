@@ -143,6 +143,20 @@ def test_query_stays_extractive_and_cli_opt_in(ws: Workspace, tmp_path: Path):
     assert ws.fs.exists(f"receipts/presentation/views/{value['bundle_id']}.json")
 
 
+def test_large_non_ascii_view_is_not_corrupted(ws: Workspace):
+    from cairn.presentation.models import ViewBlock, ViewSection
+    from cairn.presentation.render import run_renderer
+
+    record = source(ws)
+    doc = document(assemble(ws, "evidence", scope="research", object_id=record.id))
+    # Well past one 64 KiB pipe chunk, so multi-byte characters straddle chunk boundaries.
+    text = "Synthétique 中文 évidence. " * 7000  # ~224 KB UTF-8, under the 200k-char cap
+    doc.sections.append(ViewSection(title="Synthetic", blocks=[ViewBlock(text=text)]))
+    html = run_renderer(doc).decode()
+    assert "\ufffd" not in html
+    assert text.strip() in html
+
+
 def test_proposal_view_has_actual_diff_and_no_approval(ws: Workspace):
     from test_review import proposal
 

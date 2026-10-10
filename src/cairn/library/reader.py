@@ -3,16 +3,24 @@
 from __future__ import annotations
 
 import base64
+import re
 from collections.abc import Callable
 from pathlib import Path
 
 from cairn.adapters.protocol import Candidate, Job, Result
 from cairn.errors import Blocked, CairnError, Conflict, Denied
-from cairn.ingest.service import SourceType, capture_bytes
+from cairn.ingest.service import SourceType, capture_bytes, run_extraction_unlocked
 from cairn.library.catalog import check_library_root, config_unlocked, get_paper
 from cairn.library.device import device_path, exchange, load_device, require_device
 from cairn.library.models import set_metadata
-from cairn.library.reader_models import DeviceConfig, ReaderJob, ReaderResult, ReadState
+from cairn.library.reader_models import (
+    PAGE_TEXT_BUDGET,
+    VISUAL_ONLY,
+    DeviceConfig,
+    ReaderJob,
+    ReaderResult,
+    ReadState,
+)
 from cairn.library.store import commit_unlocked, entity_bytes, record_path
 from cairn.proposals.models import JobEnvelope
 from cairn.proposals.service import stage_result
@@ -21,6 +29,7 @@ from cairn.records.models import (
     Assertion,
     Event,
     EvidenceRef,
+    Extraction,
     ExtractionMetadata,
     Record,
     canonical,
@@ -215,6 +224,41 @@ def cancel(ws: Workspace, job_id: str) -> ReadState:
     return state
 
 
+_LINE_LOCATOR = re.compile(r"^page (\d+), line \d+$")
+
+
+def _normalized(text: str) -> str:
+    return "\n".join(line for line in text.splitlines() if line.strip())
+
+
+def owner_pages(extraction: Extraction) -> dict[int, str]:
+    pages: dict[int, list[str]] = {}
+    for segment in extraction.segments:
+        match = _LINE_LOCATOR.match(segment.locator)
+        if match is None:
+            raise Conflict("unexpected deterministic extraction locator")
+        pages.setdefault(int(match.group(1)), []).append(segment.text)
+    return {page: "\n".join(lines) for page, lines in pages.items()}
+
+
+def verify_device_text(result: ReaderResult, pages: dict[int, str]) -> None:
+    """Device page text becomes evidence only if it matches owner-side extraction."""
+    if any(page > result.page_count for page, text in pages.items() if _normalized(text)):
+        raise Denied("reader page count disagrees with deterministic extraction")
+    locators = [segment.locator for segment in result.extraction.segments]
+    if len(locators) != len(set(locators)) or set(locators) != {
+        f"page {page}" for page in result.inspected_pages
+    }:
+        raise Denied("reader segments do not match its inspected pages")
+    for segment in result.extraction.segments:
+        text = "" if segment.text == VISUAL_ONLY else segment.text
+        device = _normalized(text)
+        owner = _normalized(pages.get(int(segment.locator.removeprefix("page ")), ""))
+        truncated = len(text) == PAGE_TEXT_BUDGET and owner.startswith(device)
+        if device != owner and not truncated:
+            raise Denied(f"reader text for {segment.locator} differs from deterministic extraction")
+
+
 def accept_result(ws: Workspace, state: ReadState, result: ReaderResult) -> str:
     job = state.job
     if (
@@ -228,10 +272,20 @@ def accept_result(ws: Workspace, state: ReadState, result: ReaderResult) -> str:
     if len(result.inspected_pages) > job.page_limit:
         raise Denied("reader exceeded its page budget")
     with ws.lock(write=True):
-        device, source, _ = check_binding(ws, job)
+        device, source, raw = check_binding(ws, job)
         current = ReadState.model_validate_json(ws.fs.read(state_path(job.id)))
         if current.status == "cancelled":
             raise Conflict("reading was cancelled")
+        if job.source_type == "pdf":
+            # Parse untrusted PDF bytes only in the isolated extraction worker.
+            pages = owner_pages(
+                run_extraction_unlocked(
+                    ws, source, raw, scope_name=job.scope, inline_synthetic=True
+                )
+            )
+        else:
+            pages = {1: raw.decode()}
+        verify_device_text(result, pages)
         key = digest(canonical(result.extraction))
         if not ws.fs.exists(f"evidence/{key}.json"):
             ws.fs.write(f"evidence/{key}.json", canonical(result.extraction), exclusive=True)
@@ -292,7 +346,7 @@ def accept_result(ws: Workspace, state: ReadState, result: ReaderResult) -> str:
             source_hash=job.source_hash,
             evidence_hash=key,
             locator=f"page {claim.page}",
-            quote=claim.quote,
+            quote=claim.quote or None,
         )
         for claim in claims
     ]

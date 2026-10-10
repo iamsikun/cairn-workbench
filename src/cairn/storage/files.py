@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fcntl
 import os
 import stat
 import unicodedata
@@ -11,6 +12,18 @@ from uuid import uuid4
 from cairn.errors import Conflict, Denied
 
 MAX_FILE_BYTES = 32 * 1024 * 1024
+
+
+def sync(fd: int) -> None:
+    """Flush to stable storage. On macOS, fsync leaves data in the drive cache."""
+    full = getattr(fcntl, "F_FULLFSYNC", None)
+    if full is not None:
+        try:
+            fcntl.fcntl(fd, full)
+            return
+        except OSError:
+            pass  # Some filesystems (e.g. network volumes) do not support it.
+    os.fsync(fd)
 
 
 def disjoint(a: Path, b: Path) -> bool:
@@ -48,7 +61,7 @@ class RootFS:
                 if create:
                     try:
                         os.mkdir(part, mode=0o700, dir_fd=fd)
-                        os.fsync(fd)
+                        sync(fd)
                     except FileExistsError:
                         pass
                 next_fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
@@ -114,9 +127,9 @@ class RootFS:
                 with os.fdopen(file_fd, "wb") as stream:
                     stream.write(data)
                     stream.flush()
-                    os.fsync(stream.fileno())
+                    sync(stream.fileno())
                 os.replace(temporary, name, src_dir_fd=fd, dst_dir_fd=fd)
-                os.fsync(fd)
+                sync(fd)
             finally:
                 try:
                     os.unlink(temporary, dir_fd=fd)
@@ -127,7 +140,7 @@ class RootFS:
         with self.parent(relative) as (fd, name):
             self._regular(os.stat(name, dir_fd=fd, follow_symlinks=False))
             os.unlink(name, dir_fd=fd)
-            os.fsync(fd)
+            sync(fd)
 
     def files(self, prefix: str) -> list[str]:
         components(prefix)

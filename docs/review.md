@@ -27,3 +27,9 @@ After reviewing source support, applicability, conflicts, and any decision or se
 interpretation, use the normal `validate`, `approve --statement ... --acknowledge ...`,
 and `apply` commands. Approval binds the exact proposal and policy; later changes require
 fresh review. A saved report is a snapshot and cannot override later edits or revocation.
+
+A proposal that sets an assertion to `reviewed` or `superseded`, where the current record
+does not already hold that state, carries the `verification_change` acknowledgement. A
+proposed verification state is the proposer's claim, not an owner review; acknowledge it
+only after checking the cited evidence. Owner adoption and receipt next-action updates
+use this flag too.

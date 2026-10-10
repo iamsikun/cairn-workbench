@@ -126,37 +126,44 @@ def capture_bytes(
     with ws.lock(write=True):
         scope = ws.policy.scope(scope_name) if scope_name else None
         projects = [ws.record(project_id, scope)[1] for project_id in (project_ids or [])]
-        previous: list[str] = []
-        for _, existing, _ in ws.records():
-            meta = existing.source
-            if (
-                meta
-                and meta.identity == source_identity
-                and existing.domain == domain
-                and existing.classification == classification
-                and existing.processing == processing
-                and existing.compartments == (compartments or set())
-                and existing.project_ids == (project_ids or [])
-            ):
-                if meta.content_hash == checksum and meta.version == version:
-                    if scope:
-                        scope.require(existing)
-                    require_inheritance(existing, projects)
-                    if (
-                        meta.source_type != source_type
-                        or meta.source_date != source_date
-                        or meta.external_id != external_id
-                        or meta.citation_key != citation_key
-                        or meta.authors != (authors or [])
-                        or meta.bibliography != bibliography
-                        or meta.library_alias != library_alias
-                        or existing.period != period
-                    ):
-                        raise Conflict("source metadata changed for identical captured bytes")
-                    return existing
-                if version is not None and meta.version == version:
-                    raise Conflict("declared source version has different bytes")
-                previous.append(existing.id)
+        matches = [
+            (existing, meta)
+            for _, existing, _ in ws.records()
+            if (meta := existing.source) is not None
+            and meta.identity == source_identity
+            and existing.domain == domain
+            and existing.classification == classification
+            and existing.processing == processing
+            and existing.compartments == (compartments or set())
+            and sorted(existing.project_ids) == sorted(project_ids or [])
+        ]
+        superseded = {item for _, meta in matches for item in meta.supersedes}
+        heads = [(existing, meta) for existing, meta in matches if existing.id not in superseded]
+        latest = max(heads, key=lambda pair: pair[1].captured_at)[0] if heads else None
+        for existing, meta in matches:
+            if meta.content_hash == checksum and meta.version == version:
+                if version is None and latest is not None and existing.id != latest.id:
+                    # Unversioned bytes reverted to an earlier version: record a new head
+                    # so lineage shows the revert instead of leaving the revision current.
+                    continue
+                if scope:
+                    scope.require(existing)
+                require_inheritance(existing, projects)
+                if (
+                    meta.source_type != source_type
+                    or meta.source_date != source_date
+                    or meta.external_id != external_id
+                    or meta.citation_key != citation_key
+                    or meta.authors != (authors or [])
+                    or meta.bibliography != bibliography
+                    or meta.library_alias != library_alias
+                    or existing.period != period
+                ):
+                    raise Conflict("source metadata changed for identical captured bytes")
+                return existing
+            if version is not None and meta.version == version:
+                raise Conflict("declared source version has different bytes")
+        previous = [existing.id for existing, _ in matches]
         timestamp = now()
         record = Record(
             id=new_id("source"),
@@ -226,6 +233,52 @@ def load_extraction(ws: Workspace, source: Record) -> tuple[Extraction, str]:
     return extraction, key
 
 
+def run_extraction_unlocked(
+    ws: Workspace,
+    source: Record,
+    data: bytes,
+    *,
+    scope_name: str,
+    inline_synthetic: bool = False,
+) -> Extraction:
+    """Deterministic extraction through the route check and isolated worker; no writes."""
+    from cairn.policies.audit import require_local_route_unlocked
+
+    assert source.source is not None
+    require_local_route_unlocked(
+        ws,
+        scope_name=scope_name,
+        records=[source],
+        operation="extraction",
+        provider="extract-v1",
+        payload_hash=digest(
+            canonical(
+                {
+                    "source": source,
+                    "raw_hash": digest(data),
+                    "worker_image": ws.config.worker_image,
+                }
+            )
+        ),
+    )
+    if inline_synthetic and ws.config.synthetic:
+        result = extract_bytes(source, data)
+    elif ws.config.worker_image:
+        job = {
+            "operation": "extract",
+            "source": source.model_dump(mode="json"),
+            "data": base64.b64encode(data).decode(),
+        }
+        result = Extraction.model_validate_json(
+            invoke_worker(ws.config.worker_image, canonical(job))
+        )
+    else:
+        raise Blocked("isolation_unavailable: configure a pinned worker image")
+    if result.source_id != source.id or result.source_hash != source.source.content_hash:
+        raise Conflict("worker returned evidence for another source")
+    return result
+
+
 def extract(
     ws: Workspace,
     source_id: str,
@@ -242,39 +295,9 @@ def extract(
         data = ws.fs.read(source.source.blob)
         attempt = new_id("attempt")
         try:
-            from cairn.policies.audit import require_local_route_unlocked
-
-            require_local_route_unlocked(
-                ws,
-                scope_name=scope_name,
-                records=[source],
-                operation="extraction",
-                provider="extract-v1",
-                payload_hash=digest(
-                    canonical(
-                        {
-                            "source": source,
-                            "raw_hash": digest(data),
-                            "worker_image": ws.config.worker_image,
-                        }
-                    )
-                ),
+            result = run_extraction_unlocked(
+                ws, source, data, scope_name=scope_name, inline_synthetic=inline_synthetic
             )
-            if inline_synthetic and ws.config.synthetic:
-                result = extract_bytes(source, data)
-            elif ws.config.worker_image:
-                job = {
-                    "operation": "extract",
-                    "source": source.model_dump(mode="json"),
-                    "data": base64.b64encode(data).decode(),
-                }
-                result = Extraction.model_validate_json(
-                    invoke_worker(ws.config.worker_image, canonical(job))
-                )
-            else:
-                raise Blocked("isolation_unavailable: configure a pinned worker image")
-            if result.source_id != source.id or result.source_hash != source.source.content_hash:
-                raise Conflict("worker returned evidence for another source")
             evidence_hash = digest(canonical(result))
             if not ws.fs.exists(f"evidence/{evidence_hash}.json"):
                 ws.fs.write(f"evidence/{evidence_hash}.json", canonical(result), exclusive=True)

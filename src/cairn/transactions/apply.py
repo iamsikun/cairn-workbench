@@ -167,6 +167,19 @@ def apply(ws: Workspace, proposal_id: str) -> ApplyReceipt:
             or not proposal.review_flags <= approval.acknowledgements
         ):
             raise Denied("approval does not bind this exact proposal and policy")
+        # Re-read under the lock: an editor that ignores the lock may have written since
+        # validation. Journal only the bytes actually observed, never an assumed base.
+        before: dict[str, str | None] = {}
+        for change in proposal.changes:
+            if change.base_hash is None:
+                if ws.fs.exists(change.path):
+                    raise Conflict(f"{change.path} was created after validation")
+                before[change.path] = None
+                continue
+            observed = ws.fs.read(change.path)
+            if digest(observed) != change.base_hash:
+                raise Conflict(f"{change.path} changed after validation; no files were changed")
+            before[change.path] = observed.decode()
         tx = Transaction(
             id=new_id("transaction"),
             proposal_id=proposal.id,
@@ -178,9 +191,7 @@ def apply(ws: Workspace, proposal_id: str) -> ApplyReceipt:
             entries=[
                 Entry(
                     path=change.path,
-                    before=ws.fs.read(change.path).decode()
-                    if change.base_hash is not None
-                    else None,
+                    before=before[change.path],
                     before_hash=change.base_hash,
                     after=change.content,
                     after_hash=change.content_hash,

@@ -5,7 +5,7 @@ import typer
 
 from cairn.cli.commands import JsonOption, WorkspaceOption, emit, guarded
 from cairn.library import catalog
-from cairn.library.index import papers, render_catalog
+from cairn.library.index import papers
 from cairn.library.models import Journal, LibraryConfig, ReadingState
 from cairn.records.json import read_json
 from cairn.storage.workspace import Workspace
@@ -90,10 +90,14 @@ def register(app: typer.Typer) -> None:
                 inline_synthetic=inline_synthetic,
             )
             return
-        values = history(Workspace(workspace), scope, 1)
+        from cairn.presentation.service import output_bytes
+
+        ws = Workspace(workspace)
+        values = history(ws, scope, 1)
         if not values:
             raise Blocked("no_saved_digest")
-        output.write_text(render(values[0], format))
+        with ws.lock():
+            output_bytes(ws, output, render(values[0], format).encode())
         emit({"path": str(output), "digest": values[0].id}, True)
 
     @feeds.command("acknowledge")
@@ -395,8 +399,12 @@ def register(app: typer.Typer) -> None:
                 inline_synthetic=inline_synthetic,
             )
             return
-        rows = papers(Workspace(workspace), scope=scope)
-        if format not in ("html", "json"):
+        if format != "json":
             raise ValueError("unsupported format")
-        output.write_bytes(render_catalog(rows).encode() if format == "html" else canonical(rows))
+        from cairn.presentation.service import output_bytes
+
+        ws = Workspace(workspace)
+        rows = papers(ws, scope=scope)
+        with ws.lock():
+            output_bytes(ws, output, canonical(rows))
         emit({"path": str(output), "papers": len(rows)}, True)
