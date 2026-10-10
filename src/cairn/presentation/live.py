@@ -72,6 +72,7 @@ def deactivate(fs: RootFS) -> None:
     for path in fs.files(PREFIX):
         registration = Rendering.model_validate_json(fs.read(path))
         registration.active = False
+        registration.pending_checksum = None
         registration.status = "inactive"
         registration.error = "Restored: explicitly render to rebind an output destination."
         fs.write(path, canonical(registration))
@@ -150,7 +151,7 @@ def sync(ws: Workspace) -> list[Rendering]:
     with ws.lock():
         entries = registrations(ws)
     for entry in entries:
-        if not entry.active:
+        if not entry.active and not entry.pending_checksum:
             continue
         try:
             with ws.lock():
@@ -200,7 +201,7 @@ def maintain(ws: Workspace) -> None:
     import warnings
 
     try:
-        stale = any(entry.active and entry.status == "stale" for entry in sync(ws))
+        stale = any(entry.status == "stale" for entry in sync(ws))
     except (CairnError, OSError, ValueError):
         stale = True
     if stale:

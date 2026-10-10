@@ -32,7 +32,7 @@ test('application Chromium mandatory: evidence, themes, narrow layout, feedback,
  for(let i=0;i<100;i++){if(await evaluate('document.readyState==="complete" && !!document.querySelector("#filter")'))break;await new Promise(r=>setTimeout(r,40));}
  assert.equal(await evaluate('document.querySelectorAll("#concept_example table").length'),1);
  assert.equal(await evaluate('document.querySelectorAll("#concept_example img, #concept_example script, #concept_example [href^=javascript]").length'),0);
- const output=process.env.AM_BROWSER_OUTPUT;if(output)mkdirSync(output,{recursive:true});
+ const output=process.env.AM_BROWSER_OUTPUT?join(process.env.AM_BROWSER_OUTPUT,'application'):null;if(output)mkdirSync(output,{recursive:true});
  for(const width of [1440,390])for(const mode of ['light','dark']){
   await send('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:false});await evaluate(`document.documentElement.dataset.mode='${mode}'`);
   assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth+1'));

@@ -243,7 +243,10 @@ def assemble(
             path, record, _ = ws.record(key, effective)
             records[key] = record
             inputs[path] = digest(ws.fs.read(path))
-            refs.extend(all_refs(record))
+            if not isinstance(payload, PagePayload) or any(
+                entry.record.id == key for entry in payload.pages
+            ):
+                refs.extend(all_refs(record))
         if isinstance(payload, QueryPayload):
             payload.assertions = {r.id: r.assertions for r in records.values() if r.assertions}
         if isinstance(payload, ProjectPayload):

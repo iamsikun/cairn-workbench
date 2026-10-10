@@ -358,3 +358,22 @@ def test_project_capture_and_reading_membership(ws, tmp_path):
         ].project_ids == [project.id]
     finally:
         client.close()
+
+
+def test_proposal_reads_recheck_current_related_restrictions(ws):
+    grant(ws)
+    _, topic = project_and_note(ws)
+    paper = source(ws, processing="cloud_eligible")
+    client = Client(ws)
+    try:
+        answer = reading(client.ok("evidence", source_id=paper.id))
+        result = client.ok("propose_reading", **answer, related=[topic.id])
+        assert client.ok("pending")["proposals"]
+        path, record, body = ws.record(topic.id)
+        record.processing = "local_only"
+        ws.fs.write(path, encode(record, body))
+        assert client.ok("pending") == {"proposals": []}
+        assert client.call("proposal_show", proposal_id=result["proposal_id"])[0]
+        assert client.call("propose_reading", **answer, related=[topic.id])[0]
+    finally:
+        client.close()

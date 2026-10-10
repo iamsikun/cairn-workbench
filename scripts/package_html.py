@@ -17,7 +17,7 @@ def package(output: Path) -> str:
     }
     files["runtime/application.mjs"] = (resources / "application.mjs").read_bytes()
     files["runtime/LICENSE"] = (root / "vendor/answer-me-with-html/LICENSE").read_bytes()
-    files["runtime/THIRD_PARTY_LICENSES"] = files["runtime/LICENSE"]
+    files["runtime/THIRD_PARTY_LICENSES"] = (resources / "THIRD_PARTY_LICENSES").read_bytes()
     files["PROVENANCE.json"] = (resources / "provenance.json").read_bytes()
     files["SHA256SUMS.json"] = (
         json.dumps(

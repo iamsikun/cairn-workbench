@@ -35,4 +35,8 @@ value = {
     "d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20",
 }
 (resources / "provenance.json").write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
-(resources / "THIRD_PARTY_LICENSES").write_bytes((vendor / "LICENSE").read_bytes())
+(resources / "THIRD_PARTY_LICENSES").write_bytes(
+    (vendor / "LICENSE").read_bytes()
+    + b"\n\nMarked\n======\n"
+    + (vendor / "LICENSE.marked").read_bytes()
+)

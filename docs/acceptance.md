@@ -12,6 +12,14 @@ Schema exports were regenerated; Ruff and strict mypy passed (102 source files).
 Full-suite, browser and installed-release evidence is recorded separately below when run.
 These tests use deterministic synthetic agent answers, not a real model or private workspace.
 
+The first full container run found a renderer reproducibility failure (361 tests
+passed, one checksum check failed). Markdown's bundled dependency introduced
+build-path comments. The application build now removes those comments through
+esbuild's whitespace minification, and carries Marked's license. A follow-up
+authorization regression suite passed **18 tests**, including a related page changed
+to local-only before pending, review or a cached reading retry. Browser checks passed;
+the full post-fix results are recorded in the final verification entry.
+
 ## Paper notebooks — six regression fixes (2026-10-10)
 
 The targeted synthetic container suite passed **57 tests** covering MCP, capture/apply,

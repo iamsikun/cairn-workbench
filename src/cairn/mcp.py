@@ -405,7 +405,6 @@ def capture_projects(ws: Workspace, scope_name: str, selected: list[str] | None)
 def pending(session: Session, args: Pending) -> Any:
     """Proposals awaiting the owner's review within this session's scope."""
     from cairn.proposals.inbox import inbox
-    from cairn.proposals.service import load_job, load_proposal
 
     ws = _workspace(session)
     _authorize(session, ws, [], "query")
@@ -414,30 +413,7 @@ def pending(session: Session, args: Pending) -> Any:
 
         def in_scope(proposal_id: str) -> bool:
             try:
-                from cairn.storage.markdown import decode
-
-                proposal = load_proposal(ws, proposal_id)
-                job = load_job(ws, proposal.job_id).job
-                if job.scope_name != session.scope:
-                    return False
-                from cairn.proposals.service import all_refs
-
-                inputs = [job.source, *(p.record for p in job.related)]
-                changes = [decode(c.content.encode())[0] for c in proposal.changes]
-                current_ids = {r.id for r in inputs}
-                current_ids.update(ref.id for r in [*inputs, *changes] for ref in all_refs(r))
-                current_ids.update(c.id for c in proposal.changes if c.base_hash)
-                current = [ws.record(key, ws.policy.scope(session.scope))[1] for key in current_ids]
-                _authorize(
-                    session,
-                    ws,
-                    [
-                        *inputs,
-                        *changes,
-                        *current,
-                    ],
-                    "query",
-                )
+                _authorize(session, ws, _proposal_inputs(ws, proposal_id, session.scope), "query")
                 return True
             except (CairnError, OSError, ValueError):
                 return False  # Unreadable entries are left to the owner's inbox.
@@ -446,19 +422,31 @@ def pending(session: Session, args: Pending) -> Any:
     return _released(session, ws, shown)
 
 
+def _proposal_inputs(ws: Workspace, proposal_id: str, scope_name: str) -> list[Labels]:
+    """Authorize current records as well as the proposal's historical snapshots."""
+    from cairn.proposals.service import all_refs, load_job, load_proposal
+    from cairn.storage.markdown import decode
+
+    proposal = load_proposal(ws, proposal_id)
+    job = load_job(ws, proposal.job_id).job
+    if job.scope_name != scope_name:
+        raise Denied("proposal unavailable in this scope")
+    inputs = [job.source, *(p.record for p in job.related)]
+    changes = [decode(c.content.encode())[0] for c in proposal.changes]
+    ids = {r.id for r in inputs} | {c.id for c in proposal.changes if c.base_hash}
+    ids.update(ref.id for r in [*inputs, *changes] for ref in all_refs(r))
+    ids.update(r.primary_source_id for r in [*inputs, *changes] if r.primary_source_id)
+    return [*inputs, *changes, *(ws.record(key, ws.policy.scope(scope_name))[1] for key in ids)]
+
+
 def proposal_show(session: Session, args: ProposalShow) -> Any:
     from cairn.proposals.review import review_model
-    from cairn.proposals.service import load_job, load_proposal
-    from cairn.storage.markdown import decode
+    from cairn.proposals.service import load_proposal
 
     ws = _workspace(session)
     with ws.lock():
         proposal = load_proposal(ws, args.proposal_id)
-        job = load_job(ws, proposal.job_id).job
-        if job.scope_name != session.scope:
-            raise Denied("proposal unavailable in this scope")
-        changed = [decode(change.content.encode())[0] for change in proposal.changes]
-        _authorize(session, ws, [job.source, *(p.record for p in job.related), *changed], "query")
+        _authorize(session, ws, _proposal_inputs(ws, proposal.id, session.scope), "query")
         report = review_model(ws, proposal)
     return _released(session, ws, report)
 
@@ -467,8 +455,9 @@ def propose_reading(session: Session, args: ProposeReading) -> Any:
     from cairn.reading.workflow import submit
 
     answer = ReadingAnswer.model_validate(args.model_dump(include=set(ReadingAnswer.model_fields)))
+    ws = _workspace(session)
     receipt = submit(
-        _workspace(session),
+        ws,
         args.source_id,
         answer,
         scope_name=session.scope,
@@ -482,6 +471,10 @@ def propose_reading(session: Session, args: ProposeReading) -> Any:
         base_hash=args.base_hash,
         pages=args.pages,
     )
+    with ws.lock():
+        _authorize(
+            session, ws, _proposal_inputs(ws, receipt.proposal_id, session.scope), "client_export"
+        )
     return receipt.model_dump(mode="json") | {"next": "owner review (cairn inbox)"}
 
 

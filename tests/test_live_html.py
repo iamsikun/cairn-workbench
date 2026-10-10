@@ -142,13 +142,20 @@ def test_failure_retry_tamper_and_safe_paths(ws, tmp_path, monkeypatch):
         live.render_page(ws, topic.id, "research", link, inline_synthetic=True)
 
 
-def test_interrupted_replacement_retries(ws, tmp_path):
+@pytest.mark.parametrize("first_render", [False, True])
+def test_interrupted_replacement_retries(ws, tmp_path, first_render):
     topic, note = notebook(ws)
     output = tmp_path / "topic.html"
-    live.render_page(ws, topic.id, "research", output, inline_synthetic=True)
+    if not first_render:
+        live.render_page(ws, topic.id, "research", output, inline_synthetic=True)
     edit(ws, note, "Crash update.")
+    command = (
+        ["page", topic.id, "--format", "html", "--output", str(output), "--inline-synthetic"]
+        if first_render
+        else ["sync"]
+    )
     result = subprocess.run(
-        [sys.executable, "-m", "cairn", "view", "sync", "--workspace", str(ws.root)],
+        [sys.executable, "-m", "cairn", "view", *command, "--workspace", str(ws.root)],
         env={**os.environ, "CAIRN_TEST_CRASH_AT": "html:replaced"},
         timeout=30,
     )
