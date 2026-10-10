@@ -334,7 +334,7 @@ def test_setup_and_restore_never_install_or_edit_skills(ws: Workspace, tmp_path:
         app, init_args(tmp_path, "--no-quill", "--no-finch"), env={"HOME": str(home)}
     )
     assert result.exit_code == 0, result.output
-    assert set(json.loads(result.stdout)) == {"workspace_id", "synthetic"}
+    assert set(json.loads(result.stdout)) == {"workspace_id", "synthetic", "connect"}
     archive = tmp_path / "backup.zip"
     backup(ws, archive)
     code = tmp_path / "restore-code"

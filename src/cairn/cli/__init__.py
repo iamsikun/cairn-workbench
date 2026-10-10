@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import shlex
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
 from cairn import __version__
+from cairn.cli.agent import register as register_agent
 from cairn.cli.commands import guarded, register
 from cairn.cli.domains import register as register_domains
 from cairn.cli.finch import register as register_finch
@@ -34,6 +36,7 @@ register_presentation(app)
 register_finch(app)
 register_write(app)
 register_update(app)
+register_agent(app)
 
 
 @app.command()
@@ -101,6 +104,8 @@ def init(
         result: dict[str, object] = {
             "workspace_id": ws.config.id,
             "synthetic": ws.config.synthetic,
+            "connect": f"cairn mcp --print-config --workspace {shlex.quote(str(ws.root))} "
+            "--provider AGENT --destination DESTINATION --packets-dir DIR",
         }
         if auto_update and statement:
             from cairn.cli.update import ENABLE_STATEMENT, enable_workspace

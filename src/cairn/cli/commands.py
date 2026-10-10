@@ -114,35 +114,20 @@ def register(app: typer.Typer) -> None:
             conflicting=json_output,
         ):
             return
-        from cairn.errors import CairnError
-        from cairn.ingest.service import load_extraction
+        from cairn.ingest.service import evidence_report
 
         ws = Workspace(workspace)
-        with ws.lock():
-            path, source, _ = ws.record(source_id, ws.policy.scope(scope))
-            extraction, key = load_extraction(ws, source)
-            assert source.source
-            segments = [s for s in extraction.segments if locator is None or s.locator == locator]
-            if not segments:
-                raise CairnError("evidence locator unavailable")
-            report = {
-                "source": source,
-                "evidence_hash": key,
-                "coverage": extraction.coverage,
-                "method": extraction.method,
-                "method_version": extraction.method_version,
-                "tables_inspected": extraction.tables_inspected,
-                "images_inspected": extraction.images_inspected,
-                "segments": segments,
-                "warnings": extraction.warnings,
-            }
-            text = (
-                f"{source.title}\n{source.id}\nManifest: {ws.root / path}\n"
-                f"Version: {source.source.version or 'unknown'}; "
-                f"date: {source.source.source_date or 'unknown'}; coverage: {extraction.coverage}\n"
-                f"Source hash: {source.source.content_hash}\nEvidence hash: {key}\n"
-                + "\n\n".join(f"[{s.locator}] {s.text}" for s in segments)
-            )
+        path, report = evidence_report(ws, source_id, scope_name=scope, locator=locator)
+        source, extraction = report["source"], report
+        assert source.source
+        text = (
+            f"{source.title}\n{source.id}\nManifest: {ws.root / path}\n"
+            f"Version: {source.source.version or 'unknown'}; "
+            f"date: {source.source.source_date or 'unknown'}; coverage: {extraction['coverage']}\n"
+            f"Source hash: {source.source.content_hash}\n"
+            f"Evidence hash: {report['evidence_hash']}\n"
+            + "\n\n".join(f"[{s.locator}] {s.text}" for s in report["segments"])
+        )
         emit(report, json_output, text)
 
     @drafts.command("begin")

@@ -4,7 +4,7 @@ import base64
 import os
 from datetime import date
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import JsonValue
 
@@ -350,3 +350,26 @@ def latest_stage(ws: Workspace, object_id: str) -> str | None:
     if not succeeded:
         return None
     return max(succeeded, key=lambda event: event.at).stage
+
+
+def evidence_report(
+    ws: Workspace, source_id: str, *, scope_name: str, locator: str | None = None
+) -> tuple[str, dict[str, Any]]:
+    """A scoped source's extracted evidence, optionally one locator; read-only."""
+    with ws.lock():
+        path, source, _ = ws.record(source_id, ws.policy.scope(scope_name))
+        extraction, key = load_extraction(ws, source)
+        segments = [s for s in extraction.segments if locator is None or s.locator == locator]
+        if not segments:
+            raise CairnError("evidence locator unavailable")
+        return path, {
+            "source": source,
+            "evidence_hash": key,
+            "coverage": extraction.coverage,
+            "method": extraction.method,
+            "method_version": extraction.method_version,
+            "tables_inspected": extraction.tables_inspected,
+            "images_inspected": extraction.images_inspected,
+            "segments": segments,
+            "warnings": extraction.warnings,
+        }
