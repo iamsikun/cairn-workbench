@@ -40,7 +40,7 @@ owner activation gate. Actual private deployment remains separate from developme
 The CLI provides `init`, `capture`, `ingest`, `proposal show`, `validate`, `approve`,
 `apply`, `recover`, `search`, `query`, `edit`, `lint`, `rebuild-index`, `backup`, `restore`,
 `client run`, `project create`, `bibliography import`, `receipt import`, `decision adopt`,
-`repository inspect`, `context`, `finch`, `policy`, `release`, `schema`, and `doctor`. Pass
+`repository inspect`, `context`, `finch`, `policy`, `release`, `schema`, `update`, and `doctor`. Pass
 `--workspace` (or `CAIRN_WORKSPACE`) and use `--json`
 for structured command output. Development `init` and `restore` use `--synthetic`.
 Private initialization and restore require a reviewed installed release, explicit owner
@@ -79,6 +79,15 @@ proposal. `cairn note` makes your own notes searchable immediately, `cairn inbox
 what awaits you, and `cairn accept` validates, approves and applies proposals in one
 confirmed, batchable step. Setup installs Quill for the knowledge base unless it is
 already available machine-wide. See [Writing](docs/writing.md).
+
+## Automatic updates
+
+After a one-time `cairn update setup`, Cairn checks its `stable` branch hourly and
+whenever `cairn` starts (at most daily), like Finch and Quill. When the version number
+increases, it builds, verifies and installs that release, and rebinds each opted-in knowledge
+base with a backup and automatic schema migration. It also refreshes the
+knowledge-base Quill from Quill's `stable` release. Opt a knowledge base in with
+`cairn init --auto-update` or `cairn update enable`. See [Automatic updates](docs/updates.md).
 
 ## Automatic Finch paper reading
 

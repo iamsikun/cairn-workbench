@@ -49,7 +49,14 @@ from cairn.records.migration import (
 )
 from cairn.records.models import Event, Extraction, Record
 from cairn.records.release import ReleaseManifest
-from cairn.records.runtime import ProbeRequest, ProbeResult, RuntimeApproval, WorkerProfile
+from cairn.records.runtime import (
+    ProbeRequest,
+    ProbeResult,
+    RuntimeApproval,
+    UpdateAuthorization,
+    UpdateRevocation,
+    WorkerProfile,
+)
 from cairn.storage.backup import BackupManifest
 from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2
 
@@ -120,6 +127,8 @@ if __name__ == "__main__":
         ProbeResult,
         WorkerProfile,
         RuntimeApproval,
+        UpdateAuthorization,
+        UpdateRevocation,
         WorkspaceConfig,
         WorkspaceConfigV2,
         MigrationAuthorization,

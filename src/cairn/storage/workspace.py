@@ -85,19 +85,28 @@ def check_roots(root: Path, code_roots: list[Path]) -> Path:
 
 
 class Workspace:
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, *, _upgrading: bool = False):
         self.fs = RootFS(root)
         self.root = self.fs.root
+        # Only the runtime upgrade opens a workspace whose binding names a different
+        # installation; it still validates that binding and verifies its own runtime.
+        self._upgrading = _upgrading
         if self.fs.exists("restore.pending"):
             raise RecoveryRequired("workspace staging is incomplete; use the original input")
         self.config = parse_config(self.fs.read("workspace.json"))
         check_roots(self.root, [Path(path) for path in self.config.code_roots])
         if not self.config.synthetic:
-            from cairn.storage.activation import verify_workspace_runtime
-
             if not disjoint(self.root, Path(sys.prefix)):
                 raise Denied("private workspace and installed runtime must be disjoint")
-            verify_workspace_runtime(self.config, self.fs.read)
+            self._check_runtime(self.config)
+
+    def _check_runtime(self, config: WorkspaceConfiguration) -> None:
+        from cairn.storage.activation import check_runtime_metadata, verify_workspace_runtime
+
+        if self._upgrading:
+            check_runtime_metadata(config, self.fs.read)
+        else:
+            verify_workspace_runtime(config, self.fs.read)
 
     @classmethod
     def init(
@@ -200,9 +209,7 @@ class Workspace:
             if current != self.config:
                 raise Conflict("workspace runtime configuration changed; reopen the workspace")
             if not self.config.synthetic:
-                from cairn.storage.activation import verify_workspace_runtime
-
-                verify_workspace_runtime(current, self.fs.read)
+                self._check_runtime(current)
             if not recovery:
                 self.require_no_pending_migration()
                 for path in self.fs.files("journal"):

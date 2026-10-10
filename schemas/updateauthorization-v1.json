@@ -1,0 +1,61 @@
+{
+  "additionalProperties": false,
+  "description": "Standing owner consent to adopt future releases from one channel branch.",
+  "properties": {
+    "at": {
+      "format": "date-time",
+      "title": "At",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "migrations": {
+      "const": "automatic_with_backup",
+      "default": "automatic_with_backup",
+      "title": "Migrations",
+      "type": "string"
+    },
+    "owner_statement": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Owner Statement",
+      "type": "string"
+    },
+    "ref": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$",
+      "title": "Ref",
+      "type": "string"
+    },
+    "repository": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "pattern": "^[^\\r\\n\\x00]+$",
+      "title": "Repository",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "workspace_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "workspace_id",
+    "at",
+    "repository",
+    "ref",
+    "owner_statement"
+  ],
+  "title": "UpdateAuthorization",
+  "type": "object"
+}

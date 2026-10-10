@@ -18,7 +18,12 @@ from cairn.proposals.models import Approval, JobEnvelope, Proposal
 from cairn.proposals.service import all_refs, target_path
 from cairn.records.json import read_json
 from cairn.records.models import ID, Digest, Event, Extraction, Model, Record, canonical, digest
-from cairn.records.runtime import ReviewAcknowledgement, RuntimeApproval
+from cairn.records.runtime import (
+    ReviewAcknowledgement,
+    RuntimeApproval,
+    UpdateAuthorization,
+    UpdateRevocation,
+)
 from cairn.storage.activation import check_runtime_metadata, prepare_activation
 from cairn.storage.files import MAX_FILE_BYTES, RootFS, components, disjoint, sync
 from cairn.storage.history_safety import check_history_config, check_history_paths
@@ -151,6 +156,20 @@ def validate_payloads(payloads: Mapping[str, bytes]) -> WorkspaceConfiguration:
                     or runtime.workspace_id != config.id
                 ):
                     raise Conflict("backup runtime approval identity mismatch")
+            elif path.startswith("receipts/updates/revocations/"):
+                revocation = UpdateRevocation.model_validate(read_json(raw))
+                if (
+                    path != f"receipts/updates/revocations/{revocation.authorization_id}.json"
+                    or revocation.workspace_id != config.id
+                ):
+                    raise Conflict("backup update revocation identity mismatch")
+            elif path.startswith("receipts/updates/"):
+                authorization = UpdateAuthorization.model_validate(read_json(raw))
+                if (
+                    path != f"receipts/updates/{authorization.id}.json"
+                    or authorization.workspace_id != config.id
+                ):
+                    raise Conflict("backup update authorization identity mismatch")
             elif path.startswith("receipts/applied/"):
                 receipt = ApplyReceipt.model_validate(read_json(raw))
                 if path != f"receipts/applied/{receipt.proposal_id}.json":

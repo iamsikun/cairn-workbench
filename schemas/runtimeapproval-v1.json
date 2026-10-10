@@ -116,6 +116,19 @@
       "title": "At",
       "type": "string"
     },
+    "backup_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Backup Sha256"
+    },
     "id": {
       "pattern": "^[a-z][a-z0-9_]{2,95}$",
       "title": "Id",
@@ -124,7 +137,8 @@
     "operation": {
       "enum": [
         "init",
-        "restore"
+        "restore",
+        "upgrade"
       ],
       "title": "Operation",
       "type": "string"
@@ -135,16 +149,55 @@
       "title": "Owner Statement",
       "type": "string"
     },
+    "previous_approval_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Previous Approval Id"
+    },
     "release_hash": {
       "pattern": "^[0-9a-f]{64}$",
       "title": "Release Hash",
       "type": "string"
+    },
+    "release_tag": {
+      "anyOf": [
+        {
+          "pattern": "^v(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Release Tag"
     },
     "schema_version": {
       "const": 1,
       "default": 1,
       "title": "Schema Version",
       "type": "integer"
+    },
+    "update_authorization_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Update Authorization Id"
     },
     "worker": {
       "$ref": "#/$defs/WorkerProfile"

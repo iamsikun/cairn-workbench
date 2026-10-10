@@ -16,6 +16,7 @@ from cairn.cli.presentation import register as register_presentation
 from cairn.cli.release import register as register_release
 from cairn.cli.research import register as register_research
 from cairn.cli.schema import register as register_schema
+from cairn.cli.update import register as register_update
 from cairn.cli.write import register as register_write
 from cairn.errors import CairnError
 from cairn.records.runtime import ReviewAcknowledgement
@@ -32,6 +33,7 @@ register_library(app)
 register_presentation(app)
 register_finch(app)
 register_write(app)
+register_update(app)
 
 
 @app.command()
@@ -65,6 +67,13 @@ def init(
     finch_auto_update: Annotated[
         bool, typer.Option(help="Let Finch schedule its own daily update.")
     ] = True,
+    auto_update: Annotated[
+        bool,
+        typer.Option(
+            "--auto-update/--no-auto-update",
+            help="Adopt future stable Cairn releases automatically (managed runtime only).",
+        ),
+    ] = False,
 ) -> None:
     """Initialize an empty, separate workspace (synthetic during development).
 
@@ -76,6 +85,18 @@ def init(
             from cairn.errors import Denied
 
             raise Denied("private worker image is selected by the reviewed release manifest")
+        from cairn.updater.home import Home
+
+        home = Home.from_env()
+        running = home.running_runtime()
+        if not synthetic and release is None and release_sha256 is None and running:
+            # A managed runtime carries the bundle it was verified and installed from.
+            release = home.runtime(running.release_sha256) / "bundle" / "release.json"
+            release_sha256 = running.release_sha256
+        if auto_update and (synthetic or home.config() is None):
+            from cairn.errors import Denied
+
+            raise Denied("automatic updates need a private workspace and `cairn update setup`")
         ws = Workspace.init(
             workspace,
             code_roots=[code_root],
@@ -96,10 +117,16 @@ def init(
             "workspace_id": ws.config.id,
             "synthetic": ws.config.synthetic,
         }
+        if auto_update and statement:
+            from cairn.cli.update import ENABLE_STATEMENT, enable_workspace
+
+            result["auto_update"] = enable_workspace(home, ws, f"{statement} {ENABLE_STATEMENT}")
         if not no_quill:
             from cairn.presentation.quill import ensure_for_workspace
 
-            result["quill"] = ensure_for_workspace(ws.root, skills_dir=quill_skills_dir)
+            result["quill"] = ensure_for_workspace(
+                ws.root, skills_dir=quill_skills_dir, track_channel=not ws.config.synthetic
+            )
         if (not synthetic) if finch is None else finch:
             from cairn.reading.skill import install
 

@@ -1,5 +1,61 @@
 # Acceptance evidence
 
+## Automatic updates and managed skills (2026-10-10; software checks passed, live update pending)
+
+The owner asked that a knowledge base update automatically whenever the workbench is
+updated, like a self-updating terminal application, and that knowledge-base skills
+follow their upstream. Previously a private workspace was bound to one release with no
+upgrade path. The owner first chose SSH-signed release tags, then asked to follow Finch
+and Quill instead: a release is the `stable` branch with a higher version number, and no
+signing setup is required. Schema migrations run automatically with backups.
+
+- **Rebind.** `storage/upgrade.py` rebinds a workspace under a standing
+  `UpdateAuthorization` stored in that workspace. The new runtime verifies itself, then
+  checks that the release commit is on the branch named in that authorization and that
+  both version declarations (`pyproject.toml`, `src/cairn/__init__.py`) agree on the
+  expected version. It also checks that the manifest's revision and source hash match
+  that tree. It refuses downgrades,
+  runs a fresh worker probe, and backs up before replacing `workspace.json`. Upgrade
+  approvals chain back to an acknowledged `init`/`restore` and are checked on every open
+  and in backups.
+- **Updater.** It adopts the `stable` head only when its version increases and it
+  fast-forwards the installed commit. `cairn update setup|run|status|enable|disable|schedule`, a launchd/cron
+  job, a background check when `cairn` starts, a one-time notice, and serving a
+  workspace from the runtime it is still bound to. A failed build, verification or
+  smoke run keeps the previous runtime.
+- **Managed Quill.** The knowledge-base copy is generated from a pristine clone of
+  Quill's `stable` branch plus the Cairn handoff. It is refreshed only while it matches
+  its marker, so owner edits and unmanaged copies are kept. Finch's own updater is
+  invoked when present.
+
+Tests (synthetic only; local repositories, synthetic `CAIRN_HOME` and `FINCH_HOME`):
+
+| Area | Tests |
+|---|---|
+| Channel rebind, chain, backup, restore of upgraded archive | `test_channel_release_rebinds_with_backup_chain_and_history` |
+| Missing/revoked authorization | `test_rebind_requires_active_owner_authorization` |
+| Wrong version, disagreeing declarations, off-channel commit | `test_rebind_requires_a_channel_commit_declaring_the_release` |
+| Manifest/source binding, no downgrade | `test_rebind_binds_manifest_to_channel_source_and_never_downgrades` |
+| Probe failure before backup; interruption before commit | `test_failed_worker_probe_blocks_before_backup`, `test_interrupted_rebind_leaves_previous_binding_valid` |
+| Forged authorization reference detected on open | `test_upgrade_chain_is_checked_on_every_open` |
+| Automatic legacy migration with second backup | `test_upgrade_migrates_legacy_format_automatically_with_backup` |
+| Version-bump selection, rewritten history refused, cycle ordering, failure keeps runtime, busy, GC | `tests/test_updater.py` |
+| Bound-runtime re-exec, notice, background check, schedules, shim | `tests/test_updater.py` |
+| Managed Quill install, refresh, local edits, offline fallback | `tests/test_managed_skills.py` |
+
+After switching to version-based releases, `bash scripts/check.sh` passed: **365
+tests**, Ruff, strict mypy, all 13 isolation checks, worker and installed round trips,
+gold set 129/129, and the real-engine lifecycle. The temporary `openssh-client`
+addition to the development image was removed with the signing code; the worker image
+was never changed.
+
+Not executed: build, install and verification steps are simulated by a fake runner.
+No live `cairn update setup`/`run` was run on a real macOS host, so the native host
+build (`uv run ... build_release.py`, local `docker build`, offline install and the new
+runtime's `check-runtime`) is unverified. The repository has no `stable` branch yet. `scripts/release_check.sh` was not rerun. Live launchd/cron
+registration, Quill's upstream over the network, and the owner's first activation
+remain owner deployment checks.
+
 ## Review fixes: macOS history, recovery, reader evidence, renderer (2026-10-10)
 
 A code review found five defects; each fix has a regression test.

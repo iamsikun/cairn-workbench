@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import Field, StrictBool, field_validator
+from pydantic import Field, StrictBool, field_validator, model_validator
 
 from cairn.records.models import ID, Digest, Model
 
@@ -70,17 +70,60 @@ class WorkerProfile(Model):
     host_canary_preserved: Literal[True] = True
 
 
+_PART = r"(0|[1-9][0-9]{0,8})"
+ReleaseTag = Annotated[str, Field(pattern=rf"^v{_PART}\.{_PART}\.{_PART}$")]
+
+
+def tag_version(tag: str) -> tuple[int, int, int]:
+    major, minor, patch = tag.removeprefix("v").split(".")
+    return int(major), int(minor), int(patch)
+
+
+class UpdateAuthorization(Model):
+    """Standing owner consent to adopt future releases from one channel branch."""
+
+    schema_version: Literal[1] = 1
+    id: ID
+    workspace_id: ID
+    at: datetime
+    repository: str = Field(min_length=1, max_length=2048, pattern=r"^[^\r\n\x00]+$")
+    ref: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$")
+    migrations: Literal["automatic_with_backup"] = "automatic_with_backup"
+    owner_statement: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("owner_statement")
+    @classmethod
+    def nonblank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("owner statement is required")
+        return value
+
+
+class UpdateRevocation(Model):
+    schema_version: Literal[1] = 1
+    authorization_id: ID
+    workspace_id: ID
+    at: datetime
+    owner_statement: str = Field(min_length=1, max_length=4000)
+
+
 class RuntimeApproval(Model):
     schema_version: Literal[1] = 1
     id: ID
     workspace_id: ID
     at: datetime
-    operation: Literal["init", "restore"]
+    operation: Literal["init", "restore", "upgrade"]
     release_hash: Digest
     owner_statement: str = Field(min_length=1, max_length=4000)
     acknowledgements: set[ReviewAcknowledgement]
     worker: WorkerProfile
     archive_hash: Digest | None = None
+    # An upgrade is authorized by a standing owner authorization for a release channel,
+    # not by per-release acknowledgements; it always names the binding it replaces.
+    previous_approval_id: ID | None = None
+    update_authorization_id: ID | None = None
+    release_tag: ReleaseTag | None = None
+    backup_sha256: Digest | None = None
 
     @field_validator("owner_statement")
     @classmethod
@@ -88,3 +131,20 @@ class RuntimeApproval(Model):
         if not value.strip():
             raise ValueError("owner review statement is required")
         return value
+
+    @model_validator(mode="after")
+    def upgrade_fields(self) -> RuntimeApproval:
+        fields = (
+            self.previous_approval_id,
+            self.update_authorization_id,
+            self.release_tag,
+            self.backup_sha256,
+        )
+        if self.operation == "upgrade":
+            if any(value is None for value in fields) or self.acknowledgements:
+                raise ValueError("upgrade approval requires its authorization chain")
+            if self.archive_hash is not None:
+                raise ValueError("upgrade approval cannot bind a restore archive")
+        elif any(value is not None for value in fields):
+            raise ValueError("only an upgrade approval carries an update authorization")
+        return self

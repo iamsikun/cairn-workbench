@@ -463,6 +463,12 @@ def check_proposal_binding(ws: Workspace, job: Job) -> None:
 
 
 HOOK = "references/cairn-workflow.md"
+HOOK_MARKER = "<!-- cairn-quill-workflow-v1 -->"
+HOOK_SECTION = (
+    "## Cairn writing handoff\n\n"
+    f"When writing from a Cairn packet, follow [{HOOK}]({HOOK}) before drafting "
+    "and before returning. Cairn stages a proposal; acceptance remains the owner's.\n"
+)
 
 
 def install_skill(
@@ -518,12 +524,8 @@ def install(skills_dir: Path) -> dict[str, str]:
         skills_dir,
         "quill",
         skill_files(),
-        marker="<!-- cairn-quill-workflow-v1 -->",
-        hook_section=(
-            "## Cairn writing handoff\n\n"
-            f"When writing from a Cairn packet, follow [{HOOK}]({HOOK}) before drafting "
-            "and before returning. Cairn stages a proposal; acceptance remains the owner's.\n"
-        ),
+        marker=HOOK_MARKER,
+        hook_section=HOOK_SECTION,
     )
     return {
         "skill": "quill",
@@ -548,12 +550,19 @@ def machine_skill_dirs() -> list[Path]:
 
 
 def ensure_for_workspace(
-    root: Path, *, skills_dir: Path | None = None, machine_dirs: list[Path] | None = None
+    root: Path,
+    *,
+    skills_dir: Path | None = None,
+    machine_dirs: list[Path] | None = None,
+    track_channel: bool = False,
 ) -> dict[str, str]:
     """Set up Quill for a new knowledge base unless it is already available machine-wide.
 
     Only the presence of `quill/SKILL.md` is checked; machine-wide skills are never
     read or modified. A local install goes beside the vault, not into durable records.
+    It is a Cairn-managed copy that the updater keeps in step with Quill's stable
+    release; `track_channel` (private setup) fetches that release now and registers
+    the copy for updates, otherwise the bundled snapshot is installed.
     """
     for directory in machine_dirs if machine_dirs is not None else machine_skill_dirs():
         if (directory / "quill" / "SKILL.md").is_file():
@@ -563,8 +572,10 @@ def ensure_for_workspace(
                 "workflow": "run `cairn quill install --skills-dir "
                 f"{directory}` to attach the Cairn writing handoff",
             }
+    from cairn.updater.skills import ensure_managed
+
     try:
-        return install(skills_dir or root / ".claude" / "skills") | {"status": "installed"}
+        return ensure_managed(skills_dir or root / ".claude" / "skills", fetch=track_channel)
     except CairnError as exc:
         # The knowledge base exists either way; report rather than undo its setup.
         return {"status": "blocked", "reason": str(exc)}
