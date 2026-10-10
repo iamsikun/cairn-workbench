@@ -5,7 +5,7 @@ release number and builds on the current runtime's commit; export that exact tre
 build the worker image and a release bundle for this machine; install it offline into
 a new runtime; verify it with its own `release check-runtime`/`check-worker` and a
 synthetic smoke run; ask that runtime to rebind each registered knowledge base (backup,
-channel re-check, migration); switch `current`; and refresh managed skills. Any failure
+channel re-check, migration); and switch `current`. Any failure
 leaves `current` and every unchanged knowledge base on the previous runtime. Models
 and workers take no part.
 """
@@ -197,8 +197,6 @@ def install(
                     *python,
                     "init",
                     "--synthetic",
-                    "--no-quill",
-                    "--no-finch",
                     "--workspace",
                     smoke / "workspace",
                     "--code-root",
@@ -286,7 +284,6 @@ def run(
     *,
     if_due: bool = False,
     runner: Runner = subprocess.run,
-    refresh_skills: Callable[[Home, UpdaterConfig], dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     config = home.config()
     if config is None:
@@ -296,21 +293,12 @@ def run(
         return {"status": "disabled"}
     if if_due and not home.due(config, state):
         return {"status": "not_due", "last_check": state.last_check}
-    if refresh_skills is None:
-        from cairn.updater.skills import refresh
-
-        refresh_skills = refresh
     try:
         with home.lock():
             try:
                 result = _cycle(home, config, runner)
             except CairnError as exc:
                 result = {"status": "failed", "reason": str(exc)}
-            # Skills follow their own upstream even when a Cairn release cannot be built.
-            try:
-                result["skills"] = refresh_skills(home, config)
-            except CairnError as exc:
-                result["skills"] = {"status": "failed", "reason": str(exc)}
     except Busy:
         return {"status": "busy"}
     state = home.state()

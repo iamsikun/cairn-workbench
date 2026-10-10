@@ -6,14 +6,6 @@ from cairn.records.models import Record, now
 from cairn.storage.workspace import Workspace
 
 
-@pytest.fixture(autouse=True)
-def synthetic_machine_skills(tmp_path_factory: pytest.TempPathFactory, monkeypatch) -> Path:
-    # Setup checks machine-wide skills; tests never look at a real home directory.
-    directory = tmp_path_factory.mktemp("machine-skills")
-    monkeypatch.setenv("CAIRN_MACHINE_SKILLS_DIRS", str(directory))
-    return directory
-
-
 @pytest.fixture
 def ws(tmp_path: Path) -> Workspace:
     code = tmp_path / "public-code"
@@ -36,16 +28,9 @@ def record() -> Record:
 
 @pytest.fixture(autouse=True)
 def synthetic_cairn_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch) -> Path:
-    # The updater and managed skills live under CAIRN_HOME; never the real home.
+    # The updater lives under CAIRN_HOME; never the real home.
     directory = tmp_path_factory.mktemp("cairn-home")
     monkeypatch.setenv("CAIRN_HOME", str(directory))
     monkeypatch.setenv("CAIRN_NO_AUTO_UPDATE", "1")
     return directory
 
-
-@pytest.fixture(autouse=True)
-def synthetic_finch_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch) -> Path:
-    # The updater may invoke Finch's own updater; point it at an empty synthetic location.
-    directory = tmp_path_factory.mktemp("finch-absent")
-    monkeypatch.setenv("FINCH_HOME", str(directory))
-    return directory

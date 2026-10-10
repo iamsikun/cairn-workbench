@@ -53,20 +53,9 @@ def init(
     release_sha256: Annotated[str | None, typer.Option()] = None,
     statement: Annotated[str | None, typer.Option()] = None,
     acknowledge: Annotated[list[ReviewAcknowledgement] | None, typer.Option()] = None,
-    quill_skills_dir: Annotated[
-        Path | None, typer.Option(help="Where to install Quill if not machine-wide.")
-    ] = None,
-    no_quill: Annotated[bool, typer.Option("--no-quill")] = False,
-    finch: Annotated[
-        bool | None,
-        typer.Option(
-            "--finch/--no-finch",
-            help="Install Finch for detected agents if missing (default for private workspaces).",
-        ),
-    ] = None,
-    finch_auto_update: Annotated[
-        bool, typer.Option(help="Let Finch schedule its own daily update.")
-    ] = True,
+    # Accepted and ignored: an older updater smoke-tests new runtimes with these flags.
+    _no_quill: Annotated[bool, typer.Option("--no-quill", hidden=True)] = False,
+    _no_finch: Annotated[bool, typer.Option("--no-finch", hidden=True)] = False,
     auto_update: Annotated[
         bool,
         typer.Option(
@@ -75,11 +64,7 @@ def init(
         ),
     ] = False,
 ) -> None:
-    """Initialize an empty, separate workspace (synthetic during development).
-
-    Quill, the writing skill, is installed for this knowledge base unless it is
-    already available machine-wide.
-    """
+    """Initialize an empty, separate workspace (synthetic during development)."""
     try:
         if not synthetic and worker_image:
             from cairn.errors import Denied
@@ -121,20 +106,6 @@ def init(
             from cairn.cli.update import ENABLE_STATEMENT, enable_workspace
 
             result["auto_update"] = enable_workspace(home, ws, f"{statement} {ENABLE_STATEMENT}")
-        if not no_quill:
-            from cairn.presentation.quill import ensure_for_workspace
-
-            result["quill"] = ensure_for_workspace(
-                ws.root, skills_dir=quill_skills_dir, track_channel=not ws.config.synthetic
-            )
-        if (not synthetic) if finch is None else finch:
-            from cairn.reading.skill import install
-
-            # A missing or offline Finch install never blocks the workspace; it stays pending.
-            try:
-                result["finch"] = install(auto_update=finch_auto_update)
-            except CairnError as exc:
-                result["finch"] = {"skill": "finch", "state": "pending", "reason": exc.code}
         typer.echo(json.dumps(result))
     except CairnError as exc:
         typer.echo(json.dumps({"error": exc.code, "message": str(exc)}), err=True)

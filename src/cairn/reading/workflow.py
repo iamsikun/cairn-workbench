@@ -15,8 +15,8 @@ from cairn.presentation.service import output_bytes
 from cairn.presentation.writing_models import ExportReceipt
 from cairn.proposals.models import JobEnvelope
 from cairn.proposals.service import check_reference, stage_result, validate
+from cairn.reading.contract import guidance, guidance_hash
 from cairn.reading.models import FinchGuard, FinchPacket, FinchReceipt, FinchResponse
-from cairn.reading.skill import HANDOFF, files, guidance, guidance_hash
 from cairn.records.models import (
     ID,
     Assertion,
@@ -166,7 +166,6 @@ def begin(
                 "guidance": guidance(),
                 "source_bytes_base64": base64.b64encode(ws.fs.read(source.source.blob)).decode(),
                 "response_schema": FinchResponse.model_json_schema(),
-                "workflow": files()[HANDOFF].decode(),
             }
         )
         output_bytes(ws, output, payload)

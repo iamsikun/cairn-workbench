@@ -8,7 +8,7 @@ from cairn.cli.commands import JsonOption, WorkspaceOption, emit, guarded
 from cairn.errors import Blocked, Denied
 from cairn.storage import upgrade
 from cairn.storage.workspace import Workspace
-from cairn.updater import schedule, service, skills
+from cairn.updater import schedule, service
 from cairn.updater.home import DEFAULT_REF, DEFAULT_REPOSITORY, Home, UpdaterConfig, bound_release
 
 ENABLE_STATEMENT = (
@@ -50,7 +50,7 @@ def enable_workspace(home: Home, ws: Workspace, statement: str) -> dict[str, obj
 
 
 def register(app: typer.Typer) -> None:
-    update = typer.Typer(help="Automatic Cairn updates from the stable channel and managed skills.")
+    update = typer.Typer(help="Automatic Cairn updates from the stable channel.")
     app.add_typer(update, name="update")
 
     @update.command("setup")
@@ -121,7 +121,6 @@ def register(app: typer.Typer) -> None:
                     }
                     for path in (config.workspaces if config else [])
                 },
-                "skills": skills.status(home),
             },
             json_output,
         )

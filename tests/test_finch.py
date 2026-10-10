@@ -14,8 +14,8 @@ from cairn.errors import CairnError, Conflict, Denied
 from cairn.policies.audit import revoke_grant, set_grant
 from cairn.policies.models import RouteGrant
 from cairn.proposals.service import approve, load_proposal, validate
+from cairn.reading.contract import guidance
 from cairn.reading.models import FinchClaim, FinchPacket, FinchResponse
-from cairn.reading.skill import HANDOFF, files
 from cairn.reading.workflow import begin, finish
 from cairn.records.continuity import ReceiptMessage
 from cairn.records.models import EvidenceRef, Labels, Record, canonical, digest, now
@@ -343,8 +343,9 @@ def test_cli_install_begin_finish(ws, tmp_path):
     assert result.exit_code == 0, result.output
     payload = json.loads(output.read_bytes())
     packet = FinchPacket.model_validate(payload["packet"])
-    # Agents receive the Cairn handoff in the packet even if their installed Finch is older.
-    assert payload["workflow"] == files()[HANDOFF].decode()
+    # The packet carries Cairn's own contract; it never depends on an installed Finch.
+    assert payload["guidance"] == guidance() and "workflow" not in payload
+    assert packet.skill_version == "cairn-1"
     file = response_file(tmp_path, returned(packet))
     result = runner.invoke(
         app, ["finch", "finish", str(file), "--workspace", str(ws.root), "--inline-synthetic"]

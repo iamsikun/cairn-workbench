@@ -1023,8 +1023,11 @@
       "type": "string"
     },
     "quill_revision": {
-      "const": "d6bc7de15d1779c58286cbdec1a54eec52bdef22",
-      "default": "d6bc7de15d1779c58286cbdec1a54eec52bdef22",
+      "default": "cairn-1",
+      "enum": [
+        "d6bc7de15d1779c58286cbdec1a54eec52bdef22",
+        "cairn-1"
+      ],
       "title": "Quill Revision",
       "type": "string"
     },

@@ -77,10 +77,6 @@ def updater(tmp_path: Path, synthetic_cairn_home: Path) -> dict:
     return {"home": home, "channel": source, "config": config, "tmp": tmp_path}
 
 
-def no_skills(home: Home, config: object) -> dict:
-    return {"skipped": "synthetic"}
-
-
 def install_fake_runtime(home: Home, tag: str, sha: str, commit: str = "c" * 40) -> None:
     root = home.runtime(sha)
     (root / "venv" / "bin").mkdir(parents=True)
@@ -124,7 +120,7 @@ def test_rewritten_stable_history_is_refused(updater: dict) -> None:
     source.release("0.3.0")
     with pytest.raises(Denied, match="fast-forward"):
         service.newest_release(home, config)
-    result = service.run(home, runner=FakeRunner(home), refresh_skills=no_skills)
+    result = service.run(home, runner=FakeRunner(home))
     assert result["status"] == "failed" and home.current_runtime().commit == first  # type: ignore[union-attr]
 
 
@@ -134,7 +130,7 @@ def test_cycle_installs_verifies_rebinds_and_switches(updater: dict) -> None:
     home.save_config(updater["config"].model_copy(update={"workspaces": workspaces}))
     commit = source.release("0.2.0")
     runner = FakeRunner(home)
-    result = service.run(home, runner=runner, refresh_skills=no_skills)
+    result = service.run(home, runner=runner)
     assert result["status"] == "updated" and result["release_tag"] == "v0.2.0"
     current = home.current_runtime()
     assert current is not None and current.commit == commit
@@ -148,7 +144,7 @@ def test_cycle_installs_verifies_rebinds_and_switches(updater: dict) -> None:
     state = home.state()
     assert state.notice == "Cairn updated to v0.2.0 (was None)." and not state.notice_shown
     assert service.run(home, runner=runner, if_due=True)["status"] == "not_due"
-    assert service.run(home, runner=runner, refresh_skills=no_skills)["status"] == "up_to_date"
+    assert service.run(home, runner=runner)["status"] == "up_to_date"
 
 
 @pytest.mark.parametrize("step", ["check-runtime", "check-worker", "init --synthetic", "pip"])
@@ -159,8 +155,8 @@ def test_failed_verification_keeps_previous_runtime(updater: dict, step: str) ->
     home.save_config(updater["config"].model_copy(update={"workspaces": ["/synthetic/kb"]}))
     source.release("0.2.0")
     runner = FakeRunner(home, fail=step)
-    result = service.run(home, runner=runner, refresh_skills=no_skills)
-    assert result["status"] == "failed" and result["skills"] == {"skipped": "synthetic"}
+    result = service.run(home, runner=runner)
+    assert result["status"] == "failed" and "skills" not in result
     assert home.current_runtime().release_tag == "v0.1.0"  # type: ignore[union-attr]
     assert not any("rebind" in c for c in runner.commands)
     assert sorted(p.name for p in home.runtimes.iterdir()) == ["a" * 64]
@@ -170,7 +166,7 @@ def test_failed_verification_keeps_previous_runtime(updater: dict, step: str) ->
 def test_build_that_does_not_match_signed_source_is_refused(updater: dict) -> None:
     home = updater["home"]
     updater["channel"].release("0.2.0")
-    result = service.run(home, runner=FakeRunner(home, revision="b" * 40), refresh_skills=no_skills)
+    result = service.run(home, runner=FakeRunner(home, revision="b" * 40))
     assert result["status"] == "failed" and "channel source" in result["reason"]
     assert home.current_runtime() is None
 
@@ -179,10 +175,10 @@ def test_failed_rebind_is_reported_and_retried(updater: dict) -> None:
     home = updater["home"]
     home.save_config(updater["config"].model_copy(update={"workspaces": ["/synthetic/kb"]}))
     updater["channel"].release("0.2.0")
-    result = service.run(home, runner=FakeRunner(home, fail="rebind"), refresh_skills=no_skills)
+    result = service.run(home, runner=FakeRunner(home, fail="rebind"))
     assert result["status"] == "updated"
     assert result["workspaces"]["/synthetic/kb"]["status"] == "failed"
-    retry = service.run(home, runner=FakeRunner(home), refresh_skills=no_skills)
+    retry = service.run(home, runner=FakeRunner(home))
     assert retry["status"] == "up_to_date"
     assert retry["workspaces"]["/synthetic/kb"]["status"] == "upgraded"
 

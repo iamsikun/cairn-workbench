@@ -1,1 +1,1 @@
-"""Owner-machine update channel: signed Cairn releases and managed knowledge-base skills."""
+"""Owner-machine update channel for Cairn releases."""

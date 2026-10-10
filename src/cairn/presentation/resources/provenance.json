@@ -1,20 +1,4 @@
 {
-  "quill": {
-    "commit": "d6bc7de15d1779c58286cbdec1a54eec52bdef22",
-    "files": {
-      "LICENSE": "58af6c4615ed8c770730595848efb7cb211ce0fdf1cee88ef770b2b85fc7ab0e",
-      "SKILL.md": "a6dd0eb4b8e9d2f7f12555ede39a55cb839c33ed618ab0d628b7f301cf87e1d8",
-      "references/author-style.md": "c7d6d30951231ced1af13de8d5132a85d54e7a9a5967d77ed6a959c5f5b6657a",
-      "references/drafting.md": "d705d4ef58e7323f5ab02e666830f0284b1244e0eba7b6e081b975b198569306",
-      "references/editing.md": "b6df7f7c16f97359b2ce15084e8dbf78a6bc7e165be5322866f5de978b55352f",
-      "references/examples.md": "92f9ecd1bd0ff705dc93a1d47cb13d0c6e16ea6ea556dd29bec32cd068fc0248",
-      "references/quill-workspaces.md": "4dda4a4cf0fed93227ddb60176989b3a6bdcf6e22d566d571f64962835efd71a",
-      "references/technical-writing.md": "22903e2fc8cd61ba8529004e376065de4cbb293e8f6dd9f88929afcbdcfa1820"
-    },
-    "license": "MIT",
-    "repository": "https://github.com/iamsikun/quill",
-    "version": "0.3.0"
-  },
   "renderer": {
     "build": "node scripts/build-application.mjs OUTPUT (in vendor directory)",
     "generated_sha256": "4f4e9d49e686b9489debb484a7f2a19aaa37aa68f9358c45076359189fdf254f",

@@ -8,7 +8,6 @@ Layout::
     runtimes/<sha256>/     bundle/, venv/ and runtime.json (written last = complete)
     current -> runtimes/<sha256>
     backups/<workspace>/   pre-upgrade and pre-migration archives
-    skills/<name>/         managed skill clones
 """
 
 from __future__ import annotations

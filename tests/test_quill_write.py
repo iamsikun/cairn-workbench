@@ -12,7 +12,7 @@ from cairn.errors import Conflict, Denied
 from cairn.policies.audit import revoke_grant
 from cairn.presentation import quill
 from cairn.presentation.service import assemble, remember
-from cairn.presentation.writing import import_feedback
+from cairn.presentation.writing import guidance, import_feedback
 from cairn.presentation.writing_models import (
     Feedback,
     FeedbackEntry,
@@ -47,7 +47,7 @@ def begin(ws: Workspace, tmp_path: Path, **kwargs) -> QuillPacket:
     )
     payload = json.loads((tmp_path / "packet.json").read_text())
     assert payload["input_hash"] == out["input_hash"]
-    assert "Cairn writing handoff" in payload["guidance"]
+    assert payload["guidance"] == guidance() and "Quill" in payload["guidance"]
     return QuillPacket.model_validate(payload["packet"])
 
 
@@ -268,25 +268,6 @@ def test_feedback_comments_become_quill_instructions(ws: Workspace, tmp_path: Pa
         begin(ws, tmp_path, feedback_id=feedback.id, target_id="concept_other")
 
 
-def test_quill_install_preserves_existing_skill(tmp_path: Path) -> None:
-    skills = tmp_path / "skills"
-    result = quill.install(skills)
-    installed = (skills / "quill" / "SKILL.md").read_text()
-    assert "cairn-quill-workflow-v1" in installed and result["skill"] == "quill"
-    assert (skills / "quill" / "references" / "cairn-workflow.md").exists()
-    assert (skills / "quill" / "references" / "drafting.md").exists()
-    assert quill.install(skills) == result
-    assert (skills / "quill" / "SKILL.md").read_text() == installed
-    custom = tmp_path / "custom"
-    (custom / "quill").mkdir(parents=True)
-    (custom / "quill" / "SKILL.md").write_text("# My Quill\n")
-    quill.install(custom)
-    assert (custom / "quill" / "SKILL.md").read_text().startswith("# My Quill\n")
-    (custom / "quill" / "references" / "cairn-workflow.md").write_text("changed")
-    with pytest.raises(Conflict):
-        quill.install(custom)
-
-
 def test_cli_write_begin_finish_accept(tmp_path: Path) -> None:
     runner = CliRunner()
     workspace, code = tmp_path / "private", tmp_path / "public"
@@ -343,81 +324,39 @@ def init_args(tmp_path: Path, *extra: str) -> list[str]:
     return ["init", "--workspace", str(workspace), "--code-root", str(code), "--synthetic", *extra]
 
 
-def test_setup_installs_quill_for_the_knowledge_base(tmp_path: Path) -> None:
-    result = CliRunner().invoke(app, init_args(tmp_path))
-    assert result.exit_code == 0, result.output
-    report = json.loads(result.stdout)["quill"]
-    skill = tmp_path / "private" / ".claude" / "skills" / "quill"
-    assert report["status"] == "installed" and report["path"] == str(skill)
-    assert "cairn-quill-workflow-v1" in (skill / "SKILL.md").read_text()
-    assert (skill / "references" / "cairn-workflow.md").is_file()
-    ws = Workspace(tmp_path / "private")
-    # The skill sits beside the vault; it is not a durable record or backup member.
-    assert not any(".claude" in path for path in durable_contents(ws))
-    validate_payloads(durable_contents(ws))
-
-
-def test_setup_uses_machine_wide_quill_without_touching_it(
-    tmp_path: Path, synthetic_machine_skills: Path
-) -> None:
-    machine = synthetic_machine_skills / "quill"
-    machine.mkdir()
-    (machine / "SKILL.md").write_text("# Machine-wide Quill\n")
-    result = CliRunner().invoke(app, init_args(tmp_path))
-    assert result.exit_code == 0, result.output
-    report = json.loads(result.stdout)["quill"]
-    assert report["status"] == "machine_wide" and report["path"] == str(machine)
-    assert (machine / "SKILL.md").read_text() == "# Machine-wide Quill\n"
-    assert sorted(p.name for p in machine.iterdir()) == ["SKILL.md"]
-    assert not (tmp_path / "private" / ".claude").exists()
-
-
-def test_setup_quill_location_and_opt_out(tmp_path: Path) -> None:
-    chosen = tmp_path / "agent-skills"
-    result = CliRunner().invoke(app, init_args(tmp_path, "--quill-skills-dir", str(chosen)))
-    assert json.loads(result.stdout)["quill"]["path"] == str(chosen / "quill")
-    assert (chosen / "quill" / "SKILL.md").is_file()
-    other = tmp_path / "second"
-    other.mkdir()
-    skipped = CliRunner().invoke(app, init_args(other, "--no-quill"))
-    assert skipped.exit_code == 0 and "quill" not in json.loads(skipped.stdout)
-    assert not (other / "private" / ".claude").exists()
-
-
-def test_setup_reports_blocked_install_but_keeps_workspace(tmp_path: Path) -> None:
-    chosen = tmp_path / "agent-skills" / "quill" / "references"
-    chosen.mkdir(parents=True)
-    (chosen / "cairn-workflow.md").write_text("A different owner hook.")
-    result = CliRunner().invoke(
-        app, init_args(tmp_path, "--quill-skills-dir", str(tmp_path / "agent-skills"))
-    )
-    assert result.exit_code == 0, result.output
-    assert json.loads(result.stdout)["quill"]["status"] == "blocked"
-    assert (chosen / "cairn-workflow.md").read_text() == "A different owner hook."
-    assert Workspace(tmp_path / "private").config.synthetic
-
-
-def test_restore_sets_up_quill(ws: Workspace, tmp_path: Path) -> None:
+def test_setup_and_restore_never_install_or_edit_skills(ws: Workspace, tmp_path: Path) -> None:
     from cairn.storage.streaming_backup import backup
 
-    archive = tmp_path / "backup.tar"
+    home = tmp_path / "synthetic-home"
+    (home / ".claude" / "skills").mkdir(parents=True)
+    # Flags an older updater passes to a new runtime are still accepted.
+    result = CliRunner().invoke(
+        app, init_args(tmp_path, "--no-quill", "--no-finch"), env={"HOME": str(home)}
+    )
+    assert result.exit_code == 0, result.output
+    assert set(json.loads(result.stdout)) == {"workspace_id", "synthetic"}
+    archive = tmp_path / "backup.zip"
     backup(ws, archive)
     code = tmp_path / "restore-code"
     code.mkdir()
-    destination = tmp_path / "restored"
-    result = CliRunner().invoke(
+    restored = CliRunner().invoke(
         app,
         [
             "restore",
             str(archive),
             "--destination",
-            str(destination),
+            str(tmp_path / "restored"),
             "--code-root",
             str(code),
             "--synthetic",
             "--json",
         ],
+        env={"HOME": str(home)},
     )
-    assert result.exit_code == 0, result.output
-    assert json.loads(result.stdout)["quill"]["status"] == "installed"
-    assert (destination / ".claude" / "skills" / "quill" / "SKILL.md").is_file()
+    assert restored.exit_code == 0, restored.output
+    assert "quill" not in json.loads(restored.stdout)
+    for root in (tmp_path / "private", tmp_path / "restored"):
+        assert not (root / ".claude").exists()
+    assert not any((home / ".claude" / "skills").iterdir())
+    for retired in (["quill", "install"], ["finch", "install"], ["finch", "status"]):
+        assert CliRunner().invoke(app, [*retired, "--help"]).exit_code != 0

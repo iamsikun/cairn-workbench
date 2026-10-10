@@ -1076,8 +1076,11 @@
       "type": "string"
     },
     "skill_version": {
-      "const": "0.2.0",
-      "default": "0.2.0",
+      "default": "cairn-1",
+      "enum": [
+        "0.2.0",
+        "cairn-1"
+      ],
       "title": "Skill Version",
       "type": "string"
     },

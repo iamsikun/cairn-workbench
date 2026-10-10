@@ -1,29 +1,26 @@
-"""Quill writes; Cairn says what and where, then formats the result into a proposal.
+"""The owner's agent writes; Cairn says what and where, then formats a proposal.
 
 `begin` seals one packet: instructions, one target (existing page or new record slot),
-scoped evidence and the Quill guidance. `finish` checks the returned prose and claims,
+scoped evidence and Cairn's writing contract. `finish` checks the returned prose and claims,
 preserves the response as a source, builds the record itself and stages a validated
 proposal. Approval and apply remain separate owner operations (`cairn accept`).
 """
 
 from __future__ import annotations
 
-import json
-import os
 from collections.abc import Mapping
 from pathlib import Path
 
 from pydantic import TypeAdapter
 
 from cairn.adapters.protocol import Candidate, Job, Page, Result
-from cairn.errors import Blocked, CairnError, Conflict, Denied
+from cairn.errors import Blocked, Conflict, Denied
 from cairn.ingest.service import capture_bytes, extract, load_extraction, read_source_file
 from cairn.policies.models import LEVEL
 from cairn.presentation.service import output_bytes
 from cairn.presentation.writing import PREFIX as PRESENTATION
 from cairn.presentation.writing import guidance
 from cairn.presentation.writing_models import (
-    QUILL_REVISION,
     ExportReceipt,
     FeedbackReceipt,
     NewTarget,
@@ -50,8 +47,7 @@ from cairn.storage.files import components
 from cairn.storage.workspace import Workspace
 
 PREFIX = "receipts/quill"
-PROVIDER = f"quill-{QUILL_REVISION[:12]}"
-WORKFLOW = Path(__file__).parent / "resources" / "quill-cairn-workflow.md"
+PROVIDER = "quill-cairn-1"
 
 
 def identity(packet: QuillPacket) -> str:
@@ -63,10 +59,6 @@ def identity(packet: QuillPacket) -> str:
 def packet_path(packet_id: str) -> str:
     TypeAdapter(ID).validate_python(packet_id)
     return f"{PREFIX}/packets/{packet_id}.json"
-
-
-def instructions_guidance(*, revision: bool) -> str:
-    return guidance(revision=revision, technical=True) + "\n\n" + WORKFLOW.read_text()
 
 
 def _inputs(packet: QuillPacket) -> list[Labels]:
@@ -94,7 +86,7 @@ def load_packet(ws: Workspace, packet_id: str) -> QuillPacket:
         raise Denied("Quill packet identity mismatch")
     if packet.policy_hash != ws.policy_hash:
         raise Conflict("policy changed; prepare a new writing packet")
-    if packet.guidance_hash != digest(instructions_guidance(revision=bool(packet.target)).encode()):
+    if packet.guidance_hash != digest(guidance().encode()):
         raise Conflict("Quill guidance changed; prepare a new writing packet")
     for path, checksum in packet.input_hashes.items():
         if not ws.fs.exists(path) or digest(ws.fs.read(path)) != checksum:
@@ -191,7 +183,7 @@ def begin(
             )
         if len(context) + len(sources) + (target is not None) > 20:
             raise Denied("a writing packet supports at most 20 target, context and source pages")
-        text = instructions_guidance(revision=target is not None)
+        text = guidance()
         packet = QuillPacket(
             id="quill_pending",
             instructions=instructions,
@@ -460,125 +452,6 @@ def check_proposal_binding(ws: Workspace, job: Job) -> None:
     packet = load_packet(ws, "quill_" + job.id.removeprefix("job_quill_"))
     if job.policy_hash != packet.policy_hash or job.route != "cloud" or job.provider != PROVIDER:
         raise Denied("Quill proposal route binding mismatch")
-
-
-HOOK = "references/cairn-workflow.md"
-HOOK_MARKER = "<!-- cairn-quill-workflow-v1 -->"
-HOOK_SECTION = (
-    "## Cairn writing handoff\n\n"
-    f"When writing from a Cairn packet, follow [{HOOK}]({HOOK}) before drafting "
-    "and before returning. Cairn stages a proposal; acceptance remains the owner's.\n"
-)
-
-
-def install_skill(
-    skills_dir: Path, name: str, resources: dict[str, bytes], *, marker: str, hook_section: str
-) -> Path:
-    """Owner-selected skill directory only; preserve an existing skill and its guidance."""
-    from cairn.storage.files import RootFS
-
-    root = skills_dir.absolute()
-    if any(p.is_symlink() for p in (root, *root.parents)):
-        raise Conflict("skill destination must not contain symlinks")
-    fs = RootFS(Path(root.anchor))
-    prefix = root.relative_to(root.anchor).as_posix() + f"/{name}"
-    path = f"{prefix}/SKILL.md"
-    original = fs.read(path) if fs.exists(path) else None
-    installed = original if original is not None else resources["SKILL.md"]
-    if marker.encode() not in installed:
-        installed += f"\n\n{marker}\n{hook_section}".encode()
-    # Preflight collisions before creating any files. Preserve existing skill guidance.
-    missing = {}
-    for relative, raw in resources.items():
-        if relative == "SKILL.md":
-            continue
-        destination = f"{prefix}/{relative}"
-        if fs.exists(destination):
-            if relative == HOOK and fs.read(destination) != raw:
-                raise Conflict(
-                    f"existing Cairn {name.title()} hook differs; review before replacing it"
-                )
-            continue
-        missing[destination] = raw
-    # Install support before the entrypoint so an interrupted install remains retryable.
-    for destination, raw in missing.items():
-        fs.write(destination, raw, exclusive=True)
-    if installed != original:
-        fs.write(path, installed)
-    return root / name
-
-
-def skill_files() -> dict[str, bytes]:
-    from cairn.presentation.service import RESOURCE
-
-    manifest = json.loads((RESOURCE / "provenance.json").read_bytes())["quill"]["files"]
-    values = {name: (RESOURCE / "quill" / name).read_bytes() for name in manifest}
-    if any(digest(raw) != manifest[name] for name, raw in values.items()):
-        raise Conflict("packaged Quill resource checksum mismatch")
-    return values | {HOOK: WORKFLOW.read_bytes()}
-
-
-def install(skills_dir: Path) -> dict[str, str]:
-    """Install Quill (or keep an existing one) and add the Cairn writing handoff."""
-    path = install_skill(
-        skills_dir,
-        "quill",
-        skill_files(),
-        marker=HOOK_MARKER,
-        hook_section=HOOK_SECTION,
-    )
-    return {
-        "skill": "quill",
-        "revision": QUILL_REVISION,
-        "path": str(path),
-        "workflow": "packet_writing_and_proposals; owner_acceptance_required",
-    }
-
-
-MACHINE_SKILLS_ENV = "CAIRN_MACHINE_SKILLS_DIRS"
-
-
-def machine_skill_dirs() -> list[Path]:
-    """Where an agent finds skills for every project; owner-configurable."""
-    configured = os.environ.get(MACHINE_SKILLS_ENV)
-    if configured is not None:
-        return [Path(item) for item in configured.split(os.pathsep) if item]
-    try:
-        return [Path.home() / ".claude" / "skills"]
-    except (KeyError, RuntimeError):
-        return []  # No resolvable home (e.g. an isolated worker user).
-
-
-def ensure_for_workspace(
-    root: Path,
-    *,
-    skills_dir: Path | None = None,
-    machine_dirs: list[Path] | None = None,
-    track_channel: bool = False,
-) -> dict[str, str]:
-    """Set up Quill for a new knowledge base unless it is already available machine-wide.
-
-    Only the presence of `quill/SKILL.md` is checked; machine-wide skills are never
-    read or modified. A local install goes beside the vault, not into durable records.
-    It is a Cairn-managed copy that the updater keeps in step with Quill's stable
-    release; `track_channel` (private setup) fetches that release now and registers
-    the copy for updates, otherwise the bundled snapshot is installed.
-    """
-    for directory in machine_dirs if machine_dirs is not None else machine_skill_dirs():
-        if (directory / "quill" / "SKILL.md").is_file():
-            return {
-                "status": "machine_wide",
-                "path": str(directory / "quill"),
-                "workflow": "run `cairn quill install --skills-dir "
-                f"{directory}` to attach the Cairn writing handoff",
-            }
-    from cairn.updater.skills import ensure_managed
-
-    try:
-        return ensure_managed(skills_dir or root / ".claude" / "skills", fetch=track_channel)
-    except CairnError as exc:
-        # The knowledge base exists either way; report rather than undo its setup.
-        return {"status": "blocked", "reason": str(exc)}
 
 
 def validate_writing(payloads: Mapping[str, bytes], records: dict[str, Record]) -> None:

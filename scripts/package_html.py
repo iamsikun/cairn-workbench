@@ -19,9 +19,6 @@ def package(output: Path) -> str:
     files["runtime/LICENSE"] = (root / "vendor/answer-me-with-html/LICENSE").read_bytes()
     files["runtime/THIRD_PARTY_LICENSES"] = files["runtime/LICENSE"]
     files["PROVENANCE.json"] = (resources / "provenance.json").read_bytes()
-    for p in sorted((resources / "quill").rglob("*")):
-        if p.is_file():
-            files["quill/" + p.relative_to(resources / "quill").as_posix()] = p.read_bytes()
     files["SHA256SUMS.json"] = (
         json.dumps(
             {p: sha256(raw).hexdigest() for p, raw in sorted(files.items())},

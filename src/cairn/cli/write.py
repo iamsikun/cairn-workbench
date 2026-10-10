@@ -15,15 +15,8 @@ from cairn.storage.workspace import Workspace
 
 
 def register(app: typer.Typer) -> None:
-    write = typer.Typer(help="Tell Quill what to write and where; stage its draft for review.")
-    skill = typer.Typer(help="Install the bundled Quill writing skill.")
+    write = typer.Typer(help="Tell the owner's agent what to write and where; stage its draft.")
     app.add_typer(write, name="write")
-    app.add_typer(skill, name="quill")
-
-    @skill.command("install")
-    @guarded
-    def install_command(skills_dir: Annotated[Path, typer.Option()]) -> None:
-        emit(quill.install(skills_dir), True)
 
     @write.command("begin")
     @guarded

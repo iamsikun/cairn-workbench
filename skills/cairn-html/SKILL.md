@@ -1,6 +1,6 @@
 ---
 name: cairn-html
-description: Produce offline HTML knowledge views from owner-exported Cairn packets when the user explicitly asks for HTML. Draft explanations and feedback revisions with bundled Quill guidance when requested. Ordinary questions and skill maintenance do not produce pages.
+description: Produce offline HTML knowledge views from owner-exported Cairn packets when the user explicitly asks for HTML. Draft explanations and feedback revisions from the packet's writing contract when requested. Ordinary questions and skill maintenance do not produce pages.
 license: MIT
 metadata:
   version: "0.1.0"
@@ -22,7 +22,7 @@ revisions. Return the final artifact through the host's supported file or artifa
 mechanism; do not open a browser automatically. State any missing visual check.
 
 For a requested explanation, read [Writing](references/writing.md) and the packet's
-Quill guidance. Establish the reader's question and the available evidence before
+writing contract. Establish the reader's question and the available evidence before
 writing. Return the response schema supplied by Cairn. Only the owner can import
 and render that response as a managed, generated, unreviewed explanation.
 

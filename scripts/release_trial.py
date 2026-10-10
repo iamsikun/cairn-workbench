@@ -241,25 +241,6 @@ def trial(bundle: Path) -> None:
     assert len(list(html_output.parent.iterdir())) == 1
     # Finch resources and lifecycle are exercised through the fresh installed CLI.
     finch_options = ("--workspace", str(workspace))
-    # The packaged upstream installer runs offline here, so it must report pending without
-    # links; an existing Finch is then preserved byte-for-byte and never reinstalled.
-    agent_home = root / "synthetic-agent-home"
-    (agent_home / ".claude").mkdir(parents=True)
-    agent_env = {
-        "HOME": str(agent_home),
-        "FINCH_REPO": str(root / "synthetic-missing-finch.git"),
-        "XDG_STATE_HOME": str(agent_home / ".local/state"),
-    }
-    pending = cli("finch", "install", "--no-auto-update", overrides=agent_env)
-    assert pending["state"] == "pending" and not pending["available"], pending
-    installed_skill = agent_home / ".claude/skills/finch/SKILL.md"
-    assert not installed_skill.exists()
-    installed_skill.parent.mkdir(parents=True)
-    installed_bytes = b'---\nname: finch\nmetadata:\n  version: "0.3.0"\n---\nSynthetic\n'
-    installed_skill.write_bytes(installed_bytes)
-    existing = cli("finch", "install", overrides=agent_env)
-    assert existing["state"] == "available" and existing["version"] == "0.3.0", existing
-    assert installed_skill.read_bytes() == installed_bytes
     labels_file = root / "synthetic-finch-labels.json"
     labels_file.write_bytes(
         canonical(
@@ -411,11 +392,11 @@ def trial(bundle: Path) -> None:
     renderer.write_bytes(saved_renderer + b"\n// synthetic modification\n")
     assert cli(*check_args, status=4)["error"] == "conflict"
     renderer.write_bytes(saved_renderer)
-    finch_resource = site / "cairn/reading/resources/finch/SKILL.md"
-    saved_finch = finch_resource.read_bytes()
-    finch_resource.write_bytes(saved_finch + b"\nSynthetic changed Finch guidance\n")
+    contract = site / "cairn/reading/contract.md"
+    saved_contract = contract.read_bytes()
+    contract.write_bytes(saved_contract + b"\nSynthetic changed reading contract\n")
     assert cli(*check_args, status=4)["error"] == "conflict"
-    finch_resource.write_bytes(saved_finch)
+    contract.write_bytes(saved_contract)
     extra = site / "synthetic-unreviewed.pth"
     extra.write_text("# synthetic inventory mismatch, no executable content\n")
     assert cli(*check_args, status=3)["error"] == "denied"
@@ -448,8 +429,8 @@ def trial(bundle: Path) -> None:
                 "installed_library_scan_mark_feed_streaming_restore": "passed",
                 "installed_markdown_source_review": "passed",
                 "installed_html_render_retry_restore": "passed",
-                "installed_finch_install_capture_proposal_validate_retry_restore": "passed",
-                "modified_finch_resource_rejected": True,
+                "installed_finch_capture_proposal_validate_retry_restore": "passed",
+                "modified_reading_contract_rejected": True,
                 "modified_renderer_rejected": True,
                 "modified_package_rejected": True,
                 "unreviewed_pth_rejected": True,

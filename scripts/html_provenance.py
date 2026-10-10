@@ -1,4 +1,4 @@
-"""Record checked-in renderer and Quill provenance after the isolated source build."""
+"""Record checked-in renderer provenance after the isolated source build."""
 
 import json
 from hashlib import sha256
@@ -30,13 +30,6 @@ value = {
         "source_files": hashes(vendor),
         "generated_sha256": sha256((resources / "application.mjs").read_bytes()).hexdigest(),
         "build": "node scripts/build-application.mjs OUTPUT (in vendor directory)",
-    },
-    "quill": {
-        "repository": "https://github.com/iamsikun/quill",
-        "version": "0.3.0",
-        "commit": "d6bc7de15d1779c58286cbdec1a54eec52bdef22",
-        "license": "MIT",
-        "files": hashes(resources / "quill"),
     },
     "worker_node_image": "node:24-bookworm-slim@sha256:"
     "d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20",

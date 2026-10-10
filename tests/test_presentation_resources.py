@@ -10,8 +10,7 @@ def test_packaged_presentation_resource_integrity():
     assert value["renderer"]["generated_sha256"] == digest(
         (RESOURCE / "application.mjs").read_bytes()
     )
-    for path, checksum in value["quill"]["files"].items():
-        assert digest((RESOURCE / "quill" / path).read_bytes()) == checksum, path
+    assert "quill" not in value  # Cairn no longer vendors writing skills.
     vendor = Path("vendor/answer-me-with-html")
     if vendor.exists():
         for path, checksum in value["renderer"]["source_files"].items():

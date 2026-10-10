@@ -1,1 +1,1 @@
-"""Finch-guided reading and attributed, proposal-only session handoffs."""
+"""Paper reading by the owner's agent: sealed packets and proposal-only session handoffs."""

@@ -71,7 +71,7 @@ def response(job):
 
 def test_quill_packet_roundtrip_and_no_canonical_changes(ws, tmp_path):
     job = prepared(ws, tmp_path)
-    assert "Preserve scientific" in job.guidance and "supplied evidence" in job.guidance
+    assert "Preserve numbers" in job.guidance and "supplied evidence" in job.guidance
     before = {p: b for p, b in durable_contents(ws).items() if p.startswith("vault/")}
     file = tmp_path / "response.json"
     file.write_bytes(canonical(response(job)))

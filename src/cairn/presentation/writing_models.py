@@ -17,9 +17,8 @@ class WritingJob(Model):
     request_labels: Labels
     guidance: str = Field(max_length=100000)
     guidance_hash: Digest
-    quill_revision: Literal["d6bc7de15d1779c58286cbdec1a54eec52bdef22"] = (
-        "d6bc7de15d1779c58286cbdec1a54eec52bdef22"
-    )
+    # The old revision marks packets that carried a vendored Quill snapshot.
+    quill_revision: Literal["d6bc7de15d1779c58286cbdec1a54eec52bdef22", "cairn-1"] = "cairn-1"
     route: Literal["local", "cloud"]
     provider: str = Field(min_length=1, max_length=200)
     destination: str = Field(min_length=1, max_length=2000)
@@ -100,9 +99,6 @@ class FeedbackReceipt(Model):
     )
 
 
-QUILL_REVISION = "d6bc7de15d1779c58286cbdec1a54eec52bdef22"
-
-
 class NewTarget(Model):
     type: Literal["concept", "project", "entity", "playbook", "decision"]
     domain: Domain
@@ -135,9 +131,8 @@ class QuillPacket(Model):
     provider: str = Field(min_length=1, max_length=200)
     destination: str = Field(min_length=1, max_length=2000)
     guidance_hash: Digest
-    quill_revision: Literal["d6bc7de15d1779c58286cbdec1a54eec52bdef22"] = (
-        "d6bc7de15d1779c58286cbdec1a54eec52bdef22"
-    )
+    # The old revision marks packets that carried a vendored Quill snapshot.
+    quill_revision: Literal["d6bc7de15d1779c58286cbdec1a54eec52bdef22", "cairn-1"] = "cairn-1"
 
     @model_validator(mode="after")
     def one_target(self) -> "QuillPacket":

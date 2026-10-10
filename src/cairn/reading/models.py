@@ -24,7 +24,8 @@ class FinchPacket(Model):
     destination: str = Field(min_length=1, max_length=2000)
     route: Literal["cloud"] = "cloud"
     guidance_hash: Digest
-    skill_version: Literal["0.2.0"] = "0.2.0"
+    # "0.2.0" packets carried a vendored Finch; "cairn-1" carries only Cairn's contract.
+    skill_version: Literal["0.2.0", "cairn-1"] = "cairn-1"
 
 
 class FinchGuard(Model):
