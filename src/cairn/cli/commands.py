@@ -13,10 +13,13 @@ import typer
 from pydantic import ValidationError
 
 from cairn.errors import CairnError, Conflict, Denied
+from cairn.ingest.notes import write_note
 from cairn.ingest.service import capture as capture_source
+from cairn.ingest.service import capture_bytes
 from cairn.proposals.accept import DEFAULT_STATEMENT
 from cairn.proposals.accept import accept as accept_items
 from cairn.proposals.accept import plan as accept_plan
+from cairn.proposals.inbox import inbox as build_inbox
 from cairn.proposals.service import approve as approve_proposal
 from cairn.proposals.service import ingest as ingest_source
 from cairn.proposals.service import load_proposal
@@ -26,6 +29,7 @@ from cairn.records.runtime import ReviewAcknowledgement
 from cairn.retrieval.search import query as run_query
 from cairn.retrieval.search import rebuild_index as rebuild
 from cairn.retrieval.search import search as run_search
+from cairn.storage.files import MAX_FILE_BYTES
 from cairn.storage.workspace import Workspace
 from cairn.transactions.apply import apply as apply_proposal
 from cairn.transactions.apply import recover as recover_workspace
@@ -51,6 +55,13 @@ def guarded[**P, R](function: Callable[P, R]) -> Callable[P, R]:
             raise typer.Exit(2) from exc
 
     return wrapper
+
+
+def read_stdin() -> bytes:
+    data = sys.stdin.buffer.read(MAX_FILE_BYTES + 1)
+    if len(data) > MAX_FILE_BYTES:
+        raise CairnError("stdin exceeds capture limit")
+    return data
 
 
 def emit(value: Any, as_json: bool, text: str | None = None) -> None:
@@ -254,20 +265,83 @@ def register(app: typer.Typer) -> None:
         classification: str = "private",
         json_output: JsonOption = False,
     ) -> None:
-        """Preserve a selected source and its provenance."""
+        """Preserve a selected source and its provenance; FILE '-' reads stdin as text."""
+        from cairn.records.models import Labels, digest
+
+        labels = Labels.model_validate({"domain": domain, "classification": classification})
+        if str(file) == "-":
+            data = read_stdin()
+            result = capture_bytes(
+                Workspace(workspace),
+                data,
+                origin="stdin",
+                domain=labels.domain,
+                title=title or "Captured text",
+                identity=identity or f"stdin:{digest(data)[:32]}",
+                source_type="text",
+                version=version,
+                classification=labels.classification,
+            )
+        else:
+            result = capture_source(
+                Workspace(workspace),
+                file,
+                domain=labels.domain,
+                title=title,
+                identity=identity,
+                version=version,
+                classification=labels.classification,
+            )
+        emit(result, json_output, f"Captured {result.id}: {result.title}")
+
+    @app.command()
+    @guarded
+    def note(
+        text: str,
+        workspace: WorkspaceOption,
+        title: str | None = None,
+        domain: str = "shared",
+        classification: str = "private",
+        json_output: JsonOption = False,
+    ) -> None:
+        """Write your own note to the inbox; TEXT '-' reads stdin. Searchable immediately."""
         from cairn.records.models import Labels
 
         labels = Labels.model_validate({"domain": domain, "classification": classification})
-        result = capture_source(
+        body = read_stdin().decode("utf-8") if text == "-" else text
+        result = write_note(
             Workspace(workspace),
-            file,
-            domain=labels.domain,
+            body,
             title=title,
-            identity=identity,
-            version=version,
+            domain=labels.domain,
             classification=labels.classification,
         )
-        emit(result, json_output, f"Captured {result.id}: {result.title}")
+        emit(
+            {"path": result.path, "title": result.title, "sha256": result.sha256},
+            json_output,
+            f"Noted {result.path}",
+        )
+
+    @app.command("inbox")
+    @guarded
+    def inbox_command(workspace: WorkspaceOption, json_output: JsonOption = False) -> None:
+        """Read-only triage of inbox notes, pending proposals and unanswered packets."""
+        result = build_inbox(Workspace(workspace))
+        lines = [f"Notes ({len(result.notes)})"]
+        lines += [
+            f"  {n.path}: {n.title} [{n.domain}/{n.classification}]"
+            + (f" captured as {n.captured_as}" if n.captured_as else "")
+            for n in result.notes
+        ]
+        lines.append(f"Proposals awaiting owner acceptance ({len(result.proposals)})")
+        lines += [
+            f"  {p.proposal_id} [{p.origin}] {', '.join(p.paths)}\n"
+            f"    review: {', '.join(p.review_flags)}\n    next: {p.next}"
+            for p in result.proposals
+        ]
+        lines.append(f"Packets without a response ({len(result.packets)})")
+        lines += [f"  {k.kind} {k.packet_id}\n    next: {k.next}" for k in result.packets]
+        emit(result, json_output, "\n".join(lines))
 
     @app.command()
     @guarded
@@ -425,15 +499,19 @@ def register(app: typer.Typer) -> None:
         workspace: WorkspaceOption,
         scope: Annotated[str, typer.Option()],
         limit: int = 10,
+        no_notes: Annotated[bool, typer.Option("--no-notes")] = False,
         json_output: JsonOption = False,
     ) -> None:
-        hits = run_search(Workspace(workspace), query, scope_name=scope, limit=limit)
+        """Search authorized evidence, synthesis and your own notes."""
+        hits = run_search(
+            Workspace(workspace), query, scope_name=scope, limit=limit, include_notes=not no_notes
+        )
         text = (
             "\n\n".join(
                 f"[{hit.kind}] {hit.title}\n{hit.id}; {hit.locator}\n"
                 f"Date: {hit.source_date or 'unknown'}; "
                 f"version: {hit.source_version or 'unknown'}; "
-                f"coverage: {hit.coverage or 'synthesis'}; status: {hit.status}\n"
+                f"coverage: {hit.coverage or hit.kind}; status: {hit.status}\n"
                 f"Verification: {', '.join(hit.verification) or 'unreviewed'}\n"
                 f"Applicability: {canonical(hit.period).decode().strip()}\n"
                 f"Supersedes: {', '.join(hit.supersedes) or 'none recorded'}; "

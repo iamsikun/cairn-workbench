@@ -852,7 +852,8 @@
         "kind": {
           "enum": [
             "evidence",
-            "synthesis"
+            "synthesis",
+            "note"
           ],
           "title": "Kind",
           "type": "string"

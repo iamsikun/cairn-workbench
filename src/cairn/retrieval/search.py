@@ -16,7 +16,7 @@ from cairn.storage.workspace import Workspace
 
 class Hit(Model):
     id: str
-    kind: Literal["evidence", "synthesis"]
+    kind: Literal["evidence", "synthesis", "note"]
     title: str
     text: str
     locator: str
@@ -139,8 +139,29 @@ def _corpus(ws: Workspace, scope: Scope) -> tuple[list[tuple[Hit, list[str]]], s
                     record.aliases,
                 )
             )
+    from cairn.ingest.notes import read_notes
+
+    for note in read_notes(ws):
+        if not scope.allows_labels(note.labels) or scope.record_ids or scope.project_ids:
+            continue
+        hashes[note.path] = note.sha256
+        # Owner notes are searchable as written; they are not source evidence.
+        corpus.append(
+            (
+                Hit(
+                    id=f"note:{note.path}",
+                    kind="note",
+                    title=note.title,
+                    text=note.body,
+                    locator=note.path,
+                    sources=[],
+                    status="owner_note",
+                ),
+                [],
+            )
+        )
     key = digest(
-        canonical({"format": 2, "scope": scope, "policy": ws.policy_hash, "hashes": hashes})
+        canonical({"format": 3, "scope": scope, "policy": ws.policy_hash, "hashes": hashes})
     )
     return corpus, key
 
@@ -206,8 +227,10 @@ def search(
     *,
     scope_name: str,
     limit: int = 10,
-    kind: Literal["evidence", "synthesis"] | None = None,
+    kind: Literal["evidence", "synthesis", "note"] | None = None,
+    include_notes: bool = False,
 ) -> list[Hit]:
+    """Owner notes appear only when requested, so views and packets never carry them."""
     if not 1 <= limit <= 100 or len(query) > 1000:
         raise CairnError("query or result limit exceeds budget")
     terms = _terms(query)
@@ -254,6 +277,8 @@ def search(
                     "SELECT payload FROM docs WHERE id=?", (row_id,)
                 ).fetchone()
                 hit = Hit.model_validate_json(payload[0])
+                if hit.kind == "note" and not include_notes:
+                    continue
                 if kind is None or hit.kind == kind:
                     hits.append(hit)
                 if len(hits) == limit:
