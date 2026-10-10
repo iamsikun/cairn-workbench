@@ -27,8 +27,8 @@ writing. Return the response schema supplied by Cairn. Only the owner can import
 and render that response as a managed, generated, unreviewed explanation.
 
 For requested revisions from feedback, read [Feedback](references/feedback.md).
-Return bounded proposals for the selected targets. Never claim to approve, adopt,
-verify, or apply them. Comments alone do not change knowledge.
+Return the revised page for the packet's target. Never claim to approve, adopt,
+verify, accept or apply it. Comments alone do not change knowledge.
 
 Preserve evidence locators, numerical conditions, uncertainty, and the difference
 between reported results, inference and proposals. Consult

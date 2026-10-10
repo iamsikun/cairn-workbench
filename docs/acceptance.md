@@ -1,5 +1,59 @@
 # Acceptance evidence
 
+## Simplified writing: Quill writer, owner notes, one-step accept (2026-10-10; software checks passed)
+
+A review found that writing took too many owner steps. The reviewer also reported
+no quick capture, inbox or batch review, and that notes were unsearchable until
+captured. This branch keeps the invariants and shortens the path:
+
+- **Notes.** `cairn note` (stdin with `-`) writes a new inbox file. Notes in
+  `vault/notes` and `vault/inbox` are searchable at once from `cairn search`. Labels
+  come from front matter or the folder; unlabelled notes default to shared/restricted.
+  Notes never reach views, context or model packets.
+- **Capture and triage.** `cairn capture -` captures stdin text as a source.
+  `cairn inbox` lists notes, pending proposals and unanswered packets.
+- **Writing.** `cairn write begin` tells Quill what to write and where, with keyed
+  scoped evidence. `cairn write finish` checks the `QuillResponse`, formats the record
+  itself and stages a validated proposal. It replaces the explanation and
+  feedback-revision packet commands.
+- **Acceptance.** `cairn accept` validates, approves and applies proposals after one
+  confirmation. It is batchable, and each proposal keeps its own sealed approval and
+  journaled transaction. Batch selection skips stale, sensitive, decision and
+  adoption proposals.
+
+Sources and notes stay immutable to models, and acceptance stays an owner command.
+
+`check.sh` passed **306 tests**, Ruff and strict mypy across **105 source files**.
+That includes 9 acceptance, 5 note and 8 Quill writing tests, with the 2 retired
+feedback-revision tests removed. Both processing profiles passed all **13 isolation
+checks**. The installed worker, extraction and HTML trials, **129 gold checks** and
+the real Docker lifecycle check also passed.
+
+The run used a copy of `scripts/check.sh` whose only change was branch-unique image
+tags. The unmodified script built correctly, then failed with "No such image" when
+another checkout's concurrent build retagged `cairn-dev:local` mid-run. That was an
+environment collision, not a code result.
+
+A manual synthetic CLI run in the development container covered:
+
+1. stdin note, then search hit;
+2. `write begin`, after which the inbox shows a Quill packet;
+3. a hand-written response, then `write finish`, after which the inbox shows the
+   Quill proposal;
+4. `accept --all` refused without `--yes`, then applied with it;
+5. search finds the new page, and source/note hashes are unchanged.
+
+Limits:
+
+- The Quill responses were hand-written synthetic fixtures. They prove the mechanical
+  handoff, citation and authority checks, not Quill's writing quality.
+- `scripts/release_check.sh` (installed offline release trial) was not run on this
+  branch.
+- The CLI `capture` command does not expose processing labels. The cloud-eligible
+  source in the manual run was captured through the Python API.
+- Editing an existing note still marks pending proposals stale, because notes are
+  protected inputs.
+
 ## Automatic Finch reading (2026-10-10; software checks passed, activation pending)
 
 The owner requested automatic Finch use for paper reading and automatic Cairn workflow

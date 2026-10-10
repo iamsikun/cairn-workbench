@@ -73,55 +73,50 @@ Publication links are navigation, not fetches. The CSP permits only the bundled
 script hash, inline styles and embedded raster images; native disclosures and print
 styles preserve readability without JavaScript.
 
-## Quill explanation packets
+## Writing with Quill
 
 Quill 0.3.0 core and references are packaged from MIT-licensed revision
-`d6bc7de15d1779c58286cbdec1a54eec52bdef22`. Jobs embed drafting or editing guidance;
-technical guidance is optional. The personal author profile is not applied.
+`d6bc7de15d1779c58286cbdec1a54eec52bdef22`. Quill writes; Cairn says what to write and
+where, then formats the result. See [Writing](writing.md) for the full owner path.
 
 ```text
-cairn explanation prepare VIEW_ID --workspace /srv/cairn --route cloud --provider chosen-agent --destination approved-client
-cairn explanation export WRITING_ID /srv/reports/packet.json --workspace /srv/cairn
-cairn explanation import /srv/reports/response.json --workspace /srv/cairn --output /srv/reports/explanation.html
+cairn write begin --view VIEW_ID --instructions "Explain the result" --provider chosen-agent --destination approved-client --output /srv/reports/packet.json --workspace /srv/cairn
+cairn write finish /srv/reports/response.json --output /srv/reports/explanation.html --workspace /srv/cairn
 ```
 
-Preparation binds the entire request, labels, view, evidence, Quill guidance and
-response schema. A custom `--request` defaults to restricted/local-only unless the
-owner supplies `--request-labels`. Export requires current `generation` and
-`client_export` grants for the provider, destination and complete request. Consent
-for paper verification is not reused. Neither preparation nor export calls a model
-or activates a subscription. No private export was activated by this implementation.
+`--view` explains a saved view. The packet binds the entire request, labels, view,
+evidence, Quill guidance and response schema. Instructions default to restricted
+labels unless the owner passes `--shareable` or `--request-labels`. Export requires
+current `generation` and `client_export` grants for the provider, destination and
+complete request. Neither step calls a model or activates a subscription.
 
 The agent returns structured prose, permitted kinds, supplied evidence keys and
-optional exact quotations. Import checks job identity, hashes, field/size limits,
+optional exact quotations. Finish checks job identity, hashes, field/size limits,
 reference membership, quotation presence and current authorization. These mechanical
-checks do not establish entailment or semantic accuracy. Accepted prose is displayed
-as **generated, unreviewed interpretation**. A manual packet records unverified
-execution; it cannot establish local-only processing. No reviewed local writing
-adapter is installed, so that route remains blocked without a cloud fallback.
+checks do not establish entailment or semantic accuracy. The explanation is displayed
+as **generated, unreviewed interpretation** and changes no canonical record. A manual
+packet records unverified execution; it cannot establish local-only processing.
 
-## Feedback to proposal
+## Feedback to revision
 
 Add `--feedback` to an HTML view to offer a bounded JSON download form. It stores
 nothing persistently in the browser and sends no request. The owner can then use:
 
 ```text
 cairn feedback import /srv/reports/cairn-feedback.json --workspace /srv/cairn
-cairn feedback prepare FEEDBACK_ID --workspace /srv/cairn --route cloud --provider chosen-agent --destination approved-client
-cairn explanation export WRITING_ID /srv/reports/revision.json --workspace /srv/cairn
-cairn feedback stage /srv/reports/revision-response.json --workspace /srv/cairn
+cairn write begin --feedback FEEDBACK_ID --instructions "Address the comments" --provider chosen-agent --destination approved-client --output /srv/reports/packet.json --workspace /srv/cairn
+cairn write finish /srv/reports/response.json --workspace /srv/cairn
+cairn accept PROPOSAL_ID --workspace /srv/cairn
 ```
 
 Import preserves feedback as immutable attributed source evidence. Authorship and
-approval are explicitly unverified. Repeated imports are idempotent. Comments without
-suggested text await action. Preparation selects only authorized managed targets
-and binds their base hashes. Source records, human notes and owner catalog metadata
-cannot be targets. Returned revisions cannot expand the selected set or citations,
-change authoritative status, bypass label inheritance or exceed the change budget.
-
-Staging uses the existing proposal machinery. Stale revisions fail. Nothing becomes
-adopted merely because a comment suggests it. The owner must still validate, review,
-approve and apply the exact proposal using the established recoverable workflow.
+approval are explicitly unverified, and repeated imports are idempotent. The packet
+passes the comments and any suggested text to Quill as instructions that carry no
+authority. Its target must be one the feedback concerns. Source records, human notes
+and owner catalog metadata cannot be targets. Cairn formats the returned page itself:
+status, labels and existing assertions are kept, new claims stay unreviewed, and
+citations must use supplied evidence. A stale target fails. Nothing is adopted merely
+because a comment suggests it; the owner accepts the exact proposal.
 
 ## Portable skill
 

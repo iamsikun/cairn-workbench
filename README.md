@@ -67,11 +67,17 @@ come from preserved structured sources, with owner/account/date/unit/currency se
 ## Requested HTML and writing packets
 
 Cairn now provides explicit offline HTML views for project context, extractive queries,
-evidence, paper readings, proposals, catalogs and journal feeds. Quill-guided explanation
-and feedback packets preserve owner approval and scoped evidence. See
+evidence, paper readings, proposals, catalogs and journal feeds. See
 [HTML views](docs/html-views.md) for commands and [acceptance](docs/acceptance.md) for
 executed checks and deployment limits. The portable `cairn-html` skill consumes owner
 exports; it grants no workspace access and does not generate unsolicited pages.
+
+## Writing
+
+Quill writes; Cairn tells it what to write and where, then formats the draft into a
+proposal. `cairn note` makes your own notes searchable immediately, `cairn inbox` lists
+what awaits you, and `cairn accept` validates, approves and applies proposals in one
+confirmed, batchable step. See [Writing](docs/writing.md).
 
 ## Automatic Finch paper reading
 

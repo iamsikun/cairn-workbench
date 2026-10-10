@@ -253,9 +253,10 @@ Preserve the brief's commands with the `cairn` prefix. Add a few commands needed
 | Workflow | Commands |
 | --- | --- |
 | Setup and diagnostics | `init`, `doctor` |
-| Evidence and synthesis | `capture`, `ingest`, `proposal show`, `validate` |
-| Owner control | `approve`, `apply`, `edit`, `recover` |
-| Reading | `search`, `query`, `context`, `lint` |
+| Evidence and synthesis | `capture` (or `capture -` from stdin), `ingest`, `proposal show`, `validate` |
+| Writing | `note` (owner notes, searchable at once), `write begin`/`write finish` (Quill), `inbox` |
+| Owner control | `accept` (validate, approve and apply in one confirmed step, batchable), `approve`, `apply`, `edit`, `recover` |
+| Reading | `search` (includes owner notes), `query`, `context`, `lint` |
 | Maintenance/integration | `rebuild-index`, `receipt import`, `backup`, `restore` |
 
 Provide readable output and a stable `--json` mode with distinct exit statuses for validation failure, denied access/route, conflict, blocked capability, and recovery needed. `doctor` separates synthetic functionality from readiness for private operation. It reports missing controls explicitly and does not silently fix permissions, install models, start services, or grant cloud access.

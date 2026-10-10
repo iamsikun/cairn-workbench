@@ -29,3 +29,11 @@ handoff before returning; no separate save request is needed. Report source/prop
 or an explicit pending/blocked handoff. Approval/apply and personal read status remain
 owner operations. Do not inspect private configuration or use contributor code against
 a private workspace. Missing owner configuration does not authorize a guessed route.
+
+## Writing
+
+Use Quill for writing pages from Cairn material. Follow its `references/cairn-workflow.md`
+(install with `cairn quill install --skills-dir DIR`): write only from an owner-prepared
+`cairn write begin` packet, return a `QuillResponse`, and let the launcher run
+`cairn write finish`. Report the proposal ID or an explicit pending handoff. Never run
+`cairn accept`, `approve` or `apply`; acceptance is the owner's step.
