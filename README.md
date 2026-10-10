@@ -77,7 +77,8 @@ exports; it grants no workspace access and does not generate unsolicited pages.
 Quill writes; Cairn tells it what to write and where, then formats the draft into a
 proposal. `cairn note` makes your own notes searchable immediately, `cairn inbox` lists
 what awaits you, and `cairn accept` validates, approves and applies proposals in one
-confirmed, batchable step. See [Writing](docs/writing.md).
+confirmed, batchable step. Setup installs Quill for the knowledge base unless it is
+already available machine-wide. See [Writing](docs/writing.md).
 
 ## Automatic Finch paper reading
 

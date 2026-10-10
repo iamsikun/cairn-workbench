@@ -334,3 +334,90 @@ def test_cli_write_begin_finish_accept(tmp_path: Path) -> None:
     assert accepted.exit_code == 0, accepted.output
     for retired in (["explanation", "prepare"], ["feedback", "stage"]):
         assert runner.invoke(app, [*retired, "--help"]).exit_code != 0
+
+
+def init_args(tmp_path: Path, *extra: str) -> list[str]:
+    code = tmp_path / "public"
+    code.mkdir(exist_ok=True)
+    workspace = tmp_path / "private"
+    return ["init", "--workspace", str(workspace), "--code-root", str(code), "--synthetic", *extra]
+
+
+def test_setup_installs_quill_for_the_knowledge_base(tmp_path: Path) -> None:
+    result = CliRunner().invoke(app, init_args(tmp_path))
+    assert result.exit_code == 0, result.output
+    report = json.loads(result.stdout)["quill"]
+    skill = tmp_path / "private" / ".claude" / "skills" / "quill"
+    assert report["status"] == "installed" and report["path"] == str(skill)
+    assert "cairn-quill-workflow-v1" in (skill / "SKILL.md").read_text()
+    assert (skill / "references" / "cairn-workflow.md").is_file()
+    ws = Workspace(tmp_path / "private")
+    # The skill sits beside the vault; it is not a durable record or backup member.
+    assert not any(".claude" in path for path in durable_contents(ws))
+    validate_payloads(durable_contents(ws))
+
+
+def test_setup_uses_machine_wide_quill_without_touching_it(
+    tmp_path: Path, synthetic_machine_skills: Path
+) -> None:
+    machine = synthetic_machine_skills / "quill"
+    machine.mkdir()
+    (machine / "SKILL.md").write_text("# Machine-wide Quill\n")
+    result = CliRunner().invoke(app, init_args(tmp_path))
+    assert result.exit_code == 0, result.output
+    report = json.loads(result.stdout)["quill"]
+    assert report["status"] == "machine_wide" and report["path"] == str(machine)
+    assert (machine / "SKILL.md").read_text() == "# Machine-wide Quill\n"
+    assert sorted(p.name for p in machine.iterdir()) == ["SKILL.md"]
+    assert not (tmp_path / "private" / ".claude").exists()
+
+
+def test_setup_quill_location_and_opt_out(tmp_path: Path) -> None:
+    chosen = tmp_path / "agent-skills"
+    result = CliRunner().invoke(app, init_args(tmp_path, "--quill-skills-dir", str(chosen)))
+    assert json.loads(result.stdout)["quill"]["path"] == str(chosen / "quill")
+    assert (chosen / "quill" / "SKILL.md").is_file()
+    other = tmp_path / "second"
+    other.mkdir()
+    skipped = CliRunner().invoke(app, init_args(other, "--no-quill"))
+    assert skipped.exit_code == 0 and "quill" not in json.loads(skipped.stdout)
+    assert not (other / "private" / ".claude").exists()
+
+
+def test_setup_reports_blocked_install_but_keeps_workspace(tmp_path: Path) -> None:
+    chosen = tmp_path / "agent-skills" / "quill" / "references"
+    chosen.mkdir(parents=True)
+    (chosen / "cairn-workflow.md").write_text("A different owner hook.")
+    result = CliRunner().invoke(
+        app, init_args(tmp_path, "--quill-skills-dir", str(tmp_path / "agent-skills"))
+    )
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["quill"]["status"] == "blocked"
+    assert (chosen / "cairn-workflow.md").read_text() == "A different owner hook."
+    assert Workspace(tmp_path / "private").config.synthetic
+
+
+def test_restore_sets_up_quill(ws: Workspace, tmp_path: Path) -> None:
+    from cairn.storage.streaming_backup import backup
+
+    archive = tmp_path / "backup.tar"
+    backup(ws, archive)
+    code = tmp_path / "restore-code"
+    code.mkdir()
+    destination = tmp_path / "restored"
+    result = CliRunner().invoke(
+        app,
+        [
+            "restore",
+            str(archive),
+            "--destination",
+            str(destination),
+            "--code-root",
+            str(code),
+            "--synthetic",
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["quill"]["status"] == "installed"
+    assert (destination / ".claude" / "skills" / "quill" / "SKILL.md").is_file()

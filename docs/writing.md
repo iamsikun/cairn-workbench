@@ -50,8 +50,31 @@ unreviewed explanation of a saved view.
 - **What `finish` does.** It checks the response and preserves it as a source. Cairn
   then formats the record itself: status, labels and existing assertions are kept,
   and new claims stay unreviewed. Finally it stages a validated proposal.
-- **Installing Quill.** Run `cairn quill install --skills-dir DIR` to install Quill
-  with the Cairn writing workflow. An existing Quill skill is preserved.
+- **Installing Quill.** Setup installs Quill for you. See "Quill at setup" below.
+
+## Quill at setup
+
+`cairn init` and `cairn restore` make sure the knowledge base has Quill:
+
+- **Already installed machine-wide.** If Quill is already available machine-wide
+  (`quill/SKILL.md` under `~/.claude/skills`), setup uses it. It only checks that the
+  file exists and never reads or changes it. The output names the command that
+  attaches the Cairn writing handoff to that copy:
+  `cairn quill install --skills-dir ~/.claude/skills`.
+- **Not installed.** Otherwise setup installs the bundled Quill and its Cairn workflow
+  for this knowledge base at `<workspace>/.claude/skills/quill`. That is where agents
+  started in the workspace find project skills. It sits beside the vault and is not a
+  record or backup member; a restore reinstalls it.
+- **Choosing a location or skipping.** `--quill-skills-dir DIR` installs elsewhere.
+  `--no-quill` skips the step.
+- **Checking more locations.** Set `CAIRN_MACHINE_SKILLS_DIRS` (path-separated) to
+  check other machine-wide skill directories.
+- **When the install is blocked.** If the install is blocked, for example by a
+  differing Cairn hook at the chosen location, setup still succeeds. It reports
+  `"status": "blocked"` and changes nothing at that location.
+
+`cairn quill install --skills-dir DIR` installs or updates Quill anywhere else, and
+preserves an existing Quill skill.
 
 ## Triage and acceptance
 

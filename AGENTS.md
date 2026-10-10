@@ -32,8 +32,9 @@ a private workspace. Missing owner configuration does not authorize a guessed ro
 
 ## Writing
 
-Use Quill for writing pages from Cairn material. Follow its `references/cairn-workflow.md`
-(install with `cairn quill install --skills-dir DIR`): write only from an owner-prepared
+Use Quill for writing pages from Cairn material. Setup (`cairn init`/`restore`) installs it
+for the knowledge base unless it is available machine-wide; otherwise use
+`cairn quill install --skills-dir DIR`. Follow its `references/cairn-workflow.md`: write only from an owner-prepared
 `cairn write begin` packet, return a `QuillResponse`, and let the launcher run
 `cairn write finish`. Report the proposal ID or an explicit pending handoff. Never run
 `cairn accept`, `approve` or `apply`; acceptance is the owner's step.

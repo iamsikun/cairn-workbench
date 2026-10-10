@@ -9,13 +9,14 @@ proposal. Approval and apply remain separate owner operations (`cairn accept`).
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Mapping
 from pathlib import Path
 
 from pydantic import TypeAdapter
 
 from cairn.adapters.protocol import Candidate, Job, Page, Result
-from cairn.errors import Blocked, Conflict, Denied
+from cairn.errors import Blocked, CairnError, Conflict, Denied
 from cairn.ingest.service import capture_bytes, extract, load_extraction, read_source_file
 from cairn.policies.models import LEVEL
 from cairn.presentation.service import output_bytes
@@ -493,6 +494,43 @@ def install(skills_dir: Path) -> dict[str, str]:
         "path": str(path),
         "workflow": "packet_writing_and_proposals; owner_acceptance_required",
     }
+
+
+MACHINE_SKILLS_ENV = "CAIRN_MACHINE_SKILLS_DIRS"
+
+
+def machine_skill_dirs() -> list[Path]:
+    """Where an agent finds skills for every project; owner-configurable."""
+    configured = os.environ.get(MACHINE_SKILLS_ENV)
+    if configured is not None:
+        return [Path(item) for item in configured.split(os.pathsep) if item]
+    try:
+        return [Path.home() / ".claude" / "skills"]
+    except (KeyError, RuntimeError):
+        return []  # No resolvable home (e.g. an isolated worker user).
+
+
+def ensure_for_workspace(
+    root: Path, *, skills_dir: Path | None = None, machine_dirs: list[Path] | None = None
+) -> dict[str, str]:
+    """Set up Quill for a new knowledge base unless it is already available machine-wide.
+
+    Only the presence of `quill/SKILL.md` is checked; machine-wide skills are never
+    read or modified. A local install goes beside the vault, not into durable records.
+    """
+    for directory in machine_dirs if machine_dirs is not None else machine_skill_dirs():
+        if (directory / "quill" / "SKILL.md").is_file():
+            return {
+                "status": "machine_wide",
+                "path": str(directory / "quill"),
+                "workflow": "run `cairn quill install --skills-dir "
+                f"{directory}` to attach the Cairn writing handoff",
+            }
+    try:
+        return install(skills_dir or root / ".claude" / "skills") | {"status": "installed"}
+    except CairnError as exc:
+        # The knowledge base exists either way; report rather than undo its setup.
+        return {"status": "blocked", "reason": str(exc)}
 
 
 def validate_writing(payloads: Mapping[str, bytes], records: dict[str, Record]) -> None:

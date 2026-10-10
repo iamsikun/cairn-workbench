@@ -51,8 +51,16 @@ def init(
     release_sha256: Annotated[str | None, typer.Option()] = None,
     statement: Annotated[str | None, typer.Option()] = None,
     acknowledge: Annotated[list[ReviewAcknowledgement] | None, typer.Option()] = None,
+    quill_skills_dir: Annotated[
+        Path | None, typer.Option(help="Where to install Quill if not machine-wide.")
+    ] = None,
+    no_quill: Annotated[bool, typer.Option("--no-quill")] = False,
 ) -> None:
-    """Initialize an empty, separate workspace (synthetic during development)."""
+    """Initialize an empty, separate workspace (synthetic during development).
+
+    Quill, the writing skill, is installed for this knowledge base unless it is
+    already available machine-wide.
+    """
     try:
         if not synthetic and worker_image:
             from cairn.errors import Denied
@@ -74,7 +82,15 @@ def init(
             container_command(worker_image)
             ws.config.worker_image = worker_image
             ws.fs.write("workspace.json", canonical(ws.config))
-        typer.echo(json.dumps({"workspace_id": ws.config.id, "synthetic": ws.config.synthetic}))
+        result: dict[str, object] = {
+            "workspace_id": ws.config.id,
+            "synthetic": ws.config.synthetic,
+        }
+        if not no_quill:
+            from cairn.presentation.quill import ensure_for_workspace
+
+            result["quill"] = ensure_for_workspace(ws.root, skills_dir=quill_skills_dir)
+        typer.echo(json.dumps(result))
     except CairnError as exc:
         typer.echo(json.dumps({"error": exc.code, "message": str(exc)}), err=True)
         raise typer.Exit(exc.exit_status) from exc

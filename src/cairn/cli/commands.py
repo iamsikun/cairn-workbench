@@ -236,8 +236,11 @@ def register(app: typer.Typer) -> None:
         release_sha256: str | None = None,
         statement: str | None = None,
         acknowledge: Annotated[list[ReviewAcknowledgement] | None, typer.Option()] = None,
+        quill_skills_dir: Path | None = None,
+        no_quill: Annotated[bool, typer.Option("--no-quill")] = False,
         json_output: JsonOption = False,
     ) -> None:
+        """Restore a backup into a new workspace; set up Quill unless machine-wide."""
         from cairn.storage.streaming_backup import restore
 
         ws = restore(
@@ -251,7 +254,12 @@ def register(app: typer.Typer) -> None:
             statement=statement,
             acknowledgements=set(acknowledge) if acknowledge else None,
         )
-        emit({"workspace_id": ws.config.id, "restored": True}, json_output)
+        result: dict[str, object] = {"workspace_id": ws.config.id, "restored": True}
+        if not no_quill:
+            from cairn.presentation.quill import ensure_for_workspace
+
+            result["quill"] = ensure_for_workspace(ws.root, skills_dir=quill_skills_dir)
+        emit(result, json_output)
 
     @app.command()
     @guarded
