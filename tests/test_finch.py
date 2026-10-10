@@ -6,21 +6,16 @@ from datetime import timedelta
 
 import pytest
 from pydantic import ValidationError
-from test_library_reader import response as reader_response
-from test_library_reader import setup
 from test_presentation import source
 from typer.testing import CliRunner
 
 from cairn.cli import app
 from cairn.errors import CairnError, Conflict, Denied
-from cairn.library.reader import enqueue, run
-from cairn.library.reader_models import PaperSummary
-from cairn.library.reader_worker import completion, read
 from cairn.policies.audit import revoke_grant, set_grant
 from cairn.policies.models import RouteGrant
 from cairn.proposals.service import approve, load_proposal, validate
 from cairn.reading.models import FinchClaim, FinchPacket, FinchResponse
-from cairn.reading.skill import HANDOFF, files, guidance_hash
+from cairn.reading.skill import HANDOFF, files
 from cairn.reading.workflow import begin, finish
 from cairn.records.continuity import ReceiptMessage
 from cairn.records.models import EvidenceRef, Labels, Record, canonical, digest, now
@@ -101,69 +96,6 @@ def response_file(tmp_path, value):
     path = tmp_path / "response.json"
     path.write_bytes(canonical(value))
     return path
-
-
-def test_reader_uses_finch_and_preserves_claim_kind(ws, tmp_path, monkeypatch):
-    captured = []
-
-    class Reply:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            return None
-
-        def read(self, limit):
-            return canonical(
-                {
-                    "choices": [
-                        {
-                            "finish_reason": "stop",
-                            "message": {
-                                "content": canonical(
-                                    PaperSummary(summary="Synthetic summary")
-                                ).decode()
-                            },
-                        }
-                    ]
-                }
-            )
-
-    class Opener:
-        def open(self, request, timeout):
-            captured.append(json.loads(request.data))
-            return Reply()
-
-    monkeypatch.setattr("urllib.request.build_opener", lambda *args: Opener())
-    completion([{"type": "text", "text": "Synthetic excerpt"}])
-    assert "Finch: reading" in captured[0]["messages"][0]["content"]
-    paper, device = setup(ws, tmp_path)
-    state = enqueue(ws, paper, device.id)
-    assert state.job.guidance_hash == guidance_hash()
-
-    def inference(config, raw):
-        data = json.loads(reader_response(config, raw))
-        data["summary"]["findings"][0]["kind"] = "inference"
-        return canonical(data)
-
-    completed = run(ws, state.job.id, transport=inference)
-    proposal = load_proposal(ws, completed.proposal_id)
-    record, _ = decode(proposal.changes[0].content.encode())
-    assert record.assertions[0].kind == "inference"
-    assert "interpretation" in proposal.review_flags
-
-
-@pytest.mark.parametrize("legacy", [True, False])
-def test_reader_rejects_old_or_changed_guidance(ws, tmp_path, legacy):
-    paper, device = setup(ws, tmp_path)
-    state = enqueue(ws, paper, device.id)
-    if legacy:
-        state.job.prompt_version = "paper-reader-v1"
-        state.job.guidance_hash = None
-    else:
-        state.job.guidance_hash = "0" * 64
-    with pytest.raises(ValueError, match="guidance mismatch"):
-        read(state.job, b"irrelevant")
 
 
 def test_automatic_capture_proposal_validation_and_owner_apply(ws, tmp_path):

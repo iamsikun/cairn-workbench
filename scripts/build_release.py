@@ -138,8 +138,6 @@ def build(output: Path, revision: str, worker_image: str) -> None:
             "fake_provider": "fake-v1",
             "client_packet": "1",
             "library_catalog": "1",
-            "owner_device": "finch-paper-reader-v2",
-            "subscription_verification": "clients-2026-09-30",
             "weekly_feed": "1",
             "html_views": "cairn-view-v1",
             "quill_writing": "d6bc7de15d1779c58286cbdec1a54eec52bdef22",

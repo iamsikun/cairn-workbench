@@ -172,12 +172,16 @@ def test_proposal_view_has_actual_diff_and_no_approval(ws: Workspace):
 
 
 def test_project_catalog_feed_and_paper_views(ws: Workspace, tmp_path: Path):
-    from test_library_verification_feed import configured
+    from test_library_catalog import library, pdf
 
+    from cairn.library.catalog import scan
     from cairn.library.feed import FeedEvent, save
+    from cairn.library.index import papers
     from cairn.records.models import now
 
-    paper_id, state = configured(ws, tmp_path)
+    (library(ws, tmp_path) / "Example Journal/paper.pdf").write_bytes(pdf())
+    scan(ws)
+    paper_id = papers(ws, scope="research")[0]["id"]
     saved = save(
         ws,
         [FeedEvent(id="feed_html", paper_id=paper_id, kind="box_addition", at=now())],
@@ -211,21 +215,10 @@ def test_project_catalog_feed_and_paper_views(ws: Workspace, tmp_path: Path):
     assert "Synthetic data only" in render_bundle(ws, bundle, inline_synthetic=True).decode()
 
 
-def test_status_change_and_approval_during_render_reject(ws, tmp_path, monkeypatch):
-    from test_library_verification_feed import configured
+def test_approval_during_render_rejects(ws, tmp_path, monkeypatch):
+    from test_review import proposal
 
     from cairn.proposals.service import approve
-
-    paper_id, state = configured(ws, tmp_path)
-    bundle = assemble(ws, "paper", scope="research", object_id=paper_id)
-    remember(ws, bundle, save=True)
-    state.reason = "Synthetic status changed"
-    ws.fs.write(f"receipts/library/reads/{state.job.id}.json", canonical(state))
-    with pytest.raises(Conflict, match="library status"):
-        load_view(ws, bundle.id)
-    assert load_view(ws, bundle.id, historical=True) == bundle
-
-    from test_review import proposal
 
     proposed = proposal(ws)
     bundle = assemble(ws, "proposal", scope="research", object_id=proposed.id)

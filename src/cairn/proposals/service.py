@@ -168,15 +168,7 @@ def _check_inputs(ws: Workspace, envelope: JobEnvelope) -> None:
 
         check_quill(ws, envelope.job)
     if envelope.job.route == "owner_device":
-        from cairn.library.reader import check_binding, state_path
-        from cairn.library.reader_models import ReadState
-
-        state = ReadState.model_validate_json(
-            ws.fs.read(state_path("read_" + envelope.job.id.removeprefix("job_")))
-        )
-        if state.status not in ("running", "completed"):
-            raise Conflict("owner-device reading is no longer active")
-        check_binding(ws, state.job)
+        raise Conflict("the owner-device reading route is retired; read the paper again")
     if ws.policy_hash != envelope.job.policy_hash:
         raise Conflict("policy changed; prepare a new job")
     current_scope = ws.policy.scope(envelope.job.scope_name)
@@ -280,10 +272,6 @@ def load_proposal(ws: Workspace, proposal_id: str) -> Proposal:
 
 
 def validate_unlocked(ws: Workspace, proposal: Proposal) -> JobEnvelope:
-    if proposal.route == "owner_device":
-        from cairn.library.verification import require_no_failed_checks
-
-        require_no_failed_checks(ws, proposal.id)
     envelope = load_job(ws, proposal.job_id)
     job = envelope.job
     _check_inputs(ws, envelope)
@@ -404,10 +392,6 @@ def approve(
         envelope = validate_unlocked(ws, proposal)
         if not proposal.review_flags <= acknowledgements:
             raise Denied("all required review flags must be acknowledged")
-        if proposal.route == "owner_device":
-            from cairn.library.verification import require_ready_for_acceptance
-
-            require_ready_for_acceptance(ws, proposal.id)
         ws.event(
             Event(
                 id=new_id("event"),

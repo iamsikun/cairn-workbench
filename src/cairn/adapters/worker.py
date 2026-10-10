@@ -35,21 +35,6 @@ def main() -> None:
                 )
             )
             return
-        if document.get("operation") == "render_pages":
-            from cairn.library.reader_worker import page_image
-
-            if set(document) != {"operation", "data", "pages"}:
-                raise ValueError("unexpected rendering fields")
-            pages = document["pages"]
-            if (
-                not isinstance(pages, list)
-                or len(pages) > 4
-                or any(type(p) is not int or p < 1 for p in pages)
-            ):
-                raise ValueError("invalid render page budget")
-            data = base64.b64decode(document["data"], validate=True)
-            sys.stdout.buffer.write(canonical({str(p): page_image(data, p) for p in pages}))
-            return
         if document.get("operation") == "inspect_pdf":
             from cairn.library.pdf import inspect_metadata
 

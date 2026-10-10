@@ -10,12 +10,9 @@ from urllib.parse import quote
 
 from pydantic import Field
 
-from cairn.errors import Conflict, Denied
+from cairn.errors import Denied
 from cairn.library.catalog import get_paper
-from cairn.library.reader import jobs
-from cairn.library.reader_models import ReaderResult
 from cairn.library.store import commit_unlocked
-from cairn.library.verification import checks
 from cairn.records.models import ID, Digest, Model, canonical, digest, now
 from cairn.storage.workspace import Workspace
 
@@ -57,7 +54,6 @@ class FeedDigest(Model):
 
 
 def entries(ws: Workspace, events: list[FeedEvent], scope: str) -> list[FeedEntry]:
-    readings = jobs(ws, scope)
     result = []
     with ws.lock():
         for event in events:
@@ -84,37 +80,6 @@ def entries(ws: Workspace, events: list[FeedEvent], scope: str) -> list[FeedEntr
                     else "Metadata only"
                 ),
             )
-            candidates = [r for r in readings if r.job.paper_id == record.id]
-            if candidates:
-                state = candidates[-1]
-                entry.analysis_status = state.status
-                entry.source_hash = state.job.source_hash
-                entry.proposal_id = state.proposal_id
-                if state.status == "completed":
-                    raw = ws.fs.read(f"receipts/library/results/{state.job.id}.json")
-                    if digest(raw) != state.result_hash:
-                        raise Conflict("feed reading checksum mismatch")
-                    reading = ReaderResult.model_validate_json(raw)
-                    entry.summary = reading.summary.summary
-                    entry.coverage = (
-                        f"{reading.extraction.coverage}; "
-                        f"{len(reading.inspected_pages)}/{reading.page_count} pages; "
-                        f"images on pages {reading.visual_pages}"
-                    )
-                    checked = checks(ws, state.job.id)
-                    entry.verification = [
-                        f"{v.provider}: {v.result.verdict if v.result else v.status}"
-                        for v in checked
-                    ] or ["Not sampled"]
-                    failed = any(v.result and v.result.verdict != "supported" for v in checked)
-                    if failed:
-                        entry.review_state = "CHECK FAILED — requires revision"
-                    elif state.proposal_id and ws.fs.exists(
-                        f"receipts/applied/{state.proposal_id}.json"
-                    ):
-                        entry.review_state = "owner accepted"
-                elif state.reason:
-                    entry.verification = [f"Reading pending: {state.reason}"]
             result.append(entry)
     return result
 

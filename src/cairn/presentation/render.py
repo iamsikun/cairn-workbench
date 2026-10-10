@@ -300,8 +300,6 @@ def _paper(row: CatalogItem) -> ViewBlock:
         labels=[
             row.availability,
             f"Personal reading: {row.reading}",
-            f"Analysis: {row.analysis}",
-            f"Review: {row.review}",
         ],
         url="https://doi.org/" + quote(row.doi, safe="/") if row.doi else None,
     )

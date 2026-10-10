@@ -120,6 +120,7 @@
       "additionalProperties": false,
       "properties": {
         "analysis": {
+          "default": "not_started",
           "title": "Analysis",
           "type": "string"
         },
@@ -155,6 +156,7 @@
           "type": "string"
         },
         "review": {
+          "default": "unreviewed",
           "title": "Review",
           "type": "string"
         },
@@ -181,8 +183,6 @@
         "year",
         "doi",
         "reading",
-        "analysis",
-        "review",
         "availability"
       ],
       "title": "CatalogItem",
@@ -1434,6 +1434,7 @@
     },
     "PaperSummary": {
       "additionalProperties": false,
+      "description": "Kept so views saved by the retired library reader still load.",
       "properties": {
         "assumptions": {
           "items": {

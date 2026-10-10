@@ -206,7 +206,7 @@ def trial(bundle: Path) -> None:
     assert cli("library", "scan", *library_options, "--json")["unchanged"] == 1
     cli("library", "mark", paper_id, "read", *library_options)
     assert cli("library", "show", paper_id, *library_options)["paper"]["reading"] == "read"
-    cli("library", "update", *library_options, "--read-budget", "0")
+    cli("library", "update", *library_options)
     assert cli("feed", "latest", *library_options, "--json")["entries"] == []
     answer = cli("query", "42", "--scope", "research", *options)
     # Exercise installed presentation resources, saved snapshots and atomic retries.

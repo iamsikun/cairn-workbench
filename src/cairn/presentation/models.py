@@ -4,10 +4,28 @@ from typing import Annotated, Literal
 from pydantic import Field, model_validator
 
 from cairn.library.feed import FeedDigest
-from cairn.library.reader_models import PaperSummary
 from cairn.records.continuity import ContextPack
 from cairn.records.models import ID, Assertion, Digest, EvidenceRef, Labels, Model, Period
 from cairn.retrieval.search import Hit
+
+
+class PaperClaim(Model):
+    text: str = Field(min_length=1, max_length=5000)
+    page: int = Field(ge=1)
+    quote: str | None = Field(default=None, max_length=2000)
+    kind: Literal["reported_result", "inference", "hypothesis"] = "reported_result"
+
+
+class PaperSummary(Model):
+    """Kept so views saved by the retired library reader still load."""
+
+    summary: str = Field(min_length=1, max_length=8000)
+    research_question: list[PaperClaim] = Field(default_factory=list, max_length=20)
+    methods: list[PaperClaim] = Field(default_factory=list, max_length=20)
+    findings: list[PaperClaim] = Field(default_factory=list, max_length=40)
+    assumptions: list[PaperClaim] = Field(default_factory=list, max_length=20)
+    limitations: list[PaperClaim] = Field(default_factory=list, max_length=20)
+    warnings: list[str] = Field(default_factory=list, max_length=40)
 
 
 class EvidenceItem(Model):
@@ -57,8 +75,8 @@ class CatalogItem(Model):
     year: int | None
     doi: str | None
     reading: str
-    analysis: str
-    review: str
+    analysis: str = "not_started"
+    review: str = "unreviewed"
     availability: str
 
 

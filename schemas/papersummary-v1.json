@@ -47,6 +47,7 @@
     }
   },
   "additionalProperties": false,
+  "description": "Kept so views saved by the retired library reader still load.",
   "properties": {
     "assumptions": {
       "items": {

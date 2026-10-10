@@ -1,4 +1,4 @@
-"""Checkpointed weekly updates; baseline archives never trigger a bulk reading bill."""
+"""Checkpointed weekly updates: scan, discover, record events and save a feed digest."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from datetime import timedelta
 from typing import Any, Literal
 
 from cairn.errors import CairnError
-from cairn.library import catalog, discovery, feed, reader, verification
+from cairn.library import catalog, discovery, feed
 from cairn.library.models import Paper, metadata
 from cairn.library.store import commit_unlocked, entities_unlocked
 from cairn.records.json import read_json
@@ -32,10 +32,8 @@ def inventory(ws: Workspace, scope: str) -> dict[str, list[str]]:
 def update(
     ws: Workspace,
     *,
-    device_id: str | None = None,
     scope: str = "research",
     page_budget: int = 100,
-    read_budget: int = 10,
     fetch: discovery.Fetch | None = None,
 ) -> dict[str, Any]:
     import fcntl
@@ -54,14 +52,7 @@ def update(
             fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise Blocked("library_update_already_running") from exc
-        return _update(
-            ws,
-            device_id=device_id,
-            scope=scope,
-            page_budget=page_budget,
-            read_budget=read_budget,
-            fetch=fetch,
-        )
+        return _update(ws, scope=scope, page_budget=page_budget, fetch=fetch)
     finally:
         os.close(lock_fd)
 
@@ -69,15 +60,13 @@ def update(
 def _update(
     ws: Workspace,
     *,
-    device_id: str | None = None,
     scope: str = "research",
     page_budget: int = 100,
-    read_budget: int = 10,
     fetch: discovery.Fetch | None = None,
 ) -> dict[str, Any]:
     from cairn.errors import Denied
 
-    if not 0 <= read_budget <= 100 or not 1 <= page_budget <= 1000:
+    if not 1 <= page_budget <= 1000:
         raise Denied("update budgets out of range")
     pointer = f"receipts/library/updates/{scope}.json"
     with ws.lock():
@@ -148,60 +137,19 @@ def _update(
                         outputs[path] = canonical(event)
                     event_ids.append(event_id)
             state["events"] = event_ids
-            state["phase"] = "read"
+            state["phase"] = "feed"
             outputs[pointer] = canonical(state)
             commit_unlocked(ws, outputs, "update_events")
     with ws.lock():
-        # Undelivered/pending readings survive missed weeks and read-budget limits.
         events = [
             feed.FeedEvent.model_validate_json(ws.fs.read(path))
             for path in ws.fs.files("receipts/library/feed_events")
         ]
         allowed = {r.id for r in entities_unlocked(ws, scope)}
         events = [event for event in events if event.paper_id in allowed]
-    if state["phase"] == "read":
-        budget = read_budget
-        for event in events:
-            if event.reading_requested or event.kind == "newly_discovered" or budget == 0:
-                continue
-            if device_id is None:
-                state["issues"].append("Paper readings pending: no enrolled device selected")
-                break
-            try:
-                reader.enqueue(ws, event.paper_id, device_id, scope=scope)
-                event.reading_requested = True
-                with ws.lock(write=True):
-                    commit_unlocked(
-                        ws,
-                        {f"receipts/library/feed_events/{event.id}.json": canonical(event)},
-                        "feed_read_queued",
-                    )
-                budget -= 1
-            except (CairnError, OSError) as exc:
-                state["issues"].append(f"Reading pending for {event.paper_id}: {_reason(exc)}")
-        # One failing reading must not hold every later update in the read phase.
-        try:
-            pending = reader.jobs(ws, scope)
-        except (CairnError, OSError) as exc:
-            pending = []
-            state["issues"].append(f"Reading queue unavailable: {_reason(exc)}")
-        for job in pending:
-            if read_budget == 0:
-                break
-            if job.status in ("queued", "blocked"):
-                try:
-                    reader.run(ws, job.job.id)
-                except (CairnError, OSError) as exc:
-                    state["issues"].append(
-                        f"Reading {job.job.id} for {job.job.paper_id}: {_reason(exc)}"
-                    )
-                read_budget -= 1
-        state["phase"] = "verify"
-        checkpoint()
-    if state["phase"] == "verify":
-        verification.verify(ws, scope)
+    # Checkpoints from runtimes that still read papers resume at the feed.
+    if state["phase"] in ("read", "verify"):
         state["phase"] = "feed"
-        checkpoint()
     # Bound each digest while retaining all durable events. Old completed entries
     # remain in history; pending entries stay represented in subsequent snapshots.
     recent_events = sorted(events, key=lambda event: (event.at, event.id))[-500:]

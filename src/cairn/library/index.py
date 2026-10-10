@@ -21,8 +21,6 @@ def papers(
     year: int | None = None,
     reading: str | None = None,
     available: bool | None = None,
-    analysis: str | None = None,
-    review: str | None = None,
 ) -> list[dict[str, Any]]:
     with ws.lock():
         records = entities_unlocked(ws, scope)
@@ -125,51 +123,9 @@ def papers(
                     params.append(val)
             where = " WHERE " + " AND ".join(predicates) if predicates else ""
             rows = db.execute("SELECT data FROM papers" + where + " ORDER BY year DESC,id", params)
-            values = [json.loads(row[0]) for row in rows]
-            states = status_unlocked(ws, {item["id"] for item in values})
-            for value in values:
-                value.update(
-                    states.get(value["id"], {"analysis": "not_started", "review": "unreviewed"})
-                )
-            return [
-                value
-                for value in values
-                if (analysis is None or value["analysis"] == analysis)
-                and (review is None or value["review"] == review)
-            ]
+            return [json.loads(row[0]) for row in rows]
         finally:
             db.close()
-
-
-def status_unlocked(ws: Workspace, allowed_ids: set[str]) -> dict[str, dict[str, str]]:
-    from cairn.library.reader_models import ReadState
-    from cairn.library.verification_models import VerificationState
-
-    latest: dict[str, ReadState] = {}
-    for path in ws.fs.files("receipts/library/reads"):
-        value = ReadState.model_validate_json(ws.fs.read(path))
-        if value.job.paper_id in allowed_ids and (
-            value.job.paper_id not in latest or value.at > latest[value.job.paper_id].at
-        ):
-            latest[value.job.paper_id] = value
-    checks: dict[str, list[VerificationState]] = {}
-    for path in ws.fs.files("receipts/library/checks"):
-        check = VerificationState.model_validate_json(ws.fs.read(path))
-        checks.setdefault(check.read_id, []).append(check)
-    statuses = {}
-    for paper_id, state in latest.items():
-        review = "unreviewed"
-        values = checks.get(state.job.id, [])
-        if any(v.result and v.result.verdict != "supported" for v in values):
-            review = "concerns"
-        elif any(v.status != "completed" for v in values):
-            review = "verification_pending"
-        elif state.proposal_id and ws.fs.exists(f"receipts/applied/{state.proposal_id}.json"):
-            review = "owner_accepted"
-        elif values:
-            review = "model_checked_unreviewed"
-        statuses[paper_id] = {"analysis": state.status, "review": review}
-    return statuses
 
 
 def render_catalog(rows: list[dict[str, Any]]) -> str:
@@ -185,8 +141,6 @@ def render_catalog(rows: list[dict[str, Any]]) -> str:
                     "; ".join(meta["authors"]),
                     meta["year"] or "Unknown",
                     meta["reading"],
-                    row.get("analysis", "not_started"),
-                    row.get("review", "unreviewed"),
                     "PDF available"
                     if any(f["availability"] == "available" for f in meta["files"])
                     else "Metadata only",
@@ -203,7 +157,6 @@ def render_catalog(rows: list[dict[str, Any]]) -> str:
         "td,th{text-align:left;padding:.7em;border-bottom:1px solid #ddd}</style>"
         f"<h1>Cairn library</h1><p>{len(rows)} papers in this scope.</p><table>"
         "<thead><tr><th>Paper</th><th>Authors</th><th>Year</th><th>Reading</th>"
-        "<th>Analysis</th><th>Review</th>"
         "<th>Availability</th><th>ID</th></tr></thead><tbody>"
         + "".join(body)
         + "</tbody></table></html>"

@@ -9,8 +9,6 @@ from cairn.errors import Blocked, CairnError, Conflict, Denied
 from cairn.ingest.service import load_extraction
 from cairn.library.feed import history
 from cairn.library.index import papers
-from cairn.library.reader import jobs
-from cairn.library.reader_models import ReaderResult
 from cairn.policies.models import LEVEL
 from cairn.presentation.models import (
     CatalogItem,
@@ -54,38 +52,10 @@ def _catalog_item(row: dict[str, Any]) -> CatalogItem:
         year=meta["year"],
         doi=meta["doi"],
         reading=meta["reading"],
-        analysis=row["analysis"],
-        review=row["review"],
         availability="PDF available"
         if any(f["availability"] == "available" or f["source_id"] for f in meta["files"])
         else "Metadata only",
     )
-
-
-def _library_snapshot(ws: Workspace, allowed_ids: set[str]) -> str:
-    from cairn.library.reader_models import ReadState
-    from cairn.library.verification_models import VerificationState
-
-    values = {}
-    read_ids = set()
-    for path in ws.fs.files("receipts/library/reads"):
-        raw = ws.fs.read(path)
-        state = ReadState.model_validate_json(raw)
-        if state.job.paper_id not in allowed_ids:
-            continue
-        values[path] = digest(raw)
-        read_ids.add(state.job.id)
-        for linked in (
-            f"receipts/library/results/{state.job.id}.json",
-            f"receipts/applied/{state.proposal_id}.json",
-        ):
-            if ws.fs.exists(linked):
-                values[linked] = digest(ws.fs.read(linked))
-    for path in ws.fs.files("receipts/library/checks"):
-        raw = ws.fs.read(path)
-        if VerificationState.model_validate_json(raw).read_id in read_ids:
-            values[path] = digest(raw)
-    return digest(canonical(values))
 
 
 def _stamp(ws: Workspace, scope: str) -> str:
@@ -97,9 +67,6 @@ def _stamp(ws: Workspace, scope: str) -> str:
                 "records": {
                     p: digest(ws.fs.read(p)) for p, _, _ in ws.records(ws.policy.scope(scope))
                 },
-                "library": _library_snapshot(
-                    ws, {r.id for _, r, _ in ws.records(ws.policy.scope(scope))}
-                ),
             }
         )
     )
@@ -187,39 +154,6 @@ def assemble(
             payload = PaperPayload(paper=_catalog_item(row))
             selected.add(row["id"])
             title = row["title"]
-            candidates = [s for s in jobs(ws, scope) if s.job.paper_id == object_id]
-            if candidates:
-                state = max(candidates, key=lambda s: s.at)
-                with ws.lock():
-                    path = f"receipts/library/reads/{state.job.id}.json"
-                    auxiliary[path] = digest(ws.fs.read(path))
-                    if state.status == "completed":
-                        path = f"receipts/library/results/{state.job.id}.json"
-                        raw = ws.fs.read(path)
-                        if digest(raw) != state.result_hash:
-                            raise Conflict("reading result checksum mismatch")
-                        auxiliary[path] = digest(raw)
-                        reading_result = ReaderResult.model_validate_json(raw)
-                        selected.add(state.job.source_id)
-                        _, source, _ = ws.record(state.job.source_id, ws.policy.scope(scope))
-                        extraction, key = load_extraction(ws, source)
-                        if extraction.source_hash != state.job.source_hash:
-                            raise Conflict("paper evidence changed")
-                        payload.summary = reading_result.summary
-                        payload.inspected_pages = reading_result.inspected_pages
-                        payload.visual_pages = reading_result.visual_pages
-                        payload.page_count = reading_result.page_count
-                        payload.coverage = reading_result.extraction.coverage
-                        refs.extend(
-                            EvidenceRef(
-                                id=source.id,
-                                source_hash=extraction.source_hash,
-                                evidence_hash=key,
-                                locator=f"page {claim.page}",
-                                quote=claim.quote,
-                            )
-                            for claim in reading_result.summary.claims()
-                        )
     elif kind == "feed":
         values = history(ws, scope)
         value = (
@@ -328,9 +262,6 @@ def assemble(
             title=title,
             input_hashes=inputs,
             review_state_hash=review_hash,
-            library_state_hash=_library_snapshot(ws, set(records))
-            if kind in ("catalog", "paper")
-            else None,
             record_ids=sorted(records),
             evidence=evidence,
             payload=payload,
@@ -369,9 +300,8 @@ def recheck(ws: Workspace, bundle: ViewBundle, *, historical: bool = False) -> N
             proposal = load_proposal(ws, bundle.payload.report.id)
             if review_snapshot(ws, proposal) != bundle.review_state_hash:
                 raise Conflict("view review state changed; regenerate the view")
-        if bundle.library_state_hash and bundle.library_state_hash != _library_snapshot(
-            ws, set(bundle.record_ids)
-        ):
+        if bundle.library_state_hash:
+            # Only views from the retired library reader carry reading state.
             raise Conflict("view library status changed; regenerate the view")
         for path, expected in bundle.input_hashes.items():
             if not ws.fs.exists(path) or digest(ws.fs.read(path)) != expected:

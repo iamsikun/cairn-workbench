@@ -12,34 +12,19 @@ from cairn.storage.workspace import Workspace
 
 
 def register(app: typer.Typer) -> None:
-    library = typer.Typer(help="Journal inventory, reading progress, and paper jobs.")
+    library = typer.Typer(help="Journal inventory and reading progress.")
     app.add_typer(library, name="library")
-    worker = typer.Typer(help="Explicitly enrolled owner-device inference routes.")
-    library.add_typer(worker, name="worker")
     feeds = typer.Typer(help="Saved journal digests and bounded feed access.")
     app.add_typer(feeds, name="feed")
 
     @library.command("update")
     @guarded
     def update(
-        workspace: WorkspaceOption,
-        device: str | None = None,
-        scope: str = "research",
-        page_budget: int = 100,
-        read_budget: int = 10,
+        workspace: WorkspaceOption, scope: str = "research", page_budget: int = 100
     ) -> None:
         from cairn.library.update import update as run
 
-        emit(
-            run(
-                Workspace(workspace),
-                device_id=device,
-                scope=scope,
-                page_budget=page_budget,
-                read_budget=read_budget,
-            ),
-            True,
-        )
+        emit(run(Workspace(workspace), scope=scope, page_budget=page_budget), True)
 
     @feeds.command("latest")
     @guarded
@@ -110,96 +95,10 @@ def register(app: typer.Typer) -> None:
         acknowledge(Workspace(workspace), digest_id, scope)
         emit({"digest": digest_id, "notification": "acknowledged"}, True)
 
-    @worker.command("enroll")
-    @guarded
-    def enroll(file: Path, workspace: WorkspaceOption) -> None:
-        from cairn.ingest.service import read_source_file
-        from cairn.library.device import enroll as run
-        from cairn.library.reader_models import DeviceConfig
-
-        emit(
-            run(Workspace(workspace), DeviceConfig.model_validate_json(read_source_file(file))),
-            True,
-        )
-
-    @worker.command("probe")
-    @guarded
-    def probe(device_id: str, workspace: WorkspaceOption) -> None:
-        from cairn.library.device import enroll, load_device
-
-        ws = Workspace(workspace)
-        emit(enroll(ws, load_device(ws, device_id)), True)
-
-    @worker.command("revoke")
-    @guarded
-    def revoke(device_id: str, workspace: WorkspaceOption) -> None:
-        from cairn.library.device import revoke as run
-
-        run(Workspace(workspace), device_id)
-        emit({"device": device_id, "enrolled": False}, True)
-
     @library.command("capture")
     @guarded
     def capture(paper_id: str, workspace: WorkspaceOption, scope: str = "research") -> None:
-        from cairn.library.reader import capture_paper
-
-        emit(capture_paper(Workspace(workspace), paper_id, scope), True)
-
-    @library.command("read")
-    @guarded
-    def read(
-        paper_id: str,
-        device: str,
-        workspace: WorkspaceOption,
-        scope: str = "research",
-        queue_only: bool = False,
-        revision: int = 1,
-    ) -> None:
-        from cairn.library.reader import enqueue, run
-
-        ws = Workspace(workspace)
-        state = enqueue(ws, paper_id, device, scope=scope, revision=revision)
-        emit(state if queue_only else run(ws, state.job.id), True)
-
-    @library.command("jobs")
-    @guarded
-    def jobs(workspace: WorkspaceOption, scope: str = "research") -> None:
-        from cairn.library.reader import jobs as run
-
-        emit(run(Workspace(workspace), scope), True)
-
-    @library.command("retry")
-    @guarded
-    def retry(job_id: str, workspace: WorkspaceOption) -> None:
-        from cairn.library.reader import run
-
-        emit(run(Workspace(workspace), job_id, retry=True), True)
-
-    @library.command("cancel")
-    @guarded
-    def cancel(job_id: str, workspace: WorkspaceOption) -> None:
-        from cairn.library.reader import cancel as run
-
-        emit(run(Workspace(workspace), job_id), True)
-
-    @library.command("verification-configure")
-    @guarded
-    def verification_configure(file: Path, workspace: WorkspaceOption) -> None:
-        from cairn.ingest.service import read_source_file
-        from cairn.library.verification import configure
-        from cairn.library.verification_models import VerificationConfig
-
-        configure(
-            Workspace(workspace), VerificationConfig.model_validate_json(read_source_file(file))
-        )
-        emit({"verification": "configured", "billing": "subscription_only"}, True)
-
-    @library.command("verify")
-    @guarded
-    def verify(workspace: WorkspaceOption, scope: str = "research") -> None:
-        from cairn.library.verification import verify as run
-
-        emit(run(Workspace(workspace), scope), True)
+        emit(catalog.capture_paper(Workspace(workspace), paper_id, scope), True)
 
     @library.command("discover")
     @guarded
@@ -297,8 +196,6 @@ def register(app: typer.Typer) -> None:
         year: int | None = None,
         reading: str | None = None,
         available: bool | None = None,
-        analysis: str | None = None,
-        review: str | None = None,
         json_output: JsonOption = False,
     ) -> None:
         rows = papers(
@@ -309,8 +206,6 @@ def register(app: typer.Typer) -> None:
             year=year,
             reading=reading,
             available=available,
-            analysis=analysis,
-            review=review,
         )
         emit(rows, json_output, "\n".join(f"{r['id']}  {r['title']}" for r in rows))
 
