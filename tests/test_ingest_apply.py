@@ -268,3 +268,66 @@ def test_recovery_preserves_unexpected_owner_bytes(ws: Workspace, tmp_path: Path
     with pytest.raises(Conflict, match="owner edit"):
         recover(ws)
     assert ws.fs.read(target) == b"Owner edit during outage; preserve me"
+
+
+def _staged_variant(ws: Workspace, tmp_path: Path, mutate) -> object:
+    source_id = source(ws, tmp_path)
+    extract(ws, source_id, scope_name="research", inline_synthetic=True)
+    envelope = prepare_job(ws, source_id, scope_name="research", related_ids=[])
+    result = FakeProvider().generate(envelope.job)
+    mutate(result.candidates[0].record)
+    return stage_result(ws, result)
+
+
+def test_structured_amounts_outside_finance_must_be_observed(
+    ws: Workspace, tmp_path: Path
+) -> None:
+    from datetime import date
+    from decimal import Decimal
+
+    from cairn.records.models import Money
+
+    def add_amount(record: Record) -> None:
+        assertion = record.assertions[0]
+        assertion.amounts = [
+            Money(
+                value=Decimal("999999"),
+                unit="USD",
+                currency="USD",
+                as_of=date(2026, 1, 1),
+                sources=[assertion.sources[0]],
+            )
+        ]
+
+    staged = _staged_variant(ws, tmp_path, add_amount)
+    assert staged
+    with pytest.raises(CairnError, match="exact preserved financial observation"):
+        validate(ws, staged.id)
+
+
+def test_empty_quote_cannot_support_a_citation(ws: Workspace, tmp_path: Path) -> None:
+    def empty_quote(record: Record) -> None:
+        record.assertions[0].sources[0].quote = "  "
+
+    staged = _staged_variant(ws, tmp_path, empty_quote)
+    assert staged
+    with pytest.raises(CairnError, match="empty quotes"):
+        validate(ws, staged.id)
+
+
+def test_model_supplied_verification_requires_acknowledgement(
+    ws: Workspace, tmp_path: Path
+) -> None:
+    def reviewed(record: Record) -> None:
+        record.assertions[0].verification = "reviewed"
+
+    staged = _staged_variant(ws, tmp_path, reviewed)
+    assert staged and "verification_change" in staged.review_flags
+    with pytest.raises(Denied):
+        approve(
+            ws,
+            staged.id,
+            acknowledgements=staged.review_flags - {"verification_change"},
+            statement="Synthetic review",
+        )
+    approve(ws, staged.id, acknowledgements=staged.review_flags, statement="Synthetic review")

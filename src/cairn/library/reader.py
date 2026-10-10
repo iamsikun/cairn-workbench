@@ -346,7 +346,7 @@ def accept_result(ws: Workspace, state: ReadState, result: ReaderResult) -> str:
             source_hash=job.source_hash,
             evidence_hash=key,
             locator=f"page {claim.page}",
-            quote=claim.quote,
+            quote=claim.quote or None,
         )
         for claim in claims
     ]

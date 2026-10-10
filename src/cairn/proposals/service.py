@@ -105,8 +105,15 @@ def load_job(ws: Workspace, job_id: str) -> JobEnvelope:
     return JobEnvelope.model_validate_json(ws.fs.read(f"proposals/jobs/{job_id}.json"))
 
 
-def review_flags(record: Record) -> set[str]:
+def review_flags(record: Record, previous: Record | None = None) -> set[str]:
     flags: set[str] = {"evidence_and_interpretation"}
+    prior = {a.id: a.verification for a in previous.assertions} if previous else {}
+    if any(
+        a.verification in ("reviewed", "superseded") and prior.get(a.id) != a.verification
+        for a in record.assertions
+    ):
+        # A proposed verification state is not an owner review; make it explicit.
+        flags.add("verification_change")
     if record.domain == "finance" or record.classification == "restricted":
         flags.add("sensitive_record")
     if record.type == "decision":
@@ -145,6 +152,8 @@ def check_reference(ws: Workspace, ref: EvidenceRef, scope_name: str) -> None:
     segments = [segment for segment in extraction.segments if segment.locator == ref.locator]
     if not segments:
         raise CairnError("citation locator does not exist")
+    if ref.quote is not None and not ref.quote.strip():
+        raise CairnError("empty quotes cannot support a citation")
     if ref.quote is not None and not any(ref.quote in segment.text for segment in segments):
         raise CairnError("quoted text does not exist at the cited locator")
 
@@ -208,7 +217,8 @@ def stage_result(ws: Workspace, result: Result) -> Proposal | None:
             before = ws.fs.read(path) if ws.fs.exists(path) else None
             if before == content:
                 continue
-            flags |= review_flags(record)
+            previous = existing[record.id][1] if record.id in existing else None
+            flags |= review_flags(record, previous)
             changes.append(
                 Change(
                     id=record.id,
@@ -333,14 +343,15 @@ def validate_unlocked(ws: Workspace, proposal: Proposal) -> JobEnvelope:
             check_reference(ws, ref, job.scope_name)
             _, cited, _ = ws.record(ref.id, envelope.scope)
             require_inheritance(record, [cited])
-        if record.domain == "finance":
-            from cairn.ingest.finance import check_observed_money, validate_snapshot_record
+        from cairn.ingest.finance import check_observed_money, validate_snapshot_record
 
+        # Structured amounts in any domain must be exact preserved observations.
+        for assertion in record.assertions:
+            for amount in assertion.amounts:
+                check_observed_money(ws, amount, scope_name=job.scope_name)
+        if record.domain == "finance":
             if record.finance_category is None:
                 raise CairnError("finance records require an explicit knowledge category")
-            for assertion in record.assertions:
-                for amount in assertion.amounts:
-                    check_observed_money(ws, amount, scope_name=job.scope_name)
             if record.finance_category == "account_snapshot":
                 validate_snapshot_record(ws, record, body, scope_name=job.scope_name)
         for linked in [*record.related, *record.project_ids]:
@@ -357,7 +368,8 @@ def validate_unlocked(ws: Workspace, proposal: Proposal) -> JobEnvelope:
                     raise Denied("conflict reference unavailable in this scope")
                 envelope.scope.require(target)
                 require_inheritance(record, [target])
-        expected_flags |= review_flags(record)
+        previous = current[record.id][1] if record.id in current else None
+        expected_flags |= review_flags(record, previous)
     if expected_flags != proposal.review_flags:
         raise Denied("review flags do not match proposed content")
     return envelope
