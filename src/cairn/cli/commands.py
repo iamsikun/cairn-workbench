@@ -258,7 +258,9 @@ def register(app: typer.Typer) -> None:
         if not no_quill:
             from cairn.presentation.quill import ensure_for_workspace
 
-            result["quill"] = ensure_for_workspace(ws.root, skills_dir=quill_skills_dir)
+            result["quill"] = ensure_for_workspace(
+                ws.root, skills_dir=quill_skills_dir, track_channel=not ws.config.synthetic
+            )
         emit(result, json_output)
 
     @app.command()

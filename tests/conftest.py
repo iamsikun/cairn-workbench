@@ -41,3 +41,11 @@ def synthetic_cairn_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch) 
     monkeypatch.setenv("CAIRN_HOME", str(directory))
     monkeypatch.setenv("CAIRN_NO_AUTO_UPDATE", "1")
     return directory
+
+
+@pytest.fixture(autouse=True)
+def synthetic_finch_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch) -> Path:
+    # The updater may invoke Finch's own updater; point it at an empty synthetic location.
+    directory = tmp_path_factory.mktemp("finch-absent")
+    monkeypatch.setenv("FINCH_HOME", str(directory))
+    return directory
