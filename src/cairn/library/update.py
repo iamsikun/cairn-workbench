@@ -5,12 +5,17 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any, Literal
 
+from cairn.errors import CairnError
 from cairn.library import catalog, discovery, feed, reader, verification
 from cairn.library.models import Paper, metadata
 from cairn.library.store import commit_unlocked, entities_unlocked
 from cairn.records.json import read_json
 from cairn.records.models import canonical, digest, new_id, now
 from cairn.storage.workspace import Workspace
+
+
+def _reason(exc: Exception) -> str:
+    return f"{exc.code}: {exc}" if isinstance(exc, CairnError) else "storage unavailable"
 
 
 def inventory(ws: Workspace, scope: str) -> dict[str, list[str]]:
@@ -172,15 +177,24 @@ def _update(
                         "feed_read_queued",
                     )
                 budget -= 1
-            except Exception:
-                state["issues"].append(
-                    f"Reading pending for {event.paper_id}: source or device unavailable"
-                )
-        for job in reader.jobs(ws, scope):
+            except (CairnError, OSError) as exc:
+                state["issues"].append(f"Reading pending for {event.paper_id}: {_reason(exc)}")
+        # One failing reading must not hold every later update in the read phase.
+        try:
+            pending = reader.jobs(ws, scope)
+        except (CairnError, OSError) as exc:
+            pending = []
+            state["issues"].append(f"Reading queue unavailable: {_reason(exc)}")
+        for job in pending:
             if read_budget == 0:
                 break
             if job.status in ("queued", "blocked"):
-                reader.run(ws, job.job.id)
+                try:
+                    reader.run(ws, job.job.id)
+                except (CairnError, OSError) as exc:
+                    state["issues"].append(
+                        f"Reading {job.job.id} for {job.job.paper_id}: {_reason(exc)}"
+                    )
                 read_budget -= 1
         state["phase"] = "verify"
         checkpoint()
