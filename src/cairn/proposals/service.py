@@ -3,14 +3,22 @@ from __future__ import annotations
 import difflib
 
 from cairn.adapters.fake import FakeProvider
-from cairn.adapters.isolation import ClientPacketProvider
 from cairn.adapters.protocol import Job, Page, Result
 from cairn.errors import Blocked, CairnError, Conflict, Denied
 from cairn.ingest.service import extract, load_extraction
 from cairn.policies.audit import require_local_route_unlocked
 from cairn.policies.models import require_inheritance
 from cairn.proposals.models import Approval, Change, JobEnvelope, Proposal
-from cairn.records.models import Event, EvidenceRef, Record, canonical, digest, new_id, now
+from cairn.records.models import (
+    Event,
+    EvidenceRef,
+    Labels,
+    Record,
+    canonical,
+    digest,
+    new_id,
+    now,
+)
 from cairn.storage.markdown import decode, encode
 from cairn.storage.workspace import Workspace
 
@@ -30,10 +38,9 @@ def prepare_job(
     scope_name: str,
     related_ids: list[str] | None = None,
     provider: str = "fake-v1",
-    execution_image: str | None = None,
+    destination: str | None = None,
 ) -> JobEnvelope:
-    if not ws.config.synthetic and execution_image not in (None, ws.config.worker_image):
-        raise Denied("client image is not bound to the approved runtime release")
+    """Seal an ingest job. With a destination it is a draft packet for a granted cloud route."""
     if related_ids is None:
         from cairn.retrieval.search import search
 
@@ -64,32 +71,28 @@ def prepare_job(
             id="job_pending",
             policy_hash=ws.policy_hash,
             scope_name=scope_name,
+            route="local" if destination is None else "cloud",
             provider=provider,
-            execution_image=execution_image or ws.config.worker_image,
+            execution_image=ws.config.worker_image if destination is None else None,
             source=source,
             extraction=evidence,
             evidence_hash=evidence_hash,
             related=[Page(record=record, body=body) for _, record, body in related],
             max_changes=policy.max_changes,
         )
-        job.id = "job_" + digest(canonical(job))[:32]
-        require_local_route_unlocked(
-            ws,
-            scope_name=scope_name,
-            records=[source, *(item[1] for item in related), *(item[1] for item in supporting)],
-            operation="generation",
-            provider=provider,
-            payload_hash=digest(canonical(job)),
-        )
-        if execution_image is not None:
+        prefix = "job_" if destination is None else "job_draft_"
+        job.id = prefix + digest(canonical(job))[:32]
+        if destination is None:
             require_local_route_unlocked(
                 ws,
                 scope_name=scope_name,
                 records=[source, *(item[1] for item in related), *(item[1] for item in supporting)],
-                operation="client_export",
+                operation="generation",
                 provider=provider,
                 payload_hash=digest(canonical(job)),
             )
+        else:
+            authorize_export(ws, job, destination)
         envelope = JobEnvelope(
             job=job, scope=scope, input_hashes=inputs, protected_hashes=ws.protected_hashes()
         )
@@ -99,6 +102,24 @@ def prepare_job(
         else:
             envelope = JobEnvelope.model_validate_json(ws.fs.read(job_path))
         return envelope
+
+
+def authorize_export(ws: Workspace, job: Job, destination: str) -> None:
+    """A draft packet leaves only under a grant covering the source and every related page."""
+    scope = ws.policy.scope(job.scope_name)
+    for operation in ("generation", "client_export"):
+        ws.policy.authorize_route(
+            scope,
+            [job.source, *(page.record for page in job.related)],
+            route="cloud",
+            provider=job.provider,
+            destination=destination,
+            operation=operation,
+            # The only request text is Cairn's own published drafting contract.
+            question=Labels(
+                domain=job.source.domain, classification="public", processing="cloud_eligible"
+            ),
+        )
 
 
 def load_job(ws: Workspace, job_id: str) -> JobEnvelope:
@@ -167,6 +188,10 @@ def _check_inputs(ws: Workspace, envelope: JobEnvelope) -> None:
         from cairn.presentation.quill import check_proposal_binding as check_quill
 
         check_quill(ws, envelope.job)
+    if envelope.job.id.startswith("job_draft_"):
+        from cairn.proposals.draft import check_proposal_binding as check_draft
+
+        check_draft(ws, envelope.job)
     if envelope.job.route == "owner_device":
         raise Conflict("the owner-device reading route is retired; read the paper again")
     if ws.policy_hash != envelope.job.policy_hash:
@@ -436,12 +461,11 @@ def ingest(
     extract(ws, source_id, scope_name=scope_name, inline_synthetic=inline_synthetic)
     envelope = prepare_job(ws, source_id, scope_name=scope_name, related_ids=related_ids)
     try:
-        if inline_synthetic and ws.config.synthetic:
-            result = FakeProvider().generate(envelope.job)
-        elif ws.config.worker_image:
-            result = ClientPacketProvider(ws.config.worker_image).generate(envelope.job)
-        else:
-            raise Blocked("isolation_unavailable")
+        if not (inline_synthetic and ws.config.synthetic):
+            raise Blocked(
+                "drafting needs the owner's agent: use `cairn draft begin` or the MCP draft tools"
+            )
+        result = FakeProvider().generate(envelope.job)
     except Exception as exc:
         with ws.lock(write=True):
             ws.event(

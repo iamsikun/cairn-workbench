@@ -73,20 +73,14 @@ def test_worker_wire_protocol_and_rejection() -> None:
     import subprocess
     import sys
 
-    job = synthetic_job()
-    proc = subprocess.run(
-        [sys.executable, "-m", "cairn.adapters.worker"],
-        input=canonical(job),
-        capture_output=True,
-        check=True,
-    )
-    assert Result.model_validate_json(proc.stdout).input_hash == digest(canonical(job))
-    bad = subprocess.run(
-        [sys.executable, "-m", "cairn.adapters.worker"],
-        input=b'{"approved":true,"shell":"read private"}',
-        capture_output=True,
-        check=False,
-    )
-    assert bad.returncode == 2
-    assert bad.stdout == b""
-    assert bad.stderr == b"worker rejected job\n"
+    # The worker never drafts: a sealed ingest job is rejected like any other request.
+    for document in (canonical(synthetic_job()), b'{"approved":true,"shell":"read private"}'):
+        bad = subprocess.run(
+            [sys.executable, "-m", "cairn.adapters.worker"],
+            input=document,
+            capture_output=True,
+            check=False,
+        )
+        assert bad.returncode == 2
+        assert bad.stdout == b""
+        assert bad.stderr == b"worker rejected job\n"

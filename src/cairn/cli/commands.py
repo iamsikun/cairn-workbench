@@ -81,8 +81,8 @@ def emit(value: Any, as_json: bool, text: str | None = None) -> None:
 def register(app: typer.Typer) -> None:
     proposals = typer.Typer(help="Inspect sealed proposals.")
     app.add_typer(proposals, name="proposal")
-    clients = typer.Typer(help="Run a scoped packet through a pinned local client image.")
-    app.add_typer(clients, name="client")
+    drafts = typer.Typer(help="Draft pages from a source with the owner's agent; proposals only.")
+    app.add_typer(drafts, name="draft")
 
     @app.command("evidence")
     @guarded
@@ -145,29 +145,42 @@ def register(app: typer.Typer) -> None:
             )
         emit(report, json_output, text)
 
-    @clients.command("run")
+    @drafts.command("begin")
     @guarded
-    def client_run(
+    def draft_begin(
         source_id: str,
+        output: Annotated[Path, typer.Option()],
         workspace: WorkspaceOption,
-        image: Annotated[str, typer.Option()],
-        scope: str = "owner",
-        provider: str = "fake-v1",
+        provider: Annotated[str, typer.Option()],
+        destination: Annotated[str, typer.Option()],
+        scope: str = "research",
+        related: Annotated[list[str] | None, typer.Option()] = None,
         inline_synthetic: bool = False,
-        json_output: JsonOption = False,
     ) -> None:
-        from cairn.adapters.isolation import ClientPacketProvider
-        from cairn.ingest.service import extract
-        from cairn.proposals.service import prepare_job, stage_result
+        """Seal a drafting packet for a granted agent route and record the export."""
+        from cairn.proposals.draft import begin
 
-        ws = Workspace(workspace)
-        extract(ws, source_id, scope_name=scope, inline_synthetic=inline_synthetic)
-        envelope = prepare_job(
-            ws, source_id, scope_name=scope, provider=provider, execution_image=image
+        emit(
+            begin(
+                Workspace(workspace),
+                source_id,
+                output,
+                scope_name=scope,
+                provider=provider,
+                destination=destination,
+                related_ids=related,
+                inline_synthetic=inline_synthetic,
+            ),
+            True,
         )
-        result = ClientPacketProvider(image).generate(envelope.job)
-        staged = stage_result(ws, result)
-        emit(staged or {"status": "unchanged"}, json_output)
+
+    @drafts.command("finish")
+    @guarded
+    def draft_finish(file: Path, workspace: WorkspaceOption) -> None:
+        """Validate the agent's draft and stage it as a proposal for owner review."""
+        from cairn.proposals.draft import finish
+
+        emit(finish(Workspace(workspace), file), True)
 
     @app.command("edit")
     @guarded
@@ -609,7 +622,7 @@ def register(app: typer.Typer) -> None:
             "worker_profile": profile,
             "worker_probe_status": "passed" if profile else (blocked or "not_checked"),
             "private_ready": bool(not ws.config.synthetic and fts and profile),
-            "model_capability": "bundled worker provides extraction and fake-v1 only",
+            "model_capability": "worker extracts and renders; the owner's agent drafts",
             "limitations": [
                 "Synthetic mode is not private-runtime activation.",
                 "Readiness covers the checked runtime/profile, not model quality "

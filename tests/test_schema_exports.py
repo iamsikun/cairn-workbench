@@ -28,7 +28,7 @@ from cairn.presentation.writing_models import (
     QuillResponse,
     WritingJob,
 )
-from cairn.proposals.models import Approval, Proposal
+from cairn.proposals.models import Approval, DraftReceipt, Proposal
 from cairn.reading.models import FinchClaim, FinchGuard, FinchPacket, FinchReceipt, FinchResponse
 from cairn.records.continuity import ContextPack, SessionReceipt
 from cairn.records.domains import Calculation, FinancialSnapshot, LifeDossier
@@ -91,6 +91,7 @@ from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2
         SessionReceipt,
         BibliographyImport,
         Approval,
+        DraftReceipt,
         Proposal,
         FinancialSnapshot,
         Calculation,

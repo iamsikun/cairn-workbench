@@ -136,7 +136,7 @@ def build(output: Path, revision: str, worker_image: str) -> None:
         adapters={
             "extraction": "1",
             "fake_provider": "fake-v1",
-            "client_packet": "1",
+            "draft_packet": "1",
             "library_catalog": "1",
             "weekly_feed": "1",
             "html_views": "cairn-view-v1",

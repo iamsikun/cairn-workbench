@@ -55,3 +55,14 @@ class Approval(Model):
         if not value.strip():
             raise ValueError("owner review statement is required")
         return value
+
+
+class DraftReceipt(Model):
+    """Owner-side record that an agent's draft for one packet was staged and validated."""
+
+    schema_version: Literal[1] = 1
+    job_id: ID
+    response_hash: Digest
+    proposal_id: ID | None
+    workflow_stage: Literal["validated", "unchanged"]
+    processing_verified: Literal[False] = False

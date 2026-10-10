@@ -9,9 +9,7 @@ import time
 from pathlib import Path
 from uuid import uuid4
 
-from cairn.adapters.protocol import Job, Result
 from cairn.errors import Blocked, CairnError, Denied
-from cairn.records.models import canonical
 
 DOCKER_PROGRAM = ["docker"]
 WORKER_TIMEOUT = 90.0
@@ -44,28 +42,6 @@ def container_command(image: str, *, entrypoint: str | None = None) -> list[str]
     if entrypoint:
         args += ["--entrypoint", entrypoint]
     return [*args, image]
-
-
-class ClientPacketProvider:
-    """JSON packet interface to a reviewed local client image.
-
-    The trusted owner launches the client with no mounts, shell tools, credentials,
-    or external network. The response is still untrusted until proposal validation.
-    """
-
-    def __init__(self, image: str):
-        self.image = image
-
-    def generate(self, job: Job) -> Result:
-        if job.route != "local":
-            raise Denied("local client cannot execute a cloud job")
-        if job.execution_image != self.image:
-            raise Denied("job does not bind this execution image")
-        raw = canonical(job)
-        try:
-            return Result.model_validate_json(invoke_worker(self.image, raw))
-        except ValueError as exc:
-            raise CairnError("invalid worker result") from exc
 
 
 def bounded_process(

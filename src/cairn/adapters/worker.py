@@ -1,11 +1,9 @@
-"""Unprivileged worker: one JSON job in, one JSON result out; no owner APIs."""
+"""Unprivileged worker: one JSON request in, one JSON result out; no owner APIs."""
 
 import base64
 import json
 import sys
 
-from cairn.adapters.fake import FakeProvider
-from cairn.adapters.protocol import Job
 from cairn.ingest.extractors import extract_bytes
 from cairn.records.models import Record, canonical
 from cairn.records.runtime import ProbeRequest
@@ -58,10 +56,8 @@ def main() -> None:
             )
             sys.stdout.buffer.write(canonical(result))
             return
-        job = Job.model_validate_json(raw)
-        if job.provider != "fake-v1" or job.route != "local":
-            raise ValueError("unsupported local provider")
-        sys.stdout.buffer.write(canonical(FakeProvider().generate(job)))
+        # Drafting is the owner's agent's job (draft packets); the worker never generates.
+        raise ValueError("unsupported worker operation")
     except Exception:
         # Never send untrusted/private exception text into generic diagnostics.
         sys.stderr.write("worker rejected job\n")

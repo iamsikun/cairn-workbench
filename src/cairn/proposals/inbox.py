@@ -36,7 +36,9 @@ class Inbox(Model):
     packets: list[InboxPacket]
 
 
-def _origin(provider: str) -> str:
+def _origin(provider: str, job_id: str) -> str:
+    if job_id.startswith("job_draft_"):
+        return "draft"
     if provider.startswith("finch-"):
         return "finch"
     if provider.startswith("quill-"):
@@ -74,13 +76,16 @@ def inbox(ws: Workspace) -> Inbox:
         ] + [
             InboxPacket(kind="quill", packet_id=key, next="cairn write finish RESPONSE_FILE")
             for key in _unanswered(ws, "receipts/quill/exports", "receipts/quill/finished")
+        ] + [
+            InboxPacket(kind="draft", packet_id=key, next="cairn draft finish RESPONSE_FILE")
+            for key in _unanswered(ws, "receipts/drafts/exports", "receipts/drafts/finished")
         ]
     return Inbox(
         notes=notes,
         proposals=[
             InboxProposal(
                 proposal_id=p.id,
-                origin=_origin(p.provider),
+                origin=_origin(p.provider, p.job_id),
                 paths=[change.path for change in p.changes],
                 review_flags=sorted(p.review_flags),
                 next=f"cairn accept {p.id}"

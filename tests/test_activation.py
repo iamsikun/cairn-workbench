@@ -9,7 +9,6 @@ from typer.testing import CliRunner
 from cairn.cli import app
 from cairn.errors import Blocked, Conflict, Denied
 from cairn.ingest.service import capture, extract
-from cairn.proposals.service import prepare_job
 from cairn.records.models import canonical, digest
 from cairn.records.runtime import PROBE_CHECKS, REQUIRED_REVIEWS, ProbeRequest, ProbeResult
 from cairn.storage import activation
@@ -122,8 +121,6 @@ def test_activated_workspace_binds_runtime_and_rechecks_before_operations(
     monkeypatch.setattr("cairn.ingest.service.invoke_worker", no_engine)
     with pytest.raises(Blocked, match="disables engine"):
         extract(ws, source.id, inline_synthetic=True)
-    with pytest.raises(Denied, match="client image"):
-        prepare_job(ws, source.id, scope_name="research", execution_image="sha256:" + "9" * 64)
     config = ws.config.model_copy(deep=True)
     config.worker_image = "sha256:" + "9" * 64
     ws.fs.write("workspace.json", canonical(config))

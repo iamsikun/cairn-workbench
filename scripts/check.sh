@@ -31,10 +31,8 @@ docker run "${profile[@]}" "$image_id" python scripts/probe_roundtrip.py make "$
 docker run "${profile[@]}" --interactive "$worker_id" < "$probe_dir/probe.json" > "$probe_dir/probe-result.json"
 cat "$probe_dir/probe.json" "$probe_dir/probe-result.json" | docker run "${profile[@]}" --interactive "$image_id" python scripts/probe_roundtrip.py verify
 test "$(cat "$probe_dir/canary")" = 'SYNTHETIC-CANARY'
-docker run "${profile[@]}" "$image_id" python scripts/worker_roundtrip.py make "$worker_id" > "$probe_dir/job.json"
-docker run "${profile[@]}" --interactive "$worker_id" < "$probe_dir/job.json" > "$probe_dir/result.json"
-cat "$probe_dir/job.json" "$probe_dir/result.json" | docker run "${profile[@]}" --interactive "$image_id" python scripts/worker_roundtrip.py verify
-docker run "${profile[@]}" "$image_id" python scripts/worker_roundtrip.py make-extraction | docker run "${profile[@]}" --interactive "$worker_id" > "$probe_dir/extraction.json"
+docker run "${profile[@]}" "$image_id" python scripts/worker_roundtrip.py make-extraction > "$probe_dir/job.json"
+docker run "${profile[@]}" --interactive "$worker_id" < "$probe_dir/job.json" > "$probe_dir/extraction.json"
 docker run "${profile[@]}" --interactive "$image_id" python scripts/worker_roundtrip.py verify-extraction < "$probe_dir/extraction.json"
 docker run "${profile[@]}" "$image_id" python scripts/html_worker_roundtrip.py make |
   docker run "${profile[@]}" --interactive "$worker_id" |
@@ -54,7 +52,7 @@ docker start --attach --interactive "$lifecycle_id" < "$probe_dir/job.json" > "$
 test "$(docker inspect --format '{{.State.Running}}' "$lifecycle_id")" = false
 docker rm --force --volumes "$lifecycle_id" >/dev/null
 lifecycle_id=""
-cat "$probe_dir/job.json" "$probe_dir/result.json" | docker run "${profile[@]}" --interactive "$image_id" python scripts/worker_roundtrip.py verify
+docker run "${profile[@]}" --interactive "$image_id" python scripts/worker_roundtrip.py verify-extraction < "$probe_dir/result.json"
 lifecycle_id="$(docker create "${profile[@]:1}" --interactive --entrypoint python "$worker_id" -c 'import subprocess,time; subprocess.Popen(["sleep","300"]); time.sleep(300)')"
 docker start "$lifecycle_id" >/dev/null
 test "$(docker inspect --format '{{.State.Running}}' "$lifecycle_id")" = true

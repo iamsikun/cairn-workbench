@@ -6,7 +6,6 @@ import pytest
 from pydantic import ValidationError
 from typer.testing import CliRunner
 
-from cairn.adapters.isolation import ClientPacketProvider
 from cairn.cli import app
 from cairn.errors import Conflict, Denied
 from cairn.ingest.service import capture, extract
@@ -238,12 +237,11 @@ def test_processing_audits_and_read_only_query(ws: Workspace, tmp_path: Path) ->
     file.write_text("Synthetic evidence.")
     source = capture(ws, file, domain="research")
     extract(ws, source.id, scope_name="research", inline_synthetic=True)
-    image = "sha256:" + "0" * 64
-    job = prepare_job(ws, source.id, scope_name="research", execution_image=image).job
+    job = prepare_job(ws, source.id, scope_name="research").job
     audits = [
         RouteAudit.model_validate_json(ws.fs.read(path)) for path in ws.fs.files("receipts/routes")
     ]
-    assert {audit.operation for audit in audits} == {"extraction", "generation", "client_export"}
+    assert {audit.operation for audit in audits} == {"extraction", "generation"}
     assert all(audit.decision == "allowed" and not audit.execution_performed for audit in audits)
     assert all(
         audit.payload_hash == digest(canonical(job))
@@ -254,9 +252,6 @@ def test_processing_audits_and_read_only_query(ws: Workspace, tmp_path: Path) ->
     result = query(ws, "evidence", scope_name="research")
     assert result["processing"]["remote_requests"] == 0
     assert ws.fs.files("receipts") == before
-    job.route = "cloud"
-    with pytest.raises(Denied, match="cloud job"):
-        ClientPacketProvider(image).generate(job)
 
 
 def test_policy_cli_inspect_change_check_and_revoke(ws: Workspace, tmp_path: Path) -> None:
