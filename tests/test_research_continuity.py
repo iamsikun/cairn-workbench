@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 
 from cairn.adapters.protocol import Candidate, Result
 from cairn.cli import app
-from cairn.errors import CairnError, Denied
+from cairn.errors import CairnError, Conflict, Denied
 from cairn.ingest.bibliography import import_bibliography
 from cairn.ingest.projects import create_project
 from cairn.ingest.receipts import adopt_decision, import_receipt
@@ -131,6 +131,36 @@ def test_bibliography_invalid_export_writes_nothing(
     file.write_bytes(data)
     before = ws.fs.files("vault/sources")
     with pytest.raises((CairnError, ValidationError)):
+        import_bibliography(ws, file, library_alias="library_test", scope_name="research")
+    assert ws.fs.files("vault/sources") == before
+
+
+def test_bibliography_invalid_date_names_item_and_writes_nothing(
+    ws: Workspace, tmp_path: Path
+) -> None:
+    file = tmp_path / "dates.json"
+    item = {"id": "LIB-BAD-DATE", "type": "report", "issued": {"date-parts": [[2023, 2, 30]]}}
+    file.write_text(json.dumps([item]))
+    with pytest.raises(CairnError, match="LIB-BAD-DATE"):
+        import_bibliography(ws, file, library_alias="library_test", scope_name="research")
+    assert ws.fs.files("vault/sources") == []
+    item["issued"] = {"date-parts": [["2023", "2", "7"]]}
+    file.write_text(json.dumps([item]))
+    result = import_bibliography(ws, file, library_alias="library_test", scope_name="research")
+    source = ws.record(result.item_source_ids[0])[1].source
+    assert source and str(source.source_date) == "2023-02-07"
+
+
+def test_bibliography_version_conflict_imports_nothing(ws: Workspace, tmp_path: Path) -> None:
+    file = tmp_path / "versions.json"
+    first = {"id": "LIB-A", "type": "report", "title": "Synthetic A", "version": "1"}
+    second = {"id": "LIB-B", "type": "report", "title": "Synthetic B", "version": "1"}
+    file.write_text(json.dumps([second]))
+    import_bibliography(ws, file, library_alias="library_test", scope_name="research")
+    before = ws.fs.files("vault/sources")
+    second["title"] = "Synthetic B, changed without a new version"
+    file.write_text(json.dumps([first, second]))
+    with pytest.raises(Conflict, match="LIB-B"):
         import_bibliography(ws, file, library_alias="library_test", scope_name="research")
     assert ws.fs.files("vault/sources") == before
 

@@ -8,7 +8,7 @@ from typing import Literal
 
 from pydantic import Field, JsonValue, TypeAdapter
 
-from cairn.errors import CairnError
+from cairn.errors import CairnError, Conflict
 from cairn.ingest.service import capture_bytes, read_source_file
 from cairn.records.json import read_json
 from cairn.records.models import ID, Model, canonical, digest
@@ -57,9 +57,53 @@ def bibliographic_fields(item: dict[str, JsonValue]) -> tuple[str, str, list[str
         parts = issued.get("date-parts")
         if isinstance(parts, list) and len(parts) == 1 and isinstance(parts[0], list):
             values = parts[0]
-            if len(values) == 3 and all(type(value) is int for value in values):
-                source_date = date(*[int(str(value)) for value in values])
+            # CSL allows integer or digit-string parts. A year or year-month alone stays
+            # unknown here; the raw item preserves it.
+            if len(values) == 3 and all(
+                type(value) is int or (isinstance(value, str) and value.isdecimal())
+                for value in values
+            ):
+                try:
+                    source_date = date(*[int(str(value)) for value in values])
+                except ValueError as exc:
+                    raise CairnError(f"bibliography item {external} has an invalid date") from exc
     return str(external), title, authors, source_date
+
+
+def _check_versions(
+    ws: Workspace,
+    items: list[dict[str, JsonValue]],
+    fields: list[tuple[str, str, list[str], date | None]],
+    library_alias: str,
+    classification: str,
+    processing: str,
+    compartments: set[str],
+    project_id: str | None,
+) -> None:
+    """Reject declared-version conflicts before capturing any part of the export."""
+    existing: dict[tuple[str, str], str] = {}
+    for _, record, _ in ws.records():
+        meta = record.source
+        if (
+            meta is not None
+            and meta.version is not None
+            and record.domain == "research"
+            and record.classification == classification
+            and record.processing == processing
+            and record.compartments == compartments
+            and record.project_ids == ([project_id] if project_id else [])
+        ):
+            existing[(meta.identity, meta.version)] = meta.content_hash
+    for item, (external, *_) in zip(items, fields, strict=True):
+        version = item.get("version")
+        if not isinstance(version, str):
+            continue
+        key = (f"bibliography-item:{library_alias}:{external}", version)
+        if key in existing and existing[key] != digest(canonical(item)):
+            raise Conflict(
+                f"bibliography item {external} version {version} has different bytes; "
+                "nothing was imported"
+            )
 
 
 def import_bibliography(
@@ -107,6 +151,9 @@ def import_bibliography(
             updated_at=now(),
         )
         scope.require(probe)
+        _check_versions(
+            ws, items, fields, library_alias, classification, processing, compartments, project_id
+        )
     export = capture_bytes(
         ws,
         data,
