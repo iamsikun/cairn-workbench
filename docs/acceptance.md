@@ -45,7 +45,48 @@ Executed on revision `0ef37e3`:
 
 **Not addressed here:** macOS `F_FULLFSYNC` durability, the streaming-restore digest race,
 and lower-severity review findings. No private workspace, live device or deployment was
-used.
+used. (The first two were fixed in the follow-up below.)
+
+### Medium-severity follow-up (2026-10-10)
+
+- **Durability flush.** All flushes now use `F_FULLFSYNC` where the platform provides it,
+  falling back to `fsync` where a filesystem rejects it. Test:
+  `test_sync_uses_full_flush_where_available`. It simulates the macOS call because tests
+  run on Linux. Power-loss ordering was not tested physically.
+- **Proposal checks.** Structured amounts must match preserved observations in every
+  domain. Empty quotes are rejected. Model-supplied `reviewed`/`superseded` verification
+  now needs a `verification_change` acknowledgement (documented in `docs/review.md`).
+  Tests: `test_structured_amounts_outside_finance_must_be_observed`,
+  `test_empty_quote_cannot_support_a_citation`,
+  `test_model_supplied_verification_requires_acknowledgement`.
+- **Source lineage.** An unversioned revert (A, then B, then A again) records a new
+  lineage head; reordered project IDs no longer duplicate a source. Tests:
+  `test_unversioned_revert_records_a_new_lineage_head`,
+  `test_project_order_does_not_duplicate_sources`.
+- **Bibliography import.** Impossible dates name the item. Digit-string date parts are
+  accepted. Version conflicts are checked before anything is captured. Year-only dates
+  still stay unknown as `source_date` by design; the raw item keeps them. Tests:
+  `test_bibliography_invalid_date_names_item_and_writes_nothing`,
+  `test_bibliography_version_conflict_imports_nothing`.
+- **Export guard.** Feed and JSON catalog exports use the guarded owner output writer.
+  Test: `test_catalog_json_export_refuses_symlinked_workspace_target`.
+- **Weekly update.** Reading errors are handled per job and recorded as digest issues,
+  so a failing reading no longer stalls later updates. Test:
+  `test_failing_reading_does_not_hold_update_in_read_phase`.
+- **Streaming restore.** The archive is copied once into an owner-only temporary file
+  while it is hashed, and restore reads only that copy. Test:
+  `test_streaming_restore_uses_the_digest_checked_bytes`. Restore now needs free space
+  for one extra copy of the archive next to the destination.
+
+Executed on revision `ee6e3b7`:
+
+- `bash scripts/check.sh`: **301 passed**, ruff and strict mypy clean, isolation
+  probes passed, gold set 129/129.
+- `bash scripts/release_check.sh`: passed. Release manifest SHA256
+  `7ad552171569db52c5f8ea73b914a1858ba8aad96bf09e3891affbd91ddb1bf1`. Installed worker
+  image `sha256:def2f5116f2544891c4c5bde5e6c3d5ba5d0f6543650d2ff687a16c99815bf3b`
+  passed all 13 checks.
+- `check_html.sh` was not rerun: no renderer or presentation resources changed.
 
 ## Automatic Finch reading (2026-10-10; software checks passed, activation pending)
 
