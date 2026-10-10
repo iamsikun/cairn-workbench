@@ -43,12 +43,25 @@ A manual synthetic CLI run in the development container covered:
 4. `accept --all` refused without `--yes`, then applied with it;
 5. search finds the new page, and source/note hashes are unchanged.
 
+A copy of `scripts/release_check.sh`, again changed only to use branch-unique image
+tags, passed the offline installed release trial at revision
+`8a1cdbb3fa4c250dcac6a0c6d6ab635b48351bf5`. It covered **15 distributions** and
+**940 verified files**. The installed Finch, HTML, library, markdown-review and
+capture/approval/apply/query/restore workflows passed, along with all **13 checks**
+on the released worker. Modified packages, resources and renderers, editable
+installs and unreviewed `.pth` files were rejected. Manifest SHA-256:
+`0492cbad247e86884e264dd8d13b3ecf4d4eaa3e407bd2f3cda18391453c23bd`.
+
 Limits:
 
 - The Quill responses were hand-written synthetic fixtures. They prove the mechanical
   handoff, citation and authority checks, not Quill's writing quality.
-- `scripts/release_check.sh` (installed offline release trial) was not run on this
-  branch.
+- Setup now installs Quill for the knowledge base unless `quill/SKILL.md` exists in
+  a machine-wide skill directory. Five setup tests cover install, machine-wide use
+  (the copy is left untouched), location override and opt-out, blocked installs, and
+  restore. After this change `check.sh` passed **311 tests** and every profile, gold
+  and lifecycle check. The tests point the machine-wide lookup at a synthetic
+  directory; no real home directory was inspected.
 - The CLI `capture` command does not expose processing labels. The cloud-eligible
   source in the manual run was captured through the Python API.
 - Editing an existing note still marks pending proposals stale, because notes are
