@@ -3,6 +3,7 @@ from __future__ import annotations
 import functools
 import json
 import sqlite3
+import sys
 import unicodedata
 from collections.abc import Callable
 from pathlib import Path
@@ -11,8 +12,11 @@ from typing import Annotated, Any
 import typer
 from pydantic import ValidationError
 
-from cairn.errors import CairnError
+from cairn.errors import CairnError, Conflict, Denied
 from cairn.ingest.service import capture as capture_source
+from cairn.proposals.accept import DEFAULT_STATEMENT
+from cairn.proposals.accept import accept as accept_items
+from cairn.proposals.accept import plan as accept_plan
 from cairn.proposals.service import approve as approve_proposal
 from cairn.proposals.service import ingest as ingest_source
 from cairn.proposals.service import load_proposal
@@ -359,6 +363,45 @@ def register(app: typer.Typer) -> None:
             statement=statement,
         )
         emit(result, json_output, f"Owner approval recorded for {proposal_id}.")
+
+    @app.command("accept")
+    @guarded
+    def accept_command(
+        workspace: WorkspaceOption,
+        proposal_ids: Annotated[list[str] | None, typer.Argument()] = None,
+        all_pending: Annotated[bool, typer.Option("--all")] = False,
+        yes: Annotated[bool, typer.Option("--yes", "-y")] = False,
+        statement: str = DEFAULT_STATEMENT,
+        json_output: JsonOption = False,
+    ) -> None:
+        """Owner-only: validate, approve and apply proposals in one confirmed step."""
+        if bool(proposal_ids) == all_pending:
+            raise CairnError("name proposal IDs or use --all")
+        ws = Workspace(workspace)
+        items = accept_plan(ws, None if all_pending else proposal_ids)
+        ready = [item for item in items if item.status == "ready"]
+        if not json_output:
+            for item in items:
+                emit(
+                    item,
+                    False,
+                    f"[{item.status}] {item.proposal_id}: {'; '.join(item.titles)}\n"
+                    f"    paths: {', '.join(item.paths)}\n"
+                    f"    review: {', '.join(item.review_flags)}"
+                    + (f"\n    reason: {item.reason}" if item.reason else ""),
+                )
+        if ready and not yes:
+            if not sys.stdin.isatty():
+                raise Denied("non-interactive acceptance requires --yes")
+            if not typer.confirm(
+                f"Accept {len(ready)} proposal(s), acknowledging the review flags shown?"
+            ):
+                raise Denied("owner declined")
+        results = accept_items(ws, items, statement=statement)
+        applied = sum(item.receipt_id is not None for item in results)
+        emit(results, json_output, f"Applied {applied} of {len(ready)} ready proposal(s).")
+        if any(item.status == "failed" for item in results):
+            raise typer.Exit(Conflict.exit_status)
 
     @app.command("apply")
     @guarded
