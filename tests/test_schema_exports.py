@@ -32,7 +32,9 @@ from cairn.presentation.writing_models import (
     ExportReceipt,
     Feedback,
     FeedbackReceipt,
-    RevisionResponse,
+    QuillPacket,
+    QuillReceipt,
+    QuillResponse,
     WritingJob,
 )
 from cairn.proposals.models import Approval, Proposal
@@ -61,7 +63,9 @@ from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2
         ReviewReport,
         WritingJob,
         ExplanationResponse,
-        RevisionResponse,
+        QuillPacket,
+        QuillResponse,
+        QuillReceipt,
         Feedback,
         FeedbackReceipt,
         ExportReceipt,

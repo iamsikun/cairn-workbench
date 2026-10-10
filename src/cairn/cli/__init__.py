@@ -16,6 +16,7 @@ from cairn.cli.presentation import register as register_presentation
 from cairn.cli.release import register as register_release
 from cairn.cli.research import register as register_research
 from cairn.cli.schema import register as register_schema
+from cairn.cli.write import register as register_write
 from cairn.errors import CairnError
 from cairn.records.runtime import ReviewAcknowledgement
 from cairn.storage.workspace import Workspace
@@ -30,6 +31,7 @@ register_schema(app)
 register_library(app)
 register_presentation(app)
 register_finch(app)
+register_write(app)
 
 
 @app.command()

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from cairn.adapters.protocol import Result
 from cairn.errors import Blocked, Conflict, Denied
 from cairn.ingest.service import capture_bytes, extract, read_source_file
 from cairn.presentation.models import ViewBlock, ViewSection
@@ -15,11 +14,8 @@ from cairn.presentation.writing_models import (
     ExportReceipt,
     Feedback,
     FeedbackReceipt,
-    RevisionResponse,
     WritingJob,
 )
-from cairn.proposals.models import Proposal
-from cairn.proposals.service import prepare_job, stage_result
 from cairn.records.models import Labels, canonical, digest, now
 from cairn.storage.workspace import Workspace
 
@@ -140,7 +136,9 @@ def export_packet(ws: Workspace, job_id: str, output: Path) -> dict[str, str]:
     with ws.lock(write=True):
         job = load_job(ws, job_id)
         authorize_export(ws, job)
-        response = ExplanationResponse if job.purpose == "explanation" else RevisionResponse
+        if job.purpose != "explanation":
+            raise Denied("revision packets are retired; use cairn write --feedback")
+        response = ExplanationResponse
         doc = document(job.bundle)
         payload = canonical(
             {
@@ -295,145 +293,3 @@ def import_feedback(
         recheck(ws, bundle)
         ws.fs.write(path, canonical(receipt))
     return receipt
-
-
-def prepare_feedback(
-    ws: Workspace,
-    feedback_id: str,
-    *,
-    provider: str,
-    route: str = "local",
-    destination: str = "local",
-) -> WritingJob:
-    from pydantic import TypeAdapter
-
-    from cairn.records.models import ID
-
-    TypeAdapter(ID).validate_python(feedback_id)
-    with ws.lock():
-        receipt = FeedbackReceipt.model_validate_json(
-            ws.fs.read(f"{PREFIX}/feedback/{feedback_id}.json")
-        )
-    if receipt.id != feedback_id:
-        raise Denied("feedback identity mismatch")
-    bundle = load_view(ws, receipt.feedback.bundle_id)
-    targets = sorted({e.target_id for e in receipt.feedback.entries if e.suggested_text})
-    if not targets:
-        raise Blocked("feedback has comments only; a proposed revision is required")
-    with ws.lock():
-        for key in targets:
-            _, r, _ = ws.record(key, ws.policy.scope(bundle.scope))
-            if r.type == "source" or "cairn_library_v1" in r.sections:
-                raise Denied("feedback cannot revise immutable sources or owner catalog metadata")
-    envelope = prepare_job(
-        ws,
-        receipt.source_id,
-        scope_name=bundle.scope,
-        related_ids=targets,
-        provider="feedback-packet-v1",
-    )
-    # Derive a distinct job identity for the actual route; never rewrite a sealed job.
-    revision_job = envelope.job.model_copy(deep=True)
-    if route not in ("local", "cloud"):
-        raise Denied("unsupported writing route")
-    revision_job.route = "cloud" if route == "cloud" else "local"
-    revision_job.id = "job_pending"
-    revision_job.id = "job_" + digest(canonical(revision_job))[:32]
-    envelope.job = revision_job
-    with ws.lock(write=True):
-        recheck(ws, bundle)
-        sealed_path = f"proposals/jobs/{revision_job.id}.json"
-        if not ws.fs.exists(sealed_path):
-            ws.fs.write(sealed_path, canonical(envelope), exclusive=True)
-    instructions = guidance(revision=True, technical=True)
-    job = WritingJob.model_validate(
-        {
-            "id": "writing_pending",
-            "purpose": "revision",
-            "bundle": bundle,
-            "request": "Propose only the supplied suggested revisions. "
-            "Preserve evidence and meaning. "
-            "Feedback does not establish truth, authorship, adoption, or approval.",
-            "request_labels": Labels(
-                domain=bundle.domain, classification="public", processing="cloud_eligible"
-            ),
-            "guidance": instructions,
-            "guidance_hash": digest(instructions.encode()),
-            "route": route,
-            "provider": provider,
-            "destination": destination,
-            "revision": revision_job,
-            "target_ids": targets,
-            "feedback_id": feedback_id,
-        }
-    )
-    return _save_job(ws, job)
-
-
-def stage_feedback(ws: Workspace, file: Path) -> Proposal | None:
-    response = RevisionResponse.model_validate_json(read_source_file(file))
-    with ws.lock():
-        job = _returned(ws, response.job_id, response.input_hash)
-        if job.revision is None or job.purpose != "revision":
-            raise Denied("response does not match a revision packet")
-        if any(c.record.id not in job.target_ids for c in response.candidates):
-            raise Denied("revision changed a record outside the selected targets")
-        revision = job.revision
-        from cairn.proposals.service import all_refs, check_reference
-
-        permitted = {
-            (
-                e.reference.id,
-                e.reference.source_hash,
-                e.reference.evidence_hash,
-                e.reference.locator,
-            ): e.text
-            for e in job.bundle.evidence
-            if not e.support.startswith("Unsupported")
-        }
-        for segment in revision.extraction.segments:
-            permitted[
-                (
-                    revision.source.id,
-                    revision.extraction.source_hash,
-                    revision.evidence_hash,
-                    segment.locator,
-                )
-            ] = segment.text
-        originals = {p.record.id: p.record for p in revision.related}
-        for candidate in response.candidates:
-            original = originals[candidate.record.id]
-            if candidate.record.status != original.status:
-                raise Denied("revision cannot change authoritative record status")
-            assertions = {a.id: a for a in original.assertions}
-            for assertion in candidate.record.assertions:
-                previous = assertions.get(assertion.id)
-                if assertion.verification != "unreviewed" and (
-                    previous is None or assertion != previous
-                ):
-                    raise Denied("changed assertions must remain unreviewed")
-                if assertion.kind == "owner_decision" and (
-                    previous is None or previous.kind != "owner_decision"
-                ):
-                    raise Denied("revision cannot claim an owner decision")
-            for reference in all_refs(candidate.record):
-                key = (
-                    reference.id,
-                    reference.source_hash,
-                    reference.evidence_hash,
-                    reference.locator,
-                )
-                if key not in permitted or (
-                    reference.quote is not None and reference.quote not in permitted[key]
-                ):
-                    raise Denied("revision cites evidence outside the supplied packet")
-                check_reference(ws, reference, job.bundle.scope)
-    return stage_result(
-        ws,
-        Result(
-            job_id=revision.id,
-            input_hash=digest(canonical(revision)),
-            provider=revision.provider,
-            candidates=response.candidates,
-        ),
-    )

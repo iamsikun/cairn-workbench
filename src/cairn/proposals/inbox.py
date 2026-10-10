@@ -73,9 +73,7 @@ def inbox(ws: Workspace) -> Inbox:
             for key in _unanswered(ws, "receipts/finch/exports", "receipts/finch/imports")
         ] + [
             InboxPacket(kind="quill", packet_id=key, next="cairn write finish RESPONSE_FILE")
-            for key in _unanswered(
-                ws, "receipts/presentation/exports", "receipts/presentation/finished"
-            )
+            for key in _unanswered(ws, "receipts/quill/exports", "receipts/quill/finished")
         ]
     return Inbox(
         notes=notes,

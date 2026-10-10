@@ -3,9 +3,9 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
-from cairn.adapters.protocol import Candidate, Job
+from cairn.adapters.protocol import Job, Page
 from cairn.presentation.models import ViewBundle
-from cairn.records.models import ID, Digest, Labels, Model, digest
+from cairn.records.models import ID, Digest, Domain, EvidenceRef, Labels, Model, Record, digest
 
 
 class WritingJob(Model):
@@ -100,8 +100,86 @@ class FeedbackReceipt(Model):
     )
 
 
-class RevisionResponse(Model):
+QUILL_REVISION = "d6bc7de15d1779c58286cbdec1a54eec52bdef22"
+
+
+class NewTarget(Model):
+    type: Literal["concept", "project", "entity", "playbook", "decision"]
+    domain: Domain
+    title: str = Field(min_length=1, max_length=500)
+
+
+class QuillEvidence(Model):
+    key: ID
+    reference: EvidenceRef
+    text: str = Field(max_length=200000)
+
+
+class QuillPacket(Model):
+    """What to write, where it goes, and the only material Quill may use."""
+
     schema_version: Literal[1] = 1
-    job_id: ID
+    id: ID
+    instructions: str = Field(min_length=1, max_length=20000)
+    request_labels: Labels
+    target: Page | None = None
+    new: NewTarget | None = None
+    evidence: list[QuillEvidence] = Field(default_factory=list, max_length=400)
+    context: list[Page] = Field(default_factory=list, max_length=20)
+    sources: list[Record] = Field(default_factory=list, max_length=20)
+    feedback_id: ID | None = None
+    scope: ID
+    policy_hash: Digest
+    input_hashes: dict[str, Digest]
+    route: Literal["cloud"] = "cloud"
+    provider: str = Field(min_length=1, max_length=200)
+    destination: str = Field(min_length=1, max_length=2000)
+    guidance_hash: Digest
+    quill_revision: Literal["d6bc7de15d1779c58286cbdec1a54eec52bdef22"] = (
+        "d6bc7de15d1779c58286cbdec1a54eec52bdef22"
+    )
+
+    @model_validator(mode="after")
+    def one_target(self) -> "QuillPacket":
+        if (self.target is None) == (self.new is None):
+            raise ValueError("a writing packet needs exactly one target or new record")
+        if self.target is not None and self.target.record.type == "source":
+            raise ValueError("sources are immutable")
+        return self
+
+
+class QuillClaim(Model):
+    text: str = Field(min_length=1, max_length=10000)
+    kind: Literal["reported_result", "inference", "hypothesis"]
+    evidence_keys: list[ID] = Field(default_factory=list, max_length=40)
+    quotations: list[Quotation] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def cited(self) -> "QuillClaim":
+        if self.kind == "reported_result" and not self.evidence_keys:
+            raise ValueError("reported results require supplied evidence")
+        if any(q.evidence_key not in self.evidence_keys for q in self.quotations):
+            raise ValueError("quote must reference a cited evidence key")
+        return self
+
+
+class QuillResponse(Model):
+    """Quill returns prose and claims; Cairn formats the record itself."""
+
+    schema_version: Literal[1] = 1
+    packet_id: ID
     input_hash: Digest
-    candidates: list[Candidate] = Field(min_length=1, max_length=20)
+    title: str | None = Field(default=None, min_length=1, max_length=500)
+    body_markdown: str = Field(min_length=1, max_length=200000)
+    claims: list[QuillClaim] = Field(default_factory=list, max_length=100)
+    limitations: list[str] = Field(default_factory=list, max_length=40)
+
+
+class QuillReceipt(Model):
+    schema_version: Literal[1] = 1
+    packet_id: ID
+    response_hash: Digest
+    source_id: ID
+    proposal_id: ID
+    workflow_stage: Literal["validated"] = "validated"
+    processing_verified: Literal[False] = False

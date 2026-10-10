@@ -1,0 +1,51 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "packet_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Packet Id",
+      "type": "string"
+    },
+    "processing_verified": {
+      "const": false,
+      "default": false,
+      "title": "Processing Verified",
+      "type": "boolean"
+    },
+    "proposal_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Proposal Id",
+      "type": "string"
+    },
+    "response_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Response Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "source_id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Source Id",
+      "type": "string"
+    },
+    "workflow_stage": {
+      "const": "validated",
+      "default": "validated",
+      "title": "Workflow Stage",
+      "type": "string"
+    }
+  },
+  "required": [
+    "packet_id",
+    "response_hash",
+    "source_id",
+    "proposal_id"
+  ],
+  "title": "QuillReceipt",
+  "type": "object"
+}
