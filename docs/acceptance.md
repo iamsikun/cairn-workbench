@@ -25,10 +25,19 @@ selected project inheritance, denied context, durable bindings and CLI round tri
 Schemas are regenerated from the typed models. Unrelated protected workspace paths
 remain in owner-only guards rather than exported packets.
 
-Fresh installed-release validation is pending at this implementation milestone. Its
-first run completed the installed Finch handoff but correctly rejected the older HTML
-view after the trial added an export grant. The trial now expects that stale-view rejection
-and regenerates the view before backup/restore; a complete rerun is required. Live
+The fresh offline installed release trial passed at revision
+`86dd9696df8fcf0d757e56ec477c167c13166765`: **15 distributions**, **934 verified files**,
+Finch installation/capture/proposal/validation/retry/restore, existing installed CLI
+workflows, and all **13 checks** on the exact released worker. Modified Finch resources,
+packages/renderer, editable installs, unreviewed `.pth` files and activation without
+a live engine were rejected. The first installed trial correctly rejected an older HTML
+view after the trial added an export grant; the corrected trial expects this rejection
+and regenerates the view before backup/restore. See the
+[installed trial](evidence/finch-release-trial.json) and
+[released worker profile](evidence/finch-worker-profile.json). Manifest SHA-256:
+`caed04dfc439ba50ef2eac71665528db684927bf2483ca769213eeabe901b1b0`.
+
+The installed trial targets Linux-aarch64, not a native macOS owner runtime. Live
 reading quality, private runtime activation and host skill/launcher configuration remain
 separate owner deployment gates. This instruction-based lifecycle does not monitor
 unconfigured chats. Missing packets/launchers report `cairn_handoff_pending`; no real
