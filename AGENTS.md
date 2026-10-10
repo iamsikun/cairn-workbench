@@ -18,6 +18,16 @@ Use small milestone commits and maintain `docs/acceptance.md` with honest eviden
 Run meaningful tests for changed boundaries and failure modes; do not claim that fake
 provider results prove semantic quality or production readiness.
 
+## Updates
+
+The updater (`cairn update`) is an owner-machine operation outside the processing
+boundary. A release is adopted only when its tag is signed by a key listed in the knowledge
+base's own `UpdateAuthorization`; the new runtime verifies itself, takes a backup and
+records an `upgrade` approval chained to an owner-acknowledged activation. Never weaken
+signature, source-hash or downgrade checks, and never run `setup`, `run` or the scheduler
+against a real home from contributor code. Tests use a synthetic `CAIRN_HOME`, local
+synthetic remotes and throwaway keys. Managed skill copies must never overwrite owner edits.
+
 ## Paper reading and notes
 
 Use Finch automatically for paper reading, explanation, critique, and co-reading,
@@ -36,7 +46,8 @@ a private workspace. Missing owner configuration does not authorize a guessed ro
 ## Writing
 
 Use Quill for writing pages from Cairn material. Setup (`cairn init`/`restore`) installs it
-for the knowledge base unless it is available machine-wide; otherwise use
+for the knowledge base unless it is available machine-wide; a private knowledge base gets
+a managed copy that `cairn update` keeps on Quill's stable release. Otherwise use
 `cairn quill install --skills-dir DIR`. Follow its `references/cairn-workflow.md`: write only from an owner-prepared
 `cairn write begin` packet, return a `QuillResponse`, and let the launcher run
 `cairn write finish`. Report the proposal ID or an explicit pending handoff. Never run

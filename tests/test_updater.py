@@ -144,7 +144,7 @@ def test_failed_verification_keeps_previous_runtime(updater: dict, step: str) ->
     source.tag("v0.2.0")
     runner = FakeRunner(home, fail=step)
     result = service.run(home, runner=runner, refresh_skills=no_skills)
-    assert result["status"] == "failed"
+    assert result["status"] == "failed" and result["skills"] == {"skipped": "synthetic"}
     assert home.current_runtime().release_tag == "v0.1.0"  # type: ignore[union-attr]
     assert not any("rebind" in c for c in runner.commands)
     assert sorted(p.name for p in home.runtimes.iterdir()) == ["a" * 64]

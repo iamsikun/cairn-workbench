@@ -300,12 +300,17 @@ def run(
         refresh_skills = refresh
     try:
         with home.lock():
-            result = _cycle(home, config, runner)
-            result["skills"] = refresh_skills(home, config)
+            try:
+                result = _cycle(home, config, runner)
+            except CairnError as exc:
+                result = {"status": "failed", "reason": str(exc)}
+            # Skills follow their own upstream even when a Cairn release cannot be built.
+            try:
+                result["skills"] = refresh_skills(home, config)
+            except CairnError as exc:
+                result["skills"] = {"status": "failed", "reason": str(exc)}
     except Busy:
         return {"status": "busy"}
-    except CairnError as exc:
-        result = {"status": "failed", "reason": str(exc)}
     state = home.state()
     state.last_check = now()
     state.last_result = str(result["status"])

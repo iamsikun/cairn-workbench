@@ -61,10 +61,13 @@ unreviewed explanation of a saved view.
   file exists and never reads or changes it. The output names the command that
   attaches the Cairn writing handoff to that copy:
   `cairn quill install --skills-dir ~/.claude/skills`.
-- **Not installed.** Otherwise setup installs the bundled Quill and its Cairn workflow
-  for this knowledge base at `<workspace>/.claude/skills/quill`. That is where agents
-  started in the workspace find project skills. It sits beside the vault and is not a
-  record or backup member; a restore reinstalls it.
+- **Not installed.** Otherwise setup installs Quill and its Cairn workflow for this
+  knowledge base at `<workspace>/.claude/skills/quill`. That is where agents started in
+  the workspace find project skills. It sits beside the vault and is not a record or
+  backup member; a restore reinstalls it. For a private knowledge base this is a
+  Cairn-managed copy of Quill's `stable` release. Each [update run](updates.md)
+  refreshes it while it still matches what Cairn wrote, and keeps your local edits.
+  Synthetic setups, or setups where the fetch fails, start from the bundled snapshot.
 - **Choosing a location or skipping.** `--quill-skills-dir DIR` installs elsewhere.
   `--no-quill` skips the step.
 - **Checking more locations.** Set `CAIRN_MACHINE_SKILLS_DIRS` (path-separated) to

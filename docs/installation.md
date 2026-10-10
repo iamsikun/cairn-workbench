@@ -115,8 +115,10 @@ image, and immutable `receipts/runtime/` approval. The exact manifest is retaine
 `policy/runtime-release.json`.
 
 Subsequent private-workspace opens and locked operations verify that binding and the
-installed package inventory. A changed installation or worker requires separate owner
-maintenance; it cannot silently become the runtime for existing private data.
+installed package inventory. A changed installation or worker cannot silently become the
+runtime for existing private data. It is adopted only through the
+[automatic update](updates.md) path: a release signed by a key in the workspace's own
+update authorization, verified, backed up and recorded as an `upgrade` approval.
 `--inline-synthetic` never bypasses isolation in private mode. A custom client image must
 be part of the reviewed release, not a new command-line override.
 
@@ -139,8 +141,9 @@ The matching worker image passed all 13 isolation checks. See the retained
 [installed trial](evidence/migration-release-trial.json),
 [worker result](evidence/migration-worker-profile.json), and
 [schema migration procedure](schema-migrations.md). This is data-format migration inside
-a verified runtime; automatic upgrade from a different approved software release is not
-implemented. The manual continuity gate and actual private activation remain separate.
+a verified runtime. Moving to a different software release is the separate,
+owner-authorized [automatic update](updates.md) path. The manual continuity gate and
+actual private activation remain separate.
 
 The final source-review trial at `6bcad55cd9c71ea154dab2d4e6e34b65e80d1929` passed on
 the same reference target with 15 distributions and 878 installed files. It additionally

@@ -63,7 +63,9 @@ and restore. Do not remove journals to bypass a recovery error.
 This command migrates a data format within a runtime that already supports both versions.
 It does not install software, replace a release approval, weaken a route grant, or migrate
 record schema 1 to an invented new record version. Replacing a private installation with
-a different release remains a separate unsupported upgrade operation; a workspace bound
-to an earlier release must not be opened by unchecked newer code. A future release
-upgrade needs its own explicit verification and reauthorization path. Current private
-operation still checks the approved installation before inspection, migration, or recovery.
+a different release is the [automatic update](updates.md) operation: a workspace bound to
+an earlier release is never opened by unchecked newer code. The new runtime verifies
+itself and the signed release and takes a backup before rebinding. It then runs
+supported migrations automatically, each with its own backup, under the owner's standing
+update authorization. Private operation still checks the approved installation before
+inspection, migration, or recovery.
