@@ -74,6 +74,22 @@
   "additionalProperties": false,
   "description": "What the owner's agent returns for a page; Cairn binds and formats it.",
   "properties": {
+    "aliases": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 40,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Aliases"
+    },
     "body_markdown": {
       "maxLength": 200000,
       "minLength": 1,
@@ -95,6 +111,38 @@
       "maxItems": 40,
       "title": "Limitations",
       "type": "array"
+    },
+    "project_ids": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Ids"
+    },
+    "related": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Related"
     },
     "title": {
       "anyOf": [

@@ -11,6 +11,7 @@ from cairn.presentation.models import (
     CatalogPayload,
     EvidencePayload,
     FeedPayload,
+    PagePayload,
     PaperPayload,
     ProjectPayload,
     ProposalPayload,
@@ -41,7 +42,56 @@ def document(bundle: ViewBundle, *, feedback: bool = False) -> ViewDocument:
             sections.append(ViewSection(title=title, blocks=blocks))
 
     payload = bundle.payload
-    if isinstance(payload, ProjectPayload):
+    if isinstance(payload, PagePayload):
+        from cairn.proposals.service import all_refs
+
+        section(
+            "Contents",
+            [
+                ViewBlock(
+                    kind="markdown",
+                    text="\n".join(
+                        f"- [{entry.record.title.replace('[', '').replace(']', '')}]"
+                        f"(#{entry.record.id})"
+                        for entry in payload.pages
+                    ),
+                )
+            ],
+        )
+        for entry in payload.pages:
+            section(
+                entry.record.title,
+                [
+                    ViewBlock(
+                        title=entry.record.id,
+                        text=entry.markdown,
+                        kind="markdown",
+                        anchor=entry.record.id,
+                        citations=citations(all_refs(entry.record)),
+                    )
+                ],
+            )
+        if payload.topics:
+            section(
+                "Connected topics",
+                [
+                    ViewBlock(
+                        kind="markdown",
+                        text="\n".join(
+                            f"- [{title.replace('[', '').replace(']', '')}](#{key})"
+                            for key, title in payload.topics.items()
+                        ),
+                    )
+                ],
+            )
+            section(
+                "Topic references",
+                [
+                    ViewBlock(title=title, text=key, anchor=key)
+                    for key, title in payload.topics.items()
+                ],
+            )
+    elif isinstance(payload, ProjectPayload):
         pack = payload.context
         section(
             "Project state",

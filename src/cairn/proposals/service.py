@@ -362,6 +362,11 @@ def validate_unlocked(ws: Workspace, proposal: Proposal) -> JobEnvelope:
             check_reference(ws, ref, job.scope_name)
             _, cited, _ = ws.record(ref.id, envelope.scope)
             require_inheritance(record, [cited])
+        if record.primary_source_id:
+            _, primary, _ = ws.record(record.primary_source_id, envelope.scope)
+            if primary.type != "source":
+                raise Denied("primary_source_id must identify source evidence")
+            require_inheritance(record, [primary])
         from cairn.ingest.finance import check_observed_money, validate_snapshot_record
 
         # Structured amounts in any domain must be exact preserved observations.

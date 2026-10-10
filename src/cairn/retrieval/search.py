@@ -65,6 +65,19 @@ def authorized_scope(ws: Workspace, name: str, provider: str, destination: str) 
         except Denied:
             continue
         allowed.add(record.id)
+    from cairn.proposals.service import all_refs
+
+    records = {r.id: r for _, r, _ in ws.records(scope)}
+    while True:
+        visible = {
+            key
+            for key in allowed
+            if all(ref.id in allowed for ref in all_refs(records[key]))
+            and (not records[key].primary_source_id or records[key].primary_source_id in allowed)
+        }
+        if visible == allowed:
+            break
+        allowed = visible
     return scope.model_copy(update={"record_ids": allowed})
 
 
@@ -92,7 +105,9 @@ def _corpus(ws: Workspace, scope: Scope) -> tuple[list[tuple[Hit, list[str]]], s
     for path, record, body in records:
         from cairn.proposals.service import all_refs
 
-        if any(ref.id not in allowed for ref in all_refs(record)):
+        if any(ref.id not in allowed for ref in all_refs(record)) or (
+            record.primary_source_id is not None and record.primary_source_id not in allowed
+        ):
             # Withhold derived text as well as its citation if its evidence is denied.
             # Stripping only the reference can expose the restricted conclusion.
             continue
@@ -267,8 +282,6 @@ def search(
     if not 1 <= limit <= 100 or len(query) > 1000:
         raise CairnError("query or result limit exceeds budget")
     terms = _terms(query)
-    if not terms:
-        return []
     with ws.lock(write=True):
         from cairn.policies.audit import require_local_route_unlocked
 
@@ -286,6 +299,8 @@ def search(
             if cloud_route
             else ws.policy.scope(scope_name)
         )
+        if not terms:
+            return []
         connection = _index(ws, scope)
         try:
             # FTS syntax is constructed from literal tokens, never accepted as SQL/FTS code.

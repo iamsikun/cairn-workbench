@@ -145,6 +145,14 @@ def _maintenance(ws: Workspace, receipt: ApplyReceipt) -> None:
 
 
 def apply(ws: Workspace, proposal_id: str) -> ApplyReceipt:
+    from cairn.presentation.live import maintain
+
+    receipt = _apply(ws, proposal_id)
+    maintain(ws)
+    return receipt
+
+
+def _apply(ws: Workspace, proposal_id: str) -> ApplyReceipt:
     with ws.lock(write=True):
         proposal = load_proposal(ws, proposal_id)
         receipt_path = f"receipts/applied/{proposal_id}.json"
@@ -207,6 +215,14 @@ def apply(ws: Workspace, proposal_id: str) -> ApplyReceipt:
 
 
 def recover(ws: Workspace) -> list[ApplyReceipt]:
+    from cairn.presentation.live import maintain
+
+    receipts = _recover(ws)
+    maintain(ws)
+    return receipts
+
+
+def _recover(ws: Workspace) -> list[ApplyReceipt]:
     recovered = []
     with ws.lock(write=True, recovery=True):
         ws.require_no_pending_migration()

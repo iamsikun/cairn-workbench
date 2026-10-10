@@ -3,8 +3,18 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from cairn.adapters.protocol import Page
+from cairn.presentation.writing_models import PageDraft
 from cairn.records.continuity import ReceiptMessage
 from cairn.records.models import ID, Digest, EvidenceRef, Extraction, Labels, Model, Record
+
+
+class NotebookPlan(Model):
+    note_id: ID
+    target: ID | None = None
+    base_hash: Digest | None = None
+    related: list[str] | None = None
+    project_ids: list[ID] = Field(default_factory=list)
+    pages: list[PageDraft] = Field(default_factory=list, max_length=19)
 
 
 class FinchPacket(Model):
@@ -26,6 +36,7 @@ class FinchPacket(Model):
     guidance_hash: Digest
     # "0.2.0" packets carried a vendored Finch; "cairn-1" carries only Cairn's contract.
     skill_version: Literal["0.2.0", "cairn-1"] = "cairn-1"
+    notebook: NotebookPlan | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class FinchGuard(Model):

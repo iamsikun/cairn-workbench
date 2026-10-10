@@ -46,6 +46,11 @@ description (`src/cairn/reading/contract.md`, `src/cairn/presentation/contract.m
    the agent capture files under `DIR` (outside the knowledge base) with labels you
    chose; files elsewhere are refused.
 
+4. **Optional HTML.** `--html-root /srv/synthetic-reports` permits explicit requests
+   through `view(record_id=..., format="html")`. The agent chooses a record, not a
+   filesystem destination. `query` and `client_export` grants cover the rendered
+   material. Outputs are tracked and refresh after accepted Markdown changes.
+
 The launch arguments fix the workspace, scope, provider and destination for the
 session. Tools cannot change or widen them.
 
@@ -54,10 +59,10 @@ session. Tools cannot change or widen them.
 | Tool | What it does |
 | --- | --- |
 | `search`, `evidence`, `page`, `context` | Scoped reads; `evidence` gives the locators and hashes to cite, `page` gives a page's `base_hash` |
-| `view`, `feedback` | A saved view's document and evidence keys; imported feedback |
+| `view`, `feedback` | Saved view content; explicitly requested canonical HTML; imported feedback |
 | `capture` | Capture a file from the capture root and return its evidence |
 | `pending`, `proposal_show` | Proposals awaiting your review in this scope, and their details |
-| `propose_reading` | Save a paper reading (messages, summary, cited claims) as a concept-note proposal |
+| `propose_reading` | Propose an evolving paper note and bounded companion notebook changes together |
 | `propose_page` | Propose a new page, a revision (with `base_hash`) or a feedback revision |
 | `propose_changes` | Propose pages drafted from one source |
 | `propose_explanation` | Keep an unreviewed explanation of a saved view; render it with `cairn view explanation JOB OUTPUT.html` |
@@ -77,6 +82,33 @@ bindings; a restore does not restore permission to export.
 
 There is no tool for approval, accept, apply, recovery, policy, backup, restore,
 schema, update or editing human notes, and no CLI command for agent packets.
+
+## Paper to notebook
+
+Capture a paper or read its `evidence`. Default identity follows its bytes: renaming
+an identical file deduplicates, while unrelated same-named files stay separate.
+For revised documents, supply an explicit `identity` and `version` to `capture`;
+existing captures retain their historical identity. A capture in a single-project
+session inherits that project; multi-project sessions require explicit `project_ids`.
+
+`evidence.paper_notes` gives authorized existing notes and base hashes, including
+notes bound to another explicit version of that source. Read the note with `page`,
+use `search` for topics, and inspect authorized links/backlinks. A follow-up sends
+the existing target and current base hash. Multiple candidate notes require a
+target selection; an explicit historical target can become the evolving note.
+
+`propose_reading` preserves each exchange as immutable evidence and stages one
+proposal. Its summary retains earlier useful content and answers the current
+question. Optional `pages` contain notebook drafts (concept pages), their `key`,
+full `body_markdown`, claims, and either a new title or existing target/base hash.
+Use `related: ["@topic"]` on the paper and `related: ["@paper", "@broader"]` on a
+topic draft. Cairn assigns durable IDs. The default budget is four changed pages.
+Companion claims can cite other authorized papers. Topic selection comes from the
+host agent; privacy labels stay owner-controlled. There is no classifier service.
+
+The owner sees diffs, evidence and review flags and confirms the combined proposal
+once. Accepted Markdown becomes searchable immediately. HTML is generated only when
+requested, then maintained as a derivative; see [HTML views](html-views.md).
 
 ## Keeping the agent's shell out of owner operations
 

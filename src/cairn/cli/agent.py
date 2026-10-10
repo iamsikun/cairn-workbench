@@ -58,6 +58,9 @@ def register(app: typer.Typer) -> None:
         capture_labels: Annotated[
             Path | None, typer.Option(help="JSON labels for sources captured from that folder.")
         ] = None,
+        html_root: Annotated[
+            Path | None, typer.Option(help="Folder for explicitly requested, tracked HTML views.")
+        ] = None,
         inline_synthetic: Annotated[bool, typer.Option(hidden=True)] = False,
         print_config: Annotated[
             bool, typer.Option(help="Print agent registration and sandbox settings and exit.")
@@ -81,6 +84,8 @@ def register(app: typer.Typer) -> None:
             arguments += ["--capture-root", str(capture_root.absolute())]
         if capture_labels is not None:
             arguments += ["--capture-labels", str(capture_labels.absolute())]
+        if html_root is not None:
+            arguments += ["--html-root", str(html_root.absolute())]
         session = Session(
             workspace=workspace,
             scope=scope,
@@ -91,6 +96,7 @@ def register(app: typer.Typer) -> None:
             if capture_labels
             else None,
             inline_synthetic=inline_synthetic,
+            html_root=html_root.absolute() if html_root else None,
         )
         check_session(session)
         if print_config:

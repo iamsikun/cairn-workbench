@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Annotated, Literal
 
 import typer
 
@@ -13,6 +14,34 @@ def register(app: typer.Typer) -> None:
     views = typer.Typer(help="Inspect saved knowledge snapshots.")
     app.add_typer(feedback, name="feedback")
     app.add_typer(views, name="view")
+
+    @views.command("page")
+    @guarded
+    def page(
+        record_id: str,
+        workspace: WorkspaceOption,
+        output: Annotated[Path, typer.Option()],
+        format: Annotated[Literal["html"], typer.Option()],
+        scope: str = "research",
+        inline_synthetic: bool = False,
+    ) -> None:
+        """Explicitly render a Markdown page and track its future accepted updates."""
+        from cairn.presentation.live import render_page
+
+        emit(
+            render_page(
+                Workspace(workspace), record_id, scope, output, inline_synthetic=inline_synthetic
+            ),
+            True,
+        )
+
+    @views.command("sync")
+    @guarded
+    def sync_views(workspace: WorkspaceOption) -> None:
+        """Refresh registered HTML, including Markdown edits made in an editor."""
+        from cairn.presentation.live import sync
+
+        emit(sync(Workspace(workspace)), True)
 
     @views.command("show")
     @guarded

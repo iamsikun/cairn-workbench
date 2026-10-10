@@ -267,6 +267,9 @@ def restore(
                             raise Conflict("restored file checksum mismatch")
                     for name, data in additions.items():
                         fs.write(name, data, exclusive=True)
+                    from cairn.presentation.live import deactivate
+
+                    deactivate(fs)
                     fs.remove("restore.pending")
                     Workspace(staging)
                     if destination.is_symlink() or (

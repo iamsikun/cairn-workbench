@@ -24,3 +24,9 @@ test('application accepts supplied verified image bytes without filesystem reads
  doc.sections[0].blocks[0].asset_id='asset_pixel';assert.ok(renderApplication(doc).includes('src="data:image/png;'));
  doc.assets[0].sha256='0'.repeat(64);assert.throws(()=>renderApplication(doc));
 });
+test('application Markdown formats prose without executing markup or loading images',()=>{
+ const doc=fixture();Object.assign(doc.sections[0].blocks[0],{kind:'markdown',anchor:'concept_example',text:'# Heading\n\n- Item\n\n| A | B |\n|---|---|\n|1|2|\n\n```js\nx()\n```\n<script>INJECT()</script>\n![pixel](https://synthetic.invalid/pixel)\n[bad](javascript:alert%281%29)\n[local](#concept_example)'});
+ const html=renderApplication(doc);
+ for(const expected of ['<h1>Heading</h1>','<li>Item</li>','<table>','language-js','&lt;script&gt;','href="#concept_example"']) assert.ok(html.includes(expected),expected);
+ assert.ok(!html.includes('src="https:'));assert.ok(!html.includes('href="javascript:'));assert.ok(!html.includes('<script>INJECT'));
+});

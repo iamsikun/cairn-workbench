@@ -66,6 +66,15 @@ def validate_presentation(
             if path != f"receipts/presentation/views/{value.id}.json":
                 raise Conflict("saved view path mismatch")
             bundle(value)
+        elif path.startswith("receipts/presentation/renders/"):
+            from cairn.presentation.live import Rendering
+
+            rendering = Rendering.model_validate_json(raw)
+            if (
+                rendering.record_id not in records
+                or path != f"receipts/presentation/renders/{rendering.id}.json"
+            ):
+                raise Conflict("rendering record or path mismatch")
         elif path.startswith("receipts/presentation/jobs/"):
             continue
         elif path.startswith("receipts/presentation/feedback/"):

@@ -463,6 +463,19 @@ def register(app: typer.Typer) -> None:
                     + (f"\n    reason: {item.reason}" if item.reason else ""),
                 )
         if ready:
+            from cairn.proposals.review import review_model
+            from cairn.proposals.service import load_proposal
+
+            for item in ready:
+                report = review_model(ws, load_proposal(ws, item.proposal_id))
+                for change in report.changes:
+                    # Keep the actual diff available even with structured command output.
+                    typer.echo(change.diff, err=json_output)
+                typer.echo(
+                    f"Evidence references: {len(report.references)}; "
+                    f"review: {', '.join(report.review_flags)}",
+                    err=json_output,
+                )
             owner_confirm(
                 ws,
                 "accept",

@@ -20,6 +20,7 @@ test('application Chromium mandatory: evidence, themes, narrow layout, feedback,
  assert.ok(findChrome(),'Chromium is required for this acceptance gate');
  const dir=mkdtempSync(join(tmpdir(),'cairn-browser-'));
  const doc={version:1,title:'Synthetic research brief · 研究',bundle_id:'view_synthetic',bundle_hash:'a'.repeat(64),subtitle:'Snapshot: 2026-01-01 · public synthetic evidence',sections:[{title:'Finding and qualification',blocks:[{title:'Reported result',text:'The reported value is 42 under condition C. This does not establish the result for other conditions. <img src="https://synthetic.invalid/tracker">',kind:'text',labels:['Reported result','Unreviewed'],citations:['evidence_example'],nodes:[],url:'https://example.org/publication'},{title:'Review workflow',text:'Describes the workflow, not the current proposal status.',kind:'diagram',labels:[],citations:[],nodes:['Evidence','Proposal','Owner review','Apply'],url:null}]}],evidence:[{key:'evidence_example',reference:{id:'source_example',locator:'page 2',source_hash:'b'.repeat(64),evidence_hash:'c'.repeat(64)},title:'Synthetic source',text:'42 under condition C.',source_date:null,version:'v1',coverage:'excerpt',tables_inspected:false,images_inspected:false,support:'Quote presence does not establish entailment.'}],targets:['concept_example'],feedback:true,assets:[]};
+ doc.sections[0].blocks.push({title:'Markdown notebook',text:'# Topic\n\n- A paper\n\n| Model | Result |\n|---|---|\n| Synthetic | 42 |\n\n```python\nprint(42)\n```\n<script>INJECT()</script>\n![tracker](https://synthetic.invalid/tracker)\n[unsafe](javascript:alert%281%29)',kind:'markdown',anchor:'concept_example',labels:[],citations:[],nodes:[],url:null});
  const file=join(dir,'brief.html');writeFileSync(file,renderApplication(doc));
  const chrome=spawn(findChrome(),['--headless=new','--remote-debugging-port=0',`--user-data-dir=${join(dir,'profile')}`,'--no-first-run','about:blank'],{stdio:['ignore','ignore','pipe']});
  let cdp;
@@ -29,6 +30,8 @@ test('application Chromium mandatory: evidence, themes, narrow layout, feedback,
  await send('Page.enable');await send('Runtime.enable');await send('Network.enable');
  await send('Page.navigate',{url:pathToFileURL(file).href});
  for(let i=0;i<100;i++){if(await evaluate('document.readyState==="complete" && !!document.querySelector("#filter")'))break;await new Promise(r=>setTimeout(r,40));}
+ assert.equal(await evaluate('document.querySelectorAll("#concept_example table").length'),1);
+ assert.equal(await evaluate('document.querySelectorAll("#concept_example img, #concept_example script, #concept_example [href^=javascript]").length'),0);
  const output=process.env.AM_BROWSER_OUTPUT;if(output)mkdirSync(output,{recursive:true});
  for(const width of [1440,390])for(const mode of ['light','dark']){
   await send('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:false});await evaluate(`document.documentElement.dataset.mode='${mode}'`);

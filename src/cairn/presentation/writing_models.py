@@ -143,6 +143,9 @@ class QuillPacket(Model):
     # Digest of the agent's answer, so a different answer seals a new packet. Omitted when
     # unset, which keeps the identity of packets sealed before it existed.
     attempt: Digest | None = Field(default=None, exclude_if=lambda value: value is None)
+    related_ids: list[ID] | None = Field(default=None, exclude_if=lambda value: value is None)
+    project_ids: list[ID] | None = Field(default=None, exclude_if=lambda value: value is None)
+    aliases: list[str] | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @model_validator(mode="after")
     def one_target(self) -> "QuillPacket":
@@ -205,6 +208,33 @@ class PageAnswer(Model):
     body_markdown: str = Field(min_length=1, max_length=200000)
     claims: list[PageClaim] = Field(default_factory=list, max_length=100)
     limitations: list[str] = Field(default_factory=list, max_length=40)
+    related: list[str] | None = Field(
+        default=None, max_length=20, exclude_if=lambda value: value is None
+    )
+    project_ids: list[str] | None = Field(
+        default=None, max_length=20, exclude_if=lambda value: value is None
+    )
+    aliases: list[str] | None = Field(
+        default=None, max_length=40, exclude_if=lambda value: value is None
+    )
+
+
+class PageDraft(PageAnswer):
+    """A companion page; @key links refer to another page in this same proposal."""
+
+    key: str = Field(pattern=r"^[a-z][a-z0-9_-]{0,39}$")
+    target: ID | None = None
+    base_hash: Digest | None = None
+    new_type: Literal["concept", "project", "entity", "playbook", "decision"] = "concept"
+    domain: Domain = "research"
+
+    @model_validator(mode="after")
+    def target_hash(self) -> "PageDraft":
+        if (self.target is None) != (self.base_hash is None):
+            raise ValueError("an existing target requires its base_hash")
+        if self.target is None and not self.title:
+            raise ValueError("new pages require a title")
+        return self
 
 
 class QuillReceipt(Model):

@@ -570,6 +570,52 @@
       "title": "EvidenceRef",
       "type": "object"
     },
+    "ExtractionMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {
+          "enum": [
+            "full_text",
+            "excerpt",
+            "abstract_only",
+            "failed"
+          ],
+          "title": "Coverage",
+          "type": "string"
+        },
+        "evidence_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Evidence Hash",
+          "type": "string"
+        },
+        "images_inspected": {
+          "default": false,
+          "title": "Images Inspected",
+          "type": "boolean"
+        },
+        "method": {
+          "title": "Method",
+          "type": "string"
+        },
+        "method_version": {
+          "title": "Method Version",
+          "type": "string"
+        },
+        "tables_inspected": {
+          "default": false,
+          "title": "Tables Inspected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "evidence_hash",
+        "method",
+        "method_version",
+        "coverage"
+      ],
+      "title": "ExtractionMetadata",
+      "type": "object"
+    },
     "FeedDigest": {
       "additionalProperties": false,
       "properties": {
@@ -955,6 +1001,7 @@
       "title": "Hit",
       "type": "object"
     },
+    "JsonValue": {},
     "Money": {
       "additionalProperties": false,
       "properties": {
@@ -1036,6 +1083,58 @@
         "sources"
       ],
       "title": "Money",
+      "type": "object"
+    },
+    "PageEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "markdown": {
+          "maxLength": 200000,
+          "title": "Markdown",
+          "type": "string"
+        },
+        "record": {
+          "$ref": "#/$defs/Record"
+        }
+      },
+      "required": [
+        "record",
+        "markdown"
+      ],
+      "title": "PageEntry",
+      "type": "object"
+    },
+    "PagePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "page",
+          "default": "page",
+          "title": "Kind",
+          "type": "string"
+        },
+        "pages": {
+          "items": {
+            "$ref": "#/$defs/PageEntry"
+          },
+          "title": "Pages",
+          "type": "array"
+        },
+        "topics": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_]{2,95}$": {
+              "type": "string"
+            }
+          },
+          "title": "Topics",
+          "type": "object"
+        }
+      },
+      "required": [
+        "pages",
+        "topics"
+      ],
+      "title": "PagePayload",
       "type": "object"
     },
     "PaperClaim": {
@@ -1420,6 +1519,230 @@
       "title": "QueryPayload",
       "type": "object"
     },
+    "Record": {
+      "additionalProperties": false,
+      "properties": {
+        "aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Aliases",
+          "type": "array"
+        },
+        "assertions": {
+          "items": {
+            "$ref": "#/$defs/Assertion"
+          },
+          "title": "Assertions",
+          "type": "array"
+        },
+        "classification": {
+          "default": "private",
+          "enum": [
+            "public",
+            "private",
+            "restricted"
+          ],
+          "title": "Classification",
+          "type": "string"
+        },
+        "compartments": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Compartments",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "domain": {
+          "enum": [
+            "research",
+            "finance",
+            "life",
+            "shared"
+          ],
+          "title": "Domain",
+          "type": "string"
+        },
+        "finance_category": {
+          "anyOf": [
+            {
+              "enum": [
+                "educational",
+                "official_rule",
+                "account_snapshot",
+                "owner_decision"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finance Category"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Period"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "primary_source_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{2,95}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Primary Source Id"
+        },
+        "processing": {
+          "default": "local_only",
+          "enum": [
+            "local_only",
+            "cloud_eligible"
+          ],
+          "title": "Processing",
+          "type": "string"
+        },
+        "project_ids": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Project Ids",
+          "type": "array"
+        },
+        "related": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Related",
+          "type": "array"
+        },
+        "repository": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RepositoryBinding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "review_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review Date"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sections": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Sections",
+          "type": "object"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceMetadata"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "status": {
+          "default": "draft",
+          "enum": [
+            "draft",
+            "active",
+            "disputed",
+            "superseded"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "source",
+            "concept",
+            "project",
+            "decision",
+            "entity",
+            "playbook"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "id",
+        "type",
+        "title",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "Record",
+      "type": "object"
+    },
     "RepositoryBinding": {
       "additionalProperties": false,
       "properties": {
@@ -1665,6 +1988,164 @@
       "title": "ReviewReport",
       "type": "object"
     },
+    "SourceMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "authors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Authors",
+          "type": "array"
+        },
+        "bibliography": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bibliography"
+        },
+        "blob": {
+          "title": "Blob",
+          "type": "string"
+        },
+        "captured_at": {
+          "format": "date-time",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "citation_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Citation Key"
+        },
+        "content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "external_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "External Id"
+        },
+        "extraction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExtractionMetadata"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "identity": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Identity",
+          "type": "string"
+        },
+        "library_alias": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{2,95}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Library Alias"
+        },
+        "origin": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Origin",
+          "type": "string"
+        },
+        "source_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Date"
+        },
+        "source_type": {
+          "enum": [
+            "text",
+            "markdown",
+            "pdf",
+            "conversation",
+            "bibliography",
+            "receipt",
+            "finance_snapshot",
+            "life_dossier"
+          ],
+          "title": "Source Type",
+          "type": "string"
+        },
+        "supersedes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Supersedes",
+          "type": "array"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "identity",
+        "origin",
+        "source_type",
+        "captured_at",
+        "content_hash",
+        "blob"
+      ],
+      "title": "SourceMetadata",
+      "type": "object"
+    },
     "ViewAsset": {
       "additionalProperties": false,
       "properties": {
@@ -1786,6 +2267,7 @@
           "catalog": "#/$defs/CatalogPayload",
           "evidence": "#/$defs/EvidencePayload",
           "feed": "#/$defs/FeedPayload",
+          "page": "#/$defs/PagePayload",
           "paper": "#/$defs/PaperPayload",
           "project": "#/$defs/ProjectPayload",
           "proposal": "#/$defs/ProposalPayload",
@@ -1814,6 +2296,9 @@
         },
         {
           "$ref": "#/$defs/FeedPayload"
+        },
+        {
+          "$ref": "#/$defs/PagePayload"
         }
       ],
       "title": "Payload"

@@ -12,7 +12,7 @@ from cairn.errors import Conflict, Denied
 from cairn.ingest.service import capture_bytes, extract, load_extraction, read_source_file
 from cairn.policies.models import LEVEL
 from cairn.presentation.service import output_bytes
-from cairn.presentation.writing_models import ExportReceipt
+from cairn.presentation.writing_models import ExportReceipt, PageDraft
 from cairn.proposals.models import JobEnvelope
 from cairn.proposals.service import check_reference, stage_result, validate
 from cairn.reading.contract import guidance, guidance_hash
@@ -21,6 +21,7 @@ from cairn.reading.models import (
     FinchPacket,
     FinchReceipt,
     FinchResponse,
+    NotebookPlan,
     ReadingAnswer,
 )
 from cairn.records.models import (
@@ -112,6 +113,7 @@ def begin(
     destination: str,
     related_ids: list[str] | None = None,
     inline_synthetic: bool = False,
+    notebook: NotebookPlan | None = None,
 ) -> dict[str, str]:
     extract(ws, source_id, scope_name=scope_name, inline_synthetic=inline_synthetic)
     with ws.lock(write=True):
@@ -125,6 +127,10 @@ def begin(
         related = [ws.record(i, scope) for i in (related_ids or [])]
         inputs = {source_path: digest(ws.fs.read(source_path)), f"evidence/{key}.json": key}
         inputs.update({path: digest(ws.fs.read(path)) for path, _, _ in related})
+        for _, record, _ in related:
+            if record.source and record.source.extraction:
+                _, related_key = load_extraction(ws, record)
+                inputs[f"evidence/{related_key}.json"] = related_key
         guard_raw = canonical(FinchGuard(protected_hashes=ws.protected_hashes()))
         packet = FinchPacket(
             id="finch_pending",
@@ -141,6 +147,7 @@ def begin(
             provider=provider,
             destination=destination,
             guidance_hash=guidance_hash(),
+            notebook=notebook,
         )
         authorize(ws, packet)
         packet.id = identity(packet)
@@ -207,6 +214,9 @@ def submit(
     destination: str,
     related_ids: list[str] | None = None,
     inline_synthetic: bool = False,
+    target: str | None = None,
+    base_hash: str | None = None,
+    pages: list[PageDraft] | None = None,
 ) -> FinchReceipt:
     """Seal the reading's inputs and stage the agent's answer in one owner-side step.
 
@@ -223,13 +233,38 @@ def submit(
                 "labels": request_labels,
                 "route": [provider, destination],
                 "related": related_ids or [],
+                "target": target,
+                "base_hash": base_hash,
+                "pages": pages or [],
             }
         )
     )
     submitted = f"{PREFIX}/submissions/{key}.json"
     with ws.lock():
+        source = ws.record(source_id, ws.policy.scope(scope_name))[1]
+        for operation in ("generation", "client_export"):
+            ws.policy.authorize_route(
+                ws.policy.scope(scope_name),
+                [source],
+                route="cloud",
+                provider=provider,
+                destination=destination,
+                operation=operation,
+                question=request_labels,
+            )
         if ws.fs.exists(submitted):
             return FinchReceipt.model_validate_json(ws.fs.read(submitted))
+        from cairn.reading.notebook import prepare
+
+        notebook, inputs = prepare(
+            ws,
+            source_id,
+            scope_name,
+            target=target,
+            base_hash=base_hash,
+            related=related_ids,
+            pages=pages or [],
+        )
     sealed = begin(
         ws,
         source_id,
@@ -239,8 +274,9 @@ def submit(
         request_labels=request_labels,
         provider=provider,
         destination=destination,
-        related_ids=related_ids,
+        related_ids=inputs,
         inline_synthetic=inline_synthetic,
+        notebook=notebook,
     )
     response = FinchResponse(
         session_id=sealed["session_id"], input_hash=sealed["input_hash"], **dict(answer)
@@ -293,6 +329,8 @@ def finish_bytes(ws: Workspace, raw: bytes, *, inline_synthetic: bool = False) -
                 ]
             )
         )
+        if packet.notebook:
+            project_ids = packet.notebook.project_ids
     source = capture_bytes(
         ws,
         raw,
@@ -336,7 +374,7 @@ def finish_bytes(ws: Workspace, raw: bytes, *, inline_synthetic: bool = False) -
             extraction=extraction,
             evidence_hash=key,
             related=[Page(record=packet.source, body=""), *packet.related],
-            max_changes=1,
+            max_changes=1 + len(packet.notebook.pages) if packet.notebook else 1,
         )
         envelope = JobEnvelope(
             job=job,
@@ -411,6 +449,10 @@ def finish_bytes(ws: Workspace, raw: bytes, *, inline_synthetic: bool = False) -
                 )
             ],
         )
+        if packet.notebook:
+            from cairn.reading.notebook import candidates
+
+            result.candidates = candidates(ws, packet, result.candidates[0], session_refs[0])
     proposal = stage_result(ws, result)
     if proposal is None:
         raise Conflict("Finch handoff did not stage a proposal")

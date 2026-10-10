@@ -5,7 +5,7 @@ from pydantic import Field, model_validator
 
 from cairn.library.feed import FeedDigest
 from cairn.records.continuity import ContextPack
-from cairn.records.models import ID, Assertion, Digest, EvidenceRef, Labels, Model, Period
+from cairn.records.models import ID, Assertion, Digest, EvidenceRef, Labels, Model, Period, Record
 from cairn.retrieval.search import Hit
 
 
@@ -95,6 +95,17 @@ class QueryPayload(Model):
     assertions: dict[ID, list[Assertion]] = Field(default_factory=dict)
 
 
+class PageEntry(Model):
+    record: Record
+    markdown: str = Field(max_length=200000)
+
+
+class PagePayload(Model):
+    kind: Literal["page"] = "page"
+    pages: list[PageEntry]
+    topics: dict[ID, str]
+
+
 class EvidencePayload(Model):
     kind: Literal["evidence"] = "evidence"
     source_id: ID
@@ -132,7 +143,8 @@ Payload = Annotated[
     | PaperPayload
     | ProposalPayload
     | CatalogPayload
-    | FeedPayload,
+    | FeedPayload
+    | PagePayload,
     Field(discriminator="kind"),
 ]
 
@@ -192,7 +204,8 @@ class ViewBundle(Labels):
 class ViewBlock(Model):
     title: str = ""
     text: str = ""
-    kind: Literal["text", "quote", "code", "diagram"] = "text"
+    kind: Literal["text", "quote", "code", "diagram", "markdown"] = "text"
+    anchor: ID | None = Field(default=None, exclude_if=lambda value: value is None)
     labels: list[str] = Field(default_factory=list)
     citations: list[ID] = Field(default_factory=list)
     nodes: list[str] = Field(default_factory=list)

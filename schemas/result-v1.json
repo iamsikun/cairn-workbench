@@ -514,6 +514,19 @@
           ],
           "default": null
         },
+        "primary_source_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{2,95}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Primary Source Id"
+        },
         "processing": {
           "default": "local_only",
           "enum": [

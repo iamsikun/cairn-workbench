@@ -1,5 +1,17 @@
 # Acceptance evidence
 
+## Connected paper notes and opt-in HTML — implementation milestone (2026-10-10)
+
+The new synthetic notebook and HTML regressions passed **17 tests** in the documented
+offline development container. They exercise two-paper integration and a fresh MCP
+client after index rebuild; stable notes across follow-ups and explicit source versions;
+ambiguous targets and stale companion drafts; scope/grant changes; HTML opt-in,
+accepted and editor updates, changed dependencies, unrelated changes, output tampering,
+renderer failure/retry, process termination after replacement and both restore paths.
+Schema exports were regenerated; Ruff and strict mypy passed (102 source files).
+Full-suite, browser and installed-release evidence is recorded separately below when run.
+These tests use deterministic synthetic agent answers, not a real model or private workspace.
+
 ## Paper notebooks — six regression fixes (2026-10-10)
 
 The targeted synthetic container suite passed **57 tests** covering MCP, capture/apply,

@@ -1,5 +1,16 @@
 # Views and delivery
 
+For a canonical Markdown page or notebook, use MCP `view(record_id=ID, format="html")`.
+The destination is fixed by the owner's `--html-root`, never by a model-selected path.
+Only this explicit request registers an output. Future accepted changes to the
+notebook or its directly linked paper notes refresh it. Other topics appear as
+navigation references, without recursive expansion or separate generated files.
+Failures leave earlier HTML intact and mark the registration stale. Modified output
+files are conflicts; do not overwrite or delete them to force a refresh.
+
+The packet workflow below remains available for historical snapshots; those outputs
+are not registered for synchronization.
+
 Cairn supplies fixed project, query, evidence, paper, proposal, catalog and feed
 views. Project views preserve decisions, failed approaches and repository state;
 paper/feed views separate coverage, analysis, verification and personal reading.

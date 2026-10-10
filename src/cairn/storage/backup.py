@@ -212,6 +212,10 @@ def validate_payloads(payloads: Mapping[str, bytes]) -> WorkspaceConfiguration:
 
         validate_drafts(payloads)
         for record in records.values():
+            if record.primary_source_id:
+                primary = records.get(record.primary_source_id)
+                if primary is None or primary.source is None:
+                    raise Conflict("backup primary paper source unavailable")
             meta = record.source
             if meta:
                 if meta.blob != f"blobs/{meta.content_hash}" or meta.blob not in payloads:
@@ -423,6 +427,9 @@ def restore(
         for path, data in payloads.items():
             if digest(fs.read(path)) != digest(data):
                 raise Conflict("restored file checksum mismatch")
+        from cairn.presentation.live import deactivate
+
+        deactivate(fs)
         fs.remove("restore.pending")
         Workspace(staging)
         if destination.is_symlink() or (destination.exists() and any(destination.iterdir())):

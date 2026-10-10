@@ -160,6 +160,19 @@
     "ViewBlock": {
       "additionalProperties": false,
       "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{2,95}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Anchor"
+        },
         "asset_id": {
           "anyOf": [
             {
@@ -187,7 +200,8 @@
             "text",
             "quote",
             "code",
-            "diagram"
+            "diagram",
+            "markdown"
           ],
           "title": "Kind",
           "type": "string"

@@ -1,7 +1,7 @@
 {
   "renderer": {
     "build": "node scripts/build-application.mjs OUTPUT (in vendor directory)",
-    "generated_sha256": "4f4e9d49e686b9489debb484a7f2a19aaa37aa68f9358c45076359189fdf254f",
+    "generated_sha256": "824e44a3d3ec8bbbea8b177b66d8d57f671ae5c5ad3229339c8174ecad22e4e6",
     "license": "MIT",
     "maintained_base_commit": "de54bc1fe9653a5c505bb90e8d30b62b4343b9f0",
     "maintained_commit": "0a13bfcaaa5081b87e6cd191537426261da8c1df",
@@ -139,7 +139,7 @@
       "skills/answer-me-with-html/references/settings.md": "0313b95858a7729cd0459189ed34866b78bfeab8fcb8fe6ae537921c2514b396",
       "skills/answer-me-with-html/references/video.md": "4cede29603cd5bc0ebf0558abc2870b0c3294aa33c0af4f05bb38f4ebad57e21",
       "skills/answer-me-with-html/scripts/am.mjs": "7d05f6c1fef90064520c25013cfacc2092fdccec0531612e3e23bab8fce7f1cb",
-      "src/application.js": "a44534237858522546b8f4a42089bbf6953ca01ec1a4dc2fa8d74eda55c26fd1",
+      "src/application.js": "c3db7b2e0ee990f789782d8af2c5fdc44a8ea225318397aec89e2a7bb0dff0dd",
       "src/assets.js": "75988fb547ccad9743c364ea8b99527c7e9a5690906834592097564753387def",
       "src/atomic-write.js": "4717d6e62100dfb3aea8f73b1a6c206211e03f8de67267a81742f175788ea7a7",
       "src/bidi.js": "da655666a74f21091c266cceed56613c54a88d887c93cdd1eff1068fad4ae399",
@@ -224,8 +224,8 @@
       "src/video/tts.js": "1af3117a1562d2b98437ab309a817181268ba4043d219adabc8bdc3efd15c4ca",
       "src/video/webm.js": "c3389332137663d1f97afd6550295b0e8897d8d7a62629221a66b309d0886b89",
       "test/always-rule.test.js": "6c0b87c04e8b6f140c302da5a9dfe77cc4ba1c176fe76e4a2f258efc8cb3fca4",
-      "test/application-browser.test.js": "5b8b2cc3ea4efdc8efe569b201abb63f59fa4bba4f0407ff05192e05c2dd171a",
-      "test/application.test.js": "0715fefb246d60aa77bfbbad3681703dc88c4589a57acf1002a92b5f5f219f37",
+      "test/application-browser.test.js": "323ecc1c7ee85c9c4ec77369652fde195709cad0718016e9b0479cdaaf728e31",
+      "test/application.test.js": "69fe379bf3b1f08aa5f97234bbe09aa7d45978dd58681cd4492a1f15ea151928",
       "test/auto-theme.test.js": "9b97fe034449189989725cbea693d75350e981de36f4a13736b98a1ad9679736",
       "test/bundle.test.js": "5174b5ccd166ab70177546b8d01998515dafaa472946d6274ceecffa85cf86cd",
       "test/change-markers.test.js": "d2759100af304c34f4bc7c5a1d578bad1d717fd0146c8c3076d0184789c0df19",

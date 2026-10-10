@@ -13,6 +13,13 @@ and `title`; the full `body_markdown`; `claims` and `limitations`. Each claim is
 formats the record; do not set status, labels, IDs, owner decisions or approval
 fields.
 
+Use `related`, `project_ids` and `aliases` to propose graph and search metadata;
+omitting them on revision keeps existing values. For paper reading, use `evidence`
+to find existing note candidates, `page` to obtain their base hashes, and `search`
+to find topic notebooks. `propose_reading` accepts the evolving note's target and
+companion page drafts in one proposal. Use batch keys such as `@paper` and `@topic`
+for new page relationships. Every exchange is preserved separately as provenance.
+
 To explain a saved view, read it with `view` and call `propose_explanation` with
 `blocks` that cite its evidence keys, and `limitations`.
 

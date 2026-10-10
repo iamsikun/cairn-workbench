@@ -11,6 +11,7 @@ from cairn.library.models import Journal, LibraryConfig, Paper, ScanReport
 from cairn.library.store import LibraryTransaction
 from cairn.policies.audit import PolicyChange, RouteAudit, RouteRequest
 from cairn.policies.models import Policy, RouteGrant, Scope
+from cairn.presentation.live import Rendering
 from cairn.presentation.models import (
     PaperSummary,
     RenderJob,
@@ -25,6 +26,7 @@ from cairn.presentation.writing_models import (
     Feedback,
     FeedbackReceipt,
     PageAnswer,
+    PageDraft,
     QuillPacket,
     QuillReceipt,
     QuillResponse,
@@ -37,6 +39,7 @@ from cairn.reading.models import (
     FinchPacket,
     FinchReceipt,
     FinchResponse,
+    NotebookPlan,
     ReadingAnswer,
 )
 from cairn.records.continuity import ContextPack, SessionReceipt
@@ -60,6 +63,7 @@ from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2
         ViewBundle,
         ViewDocument,
         RenderJob,
+        Rendering,
         ReviewReport,
         WritingJob,
         ExplanationResponse,
@@ -76,6 +80,8 @@ from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2
         FinchResponse,
         ReadingAnswer,
         PageAnswer,
+        PageDraft,
+        NotebookPlan,
         ExplanationAnswer,
         PaperSummary,
         FeedDigest,

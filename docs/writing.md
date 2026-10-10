@@ -58,7 +58,7 @@ cairn accept --all
 
 `cairn accept` runs these steps for each proposal:
 
-1. It prints each proposal's titles, paths and review flags.
+1. It prints each proposal's titles, paths, compact diffs, evidence and review flags.
 2. It asks you to type `accept` at your terminal, once for the whole batch. There is
    no `--yes`: an agent's shell has no terminal and cannot accept for you.
 3. It validates, approves (acknowledging the shown flags with your statement, by

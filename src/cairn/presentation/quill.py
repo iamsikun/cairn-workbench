@@ -118,6 +118,9 @@ def begin(
     request_labels: Labels | None = None,
     attempt: str | None = None,
     selected_refs: set[tuple[str, str]] | None = None,
+    related_ids: list[str] | None = None,
+    project_ids: list[str] | None = None,
+    aliases: list[str] | None = None,
 ) -> dict[str, str]:
     """Seal and export one writing packet; no canonical content changes."""
     feedback = None
@@ -151,7 +154,12 @@ def begin(
                 raise Denied("sources and owner catalog metadata are immutable")
             inputs[path] = digest(ws.fs.read(path))
             target = Page(record=record, body=body)
-        selected = list(dict.fromkeys(from_ids or []))
+        selected = list(
+            dict.fromkeys([*(from_ids or []), *(related_ids or []), *(project_ids or [])])
+        )
+        for key in project_ids or []:
+            if ws.record(key, scope)[1].type != "project":
+                raise Denied("project_ids must name projects")
         if feedback is not None:
             selected.append(feedback.source_id)
         evidence: list[QuillEvidence] = []
@@ -208,6 +216,9 @@ def begin(
             destination=destination,
             guidance_hash=digest(text.encode()),
             attempt=attempt,
+            related_ids=related_ids,
+            project_ids=project_ids,
+            aliases=aliases,
         )
         if new is not None and new.domain not in scope.domains:
             raise Denied("new record domain is outside the writing scope")
@@ -299,38 +310,35 @@ def _record(
         for i, (claim, refs) in enumerate(zip(response.claims, cited, strict=True))
     ]
     refs = [ref for group in cited for ref in group]
-    timestamp = now()
-    if packet.target is not None:
-        old = packet.target.record
-        # Status, labels and existing assertions stay as the owner left them.
-        return Record.model_validate(
-            old.model_dump()
-            | {
-                "title": response.title or old.title,
-                "updated_at": max(timestamp, old.updated_at),
-                "sources": list({canonical(r): r for r in [*old.sources, *refs]}.values()),
-                "assertions": [*old.assertions, *assertions],
-            }
-        )
-    assert packet.new is not None
+    from cairn.presentation.pages import page_record
+
+    old = packet.target.record if packet.target else None
+    destination = old or packet.new
+    assert destination is not None
     classification, processing, compartments = _labels(packet)
-    return Record(
-        id=f"{packet.new.type}_quill_{suffix}",
-        type=packet.new.type,
-        title=response.title or packet.new.title,
-        domain=packet.new.domain,
-        classification=classification,
-        processing=processing,
-        compartments=compartments - {packet.new.domain},
-        created_at=timestamp,
-        updated_at=timestamp,
-        sources=list({canonical(r): r for r in [*refs, session]}.values()),
+    return page_record(
+        old=old,
+        record_id=old.id if old else f"{destination.type}_quill_{suffix}",
+        record_type=destination.type,
+        title=response.title or destination.title,
+        labels=Labels(
+            domain=destination.domain,
+            classification=classification,
+            processing=processing,
+            compartments=compartments - {destination.domain},
+        ),
+        at=now(),
+        sources=[*refs, session],
         assertions=assertions,
+        related=packet.related_ids,
         project_ids=_projects(packet),
+        aliases=packet.aliases,
     )
 
 
 def _projects(packet: QuillPacket) -> list[str]:
+    if packet.project_ids is not None:
+        return packet.project_ids
     if packet.target:
         return packet.target.record.project_ids
     return sorted(
@@ -387,6 +395,9 @@ def submit(
         selected_refs={
             (ref.source_id, ref.locator) for claim in answer.claims for ref in claim.sources
         },
+        related_ids=answer.related,
+        project_ids=answer.project_ids,
+        aliases=answer.aliases,
     )
     with ws.lock():
         packet = load_packet(ws, sealed["packet_id"])

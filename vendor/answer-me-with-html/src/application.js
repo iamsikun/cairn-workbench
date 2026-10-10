@@ -1,6 +1,6 @@
-// A data-only application profile. It never parses Markdown, reads source files,
-// consults user settings, or fetches assets. The ordinary authoring CLI is unchanged.
+// A data-only application profile. Markdown cannot execute HTML or fetch assets.
 import { createHash } from 'node:crypto';
+import { Marked } from 'marked';
 import { esc } from './svg/text.js';
 
 const sha = s => createHash('sha256').update(s).digest('hex');
@@ -14,6 +14,16 @@ function url(s) {
   if (!['https:', 'http:'].includes(u.protocol) || u.username || u.password) throw Error('Invalid citation URL');
   return esc(u.href);
 }
+const markdown = new Marked({gfm: true, renderer: {
+  html({text: value}) { return text(value); },
+  image({text: value}) { return text(value); },
+  link({href, tokens}) {
+    const label = this.parser.parseInline(tokens);
+    if (/^#[a-z][a-z0-9_]{2,95}$/.test(href)) return `<a href="${href}">${label}</a>`;
+    try { return `<a rel="noreferrer noopener" href="${url(href)}">${label}</a>`; }
+    catch { return label; }
+  },
+}});
 function runtime() {
   const filter = document.querySelector('#filter');
   filter.addEventListener('input', () => {
@@ -72,13 +82,15 @@ export function renderApplication(doc, {interactions = true, embedSource = false
     assets.set(a.id, `data:${a.mime};base64,${a.data}`);
   }
   const blocks = doc.sections.map(s => `<section><h2>${text(s.title)}</h2>${s.blocks.map(b => {
-    if (!['text', 'quote', 'code', 'diagram'].includes(b.kind)) throw Error('Unknown application block');
+    if (!['text', 'quote', 'code', 'diagram', 'markdown'].includes(b.kind)) throw Error('Unknown application block');
+    if (b.anchor && !id(b.anchor)) throw Error('Invalid block anchor');
     const citations = b.citations.map(k => { if (!refs.has(k)) throw Error('Unknown citation'); return `<a href="#${k}">Evidence ${[...refs].indexOf(k) + 1}</a>`; }).join('');
     if (b.asset_id && !assets.has(b.asset_id)) throw Error('Unknown asset');
     const asset = b.asset_id ? `<img alt="${text(b.title)}" src="${assets.get(b.asset_id)}">` : '';
-    const body = b.kind === 'code' ? `<pre><code>${text(b.text)}</code></pre>` : b.kind === 'quote' ? `<blockquote>${text(b.text)}</blockquote>` : `<p style="white-space:pre-wrap">${text(b.text)}</p>`;
+    text(b.text);
+    const body = b.kind === 'markdown' ? markdown.parse(b.text) : b.kind === 'code' ? `<pre><code>${text(b.text)}</code></pre>` : b.kind === 'quote' ? `<blockquote>${text(b.text)}</blockquote>` : `<p style="white-space:pre-wrap">${text(b.text)}</p>`;
     const diagram = b.kind === 'diagram' ? `<figure class="diagram">${interactions ? '<button type="button" aria-expanded="false">Expand diagram</button>' : ''}<ol>${b.nodes.map(n=>`<li>${text(n)}</li>`).join('')}</ol><figcaption>${text(b.title)}</figcaption></figure>` : '';
-    return `<article><h3>${text(b.title)}</h3><div class="labels">${b.labels.map(l => `<span>${text(l)}</span>`).join('')}</div>${body}${asset}${diagram}<div class="citations">${citations}${b.url ? `<a rel="noreferrer noopener" href="${url(b.url)}">Publication</a>` : ''}</div></article>`;
+    return `<article${b.anchor ? ` id="${b.anchor}"` : ''}><h3>${text(b.title)}</h3><div class="labels">${b.labels.map(l => `<span>${text(l)}</span>`).join('')}</div>${body}${asset}${diagram}<div class="citations">${citations}${b.url ? `<a rel="noreferrer noopener" href="${url(b.url)}">Publication</a>` : ''}</div></article>`;
   }).join('')}</section>`).join('');
   const evidence = doc.evidence.map(e => `<details id="${e.key}"><summary>${text(e.title)} — ${text(e.reference.locator)}</summary><p class="subtle">${text(e.reference.id)} · Date: ${text(e.source_date || 'unknown')} · Version: ${text(e.version || 'unknown')} · Coverage: ${text(e.coverage)}</p><p>Tables inspected: ${!!e.tables_inspected}; images inspected: ${!!e.images_inspected}</p><blockquote>${text(e.text)}</blockquote><p>${text(e.support)}</p><pre>Source SHA256: ${text(e.reference.source_hash)}\nEvidence SHA256: ${text(e.reference.evidence_hash)}</pre></details>`).join('');
   if (doc.targets.some(k => !id(k))) throw Error('Invalid feedback target');

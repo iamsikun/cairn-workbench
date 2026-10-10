@@ -13,6 +13,17 @@ a `reported_result` (needs `sources`), `inference` or `hypothesis`; a source nam
 that locator. Do not set status, labels, record IDs, approval or actor fields; Cairn
 formats the record and keeps every claim unreviewed.
 
+Use `related` for connections to visible pages, `project_ids` for validated project
+membership, and `aliases` for search terms. Omitted fields preserve existing values
+on revision. Topic notebooks are concept pages, with Markdown as the source of truth.
+Use `page` links and backlinks (including assertion citations) and `search` to find
+existing topics before proposing another one.
+
+Only on explicit request for HTML, call `view` with `record_id` and `format: "html"`.
+The owner must configure `--html-root`. Do not write HTML or canonical Markdown
+directly from the agent shell. Accepted changes refresh registered HTML; ordinary
+reads and proposals do not create first-time HTML. Report a blocked render honestly.
+
 For a view explanation (`propose_explanation`): cite the view's evidence `key`s; a
 `reported_result` block needs at least one, and quotes must be exact text of that
 evidence. The explanation stays generated and unreviewed.

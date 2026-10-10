@@ -16,6 +16,8 @@ from cairn.presentation.models import (
     EvidenceItem,
     EvidencePayload,
     FeedPayload,
+    PageEntry,
+    PagePayload,
     PaperPayload,
     Payload,
     ProjectPayload,
@@ -82,6 +84,7 @@ def assemble(
     budget: int = 8000,
     repository_root: Path | None = None,
     question_labels: Labels | None = None,
+    cloud_route: tuple[str, str] | None = None,
 ) -> ViewBundle:
     with ws.lock():
         if kind == "proposal":
@@ -96,7 +99,50 @@ def assemble(
     payload: Payload
     review_hash = None
     title = "Cairn " + kind
-    if kind == "project":
+    if kind == "page":
+        with ws.lock():
+            effective = ws.policy.scope(scope)
+            if cloud_route:
+                from cairn.retrieval.search import authorized_scope
+
+                effective = authorized_scope(ws, scope, *cloud_route)
+            _, root, body = ws.record(object_id or "", effective)
+            if root.type == "source":
+                raise Denied("page views require a canonical note or notebook")
+            entries = [PageEntry(record=root, markdown=body)]
+            topics = {}
+            visible = {r.id: (r, body) for _, r, body in ws.records(effective)}
+            for entry in entries:
+                entry.record = entry.record.model_copy(
+                    update={
+                        "related": [k for k in entry.record.related if k in visible],
+                        "project_ids": [k for k in entry.record.project_ids if k in visible],
+                    }
+                )
+            for key in root.related:
+                if key not in visible:
+                    continue
+                linked, body = visible[key]
+                if linked.primary_source_id:
+                    if linked.primary_source_id not in visible:
+                        continue
+                    linked = linked.model_copy(
+                        update={
+                            "related": [k for k in linked.related if k in visible],
+                            "project_ids": [k for k in linked.project_ids if k in visible],
+                        }
+                    )
+                    entries.append(PageEntry(record=linked, markdown=body))
+                else:
+                    topics[key] = linked.title
+                selected.add(key)
+            selected.update(e.record.id for e in entries)
+            selected.update(
+                e.record.primary_source_id for e in entries if e.record.primary_source_id
+            )
+            payload = PagePayload(pages=entries, topics=topics)
+            title = root.title
+    elif kind == "project":
         pack = context_pack(
             ws,
             object_id or "",
@@ -201,9 +247,14 @@ def assemble(
         if isinstance(payload, QueryPayload):
             payload.assertions = {r.id: r.assertions for r in records.values() if r.assertions}
         if isinstance(payload, ProjectPayload):
-            visible = {item.id for items in payload.context.sections.values() for item in items}
+            visible_items = {
+                item.id for items in payload.context.sections.values() for item in items
+            }
             payload.assertion_kinds = {
-                a.id: a.kind for r in records.values() for a in r.assertions if a.id in visible
+                a.id: a.kind
+                for r in records.values()
+                for a in r.assertions
+                if a.id in visible_items
             }
         evidence = []
         for ref in {canonical(r): r for r in refs}.values():
@@ -281,6 +332,16 @@ def assemble(
             provider="cairn-view-v1",
             operation="context",
         )
+        if cloud_route:
+            ws.policy.authorize_route(
+                effective,
+                list(records.values()),
+                route="cloud",
+                provider=cloud_route[0],
+                destination=cloud_route[1],
+                operation="client_export",
+                question=Labels(domain=sorted(effective.domains)[0], processing="cloud_eligible"),
+            )
         bundle.id = identity(bundle)
         return bundle
 

@@ -186,6 +186,7 @@ class Record(Labels):
     assertions: list[Assertion] = Field(default_factory=list)
     related: list[ID] = Field(default_factory=list)
     project_ids: list[ID] = Field(default_factory=list)
+    primary_source_id: ID | None = Field(default=None, exclude_if=lambda value: value is None)
     period: Period | None = None
     source: SourceMetadata | None = None
     sections: dict[str, str] = Field(default_factory=dict)
@@ -204,6 +205,8 @@ class Record(Labels):
 
     @model_validator(mode="after")
     def consistent(self) -> Record:
+        if self.primary_source_id is not None and self.type != "concept":
+            raise ValueError("only concept notes can bind a primary paper source")
         if "cairn_library_v1" in self.sections:
             from cairn.library.models import metadata
 

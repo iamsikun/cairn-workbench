@@ -1326,6 +1326,58 @@
       "title": "Page",
       "type": "object"
     },
+    "PageEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "markdown": {
+          "maxLength": 200000,
+          "title": "Markdown",
+          "type": "string"
+        },
+        "record": {
+          "$ref": "#/$defs/Record"
+        }
+      },
+      "required": [
+        "record",
+        "markdown"
+      ],
+      "title": "PageEntry",
+      "type": "object"
+    },
+    "PagePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "page",
+          "default": "page",
+          "title": "Kind",
+          "type": "string"
+        },
+        "pages": {
+          "items": {
+            "$ref": "#/$defs/PageEntry"
+          },
+          "title": "Pages",
+          "type": "array"
+        },
+        "topics": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_]{2,95}$": {
+              "type": "string"
+            }
+          },
+          "title": "Topics",
+          "type": "object"
+        }
+      },
+      "required": [
+        "pages",
+        "topics"
+      ],
+      "title": "PagePayload",
+      "type": "object"
+    },
     "PaperClaim": {
       "additionalProperties": false,
       "properties": {
@@ -1792,6 +1844,19 @@
             }
           ],
           "default": null
+        },
+        "primary_source_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{2,95}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Primary Source Id"
         },
         "processing": {
           "default": "local_only",
@@ -2481,6 +2546,7 @@
               "catalog": "#/$defs/CatalogPayload",
               "evidence": "#/$defs/EvidencePayload",
               "feed": "#/$defs/FeedPayload",
+              "page": "#/$defs/PagePayload",
               "paper": "#/$defs/PaperPayload",
               "project": "#/$defs/ProjectPayload",
               "proposal": "#/$defs/ProposalPayload",
@@ -2509,6 +2575,9 @@
             },
             {
               "$ref": "#/$defs/FeedPayload"
+            },
+            {
+              "$ref": "#/$defs/PagePayload"
             }
           ],
           "title": "Payload"

@@ -30,7 +30,7 @@ from cairn import __version__
 from cairn.adapters.protocol import Candidate
 from cairn.errors import CairnError, Denied
 from cairn.policies.models import Operation, Scope
-from cairn.presentation.writing_models import ExplanationAnswer, NewTarget, PageAnswer
+from cairn.presentation.writing_models import ExplanationAnswer, NewTarget, PageAnswer, PageDraft
 from cairn.reading.models import ReadingAnswer
 from cairn.records.models import ID, Labels, Model, canonical, digest, new_id, now
 from cairn.storage.files import disjoint
@@ -69,6 +69,7 @@ class Session:
     capture_root: Path | None = None
     capture_labels: Labels | None = None
     inline_synthetic: bool = False
+    html_root: Path | None = None
 
 
 class Search(Model):
@@ -93,7 +94,9 @@ class Context(Model):
 
 
 class ViewShow(Model):
-    view_id: ID
+    view_id: ID | None = None
+    record_id: ID | None = None
+    format: Literal["json", "html"] = "json"
 
 
 class FeedbackShow(Model):
@@ -120,7 +123,10 @@ class ProposeReading(ReadingAnswer):
     request: str = Field(
         default="Read and explain the selected paper.", min_length=1, max_length=20000
     )
-    related: list[ID] = Field(default_factory=list, max_length=20)
+    related: list[str] | None = Field(default=None, max_length=20)
+    target: ID | None = None
+    base_hash: str | None = None
+    pages: list[PageDraft] = Field(default_factory=list, max_length=19)
 
 
 class ProposePage(PageAnswer):
@@ -233,6 +239,10 @@ def evidence(session: Session, args: Evidence) -> Any:
     ws = _workspace(session)
     _, report = evidence_report(ws, args.source_id, scope_name=session.scope, locator=args.locator)
     _authorize(session, ws, [report["source"]], "query")
+    from cairn.reading.notebook import notes
+
+    with ws.lock():
+        report["paper_notes"] = notes(ws, args.source_id, cloud_scope(session, ws))
     return _released(session, ws, report)
 
 
@@ -241,7 +251,34 @@ def page(session: Session, args: PageShow) -> Any:
     with ws.lock():
         path, record, body = ws.record(args.record_id, ws.policy.scope(session.scope))
         _authorize(session, ws, [record], "query")
-        value = {"record": record, "body": body, "base_hash": digest(ws.fs.read(path))}
+        from cairn.proposals.service import all_refs
+
+        visible = {r.id: r for _, r, _ in ws.records(cloud_scope(session, ws))}
+        if record.id not in visible:
+            raise Denied("page unavailable for this route")
+        if any(ref.id not in visible for ref in all_refs(record)):
+            raise Denied("page evidence unavailable for this route")
+        linked = {*record.related, *record.project_ids, *(ref.id for ref in all_refs(record))}
+        safe = record.model_copy(
+            update={
+                "related": [key for key in record.related if key in visible],
+                "project_ids": [key for key in record.project_ids if key in visible],
+            }
+        )
+        value = {
+            "record": safe,
+            "body": body,
+            "base_hash": digest(ws.fs.read(path)),
+            "links": [
+                {"id": key, "title": visible[key].title} for key in sorted(linked) if key in visible
+            ],
+            "backlinks": [
+                {"id": r.id, "title": r.title}
+                for r in visible.values()
+                if record.id in {*r.related, *r.project_ids, *(ref.id for ref in all_refs(r))}
+                and all(ref.id in visible for ref in all_refs(r))
+            ],
+        }
     return _released(session, ws, value)
 
 
@@ -267,6 +304,34 @@ def view(session: Session, args: ViewShow) -> Any:
     from cairn.presentation.service import load_view
 
     ws = _workspace(session)
+    if bool(args.view_id) == bool(args.record_id):
+        raise Denied("select exactly one saved view or canonical record")
+    if args.record_id:
+        if args.format != "html" or session.html_root is None:
+            raise Denied("canonical HTML needs explicit format html and an owner-set --html-root")
+        from cairn.presentation.live import render_page
+
+        result = render_page(
+            ws,
+            args.record_id,
+            session.scope,
+            session.html_root / session.scope / f"{args.record_id}.html",
+            route=(session.provider, session.destination),
+            inline_synthetic=session.inline_synthetic,
+        )
+        return _released(
+            session,
+            ws,
+            {
+                "path": result.output,
+                "sha256": result.checksum,
+                "record_id": result.record_id,
+                "status": result.status,
+            },
+        )
+    if args.format != "json":
+        raise Denied("saved review views retain snapshot behavior; request a canonical record")
+    assert args.view_id is not None
     bundle = load_view(ws, args.view_id)
     if bundle.scope != session.scope:
         raise Denied("view unavailable in this scope")
@@ -355,13 +420,21 @@ def pending(session: Session, args: Pending) -> Any:
                 job = load_job(ws, proposal.job_id).job
                 if job.scope_name != session.scope:
                     return False
+                from cairn.proposals.service import all_refs
+
+                inputs = [job.source, *(p.record for p in job.related)]
+                changes = [decode(c.content.encode())[0] for c in proposal.changes]
+                current_ids = {r.id for r in inputs}
+                current_ids.update(ref.id for r in [*inputs, *changes] for ref in all_refs(r))
+                current_ids.update(c.id for c in proposal.changes if c.base_hash)
+                current = [ws.record(key, ws.policy.scope(session.scope))[1] for key in current_ids]
                 _authorize(
                     session,
                     ws,
                     [
-                        job.source,
-                        *(p.record for p in job.related),
-                        *(decode(c.content.encode())[0] for c in proposal.changes),
+                        *inputs,
+                        *changes,
+                        *current,
                     ],
                     "query",
                 )
@@ -405,6 +478,9 @@ def propose_reading(session: Session, args: ProposeReading) -> Any:
         destination=session.destination,
         related_ids=args.related,
         inline_synthetic=session.inline_synthetic,
+        target=args.target,
+        base_hash=args.base_hash,
+        pages=args.pages,
     )
     return receipt.model_dump(mode="json") | {"next": "owner review (cairn inbox)"}
 
@@ -507,7 +583,14 @@ def _tools() -> dict[str, Tool]:
             context,
             True,
         ),
-        Tool("view", "A saved view's document and evidence keys.", ViewShow, view, True),
+        Tool(
+            "view",
+            "Read a saved view, or explicitly render a canonical record as tracked HTML. "
+            "Use record_id and format=html; the owner must configure --html-root.",
+            ViewShow,
+            view,
+            False,
+        ),
         Tool("feedback", "Imported feedback on a view's pages.", FeedbackShow, feedback, True),
         Tool(
             "capture",
@@ -661,6 +744,10 @@ def check_session(session: Session) -> None:
         raise Denied("file capture needs both a capture root and capture labels")
     if session.capture_root is not None and not disjoint(session.capture_root, ws.root):
         raise Denied("the capture root must be outside the knowledge base")
+    if session.html_root is not None:
+        from cairn.presentation.live import safe_destination
+
+        safe_destination(ws, session.html_root.absolute())
 
 
 def serve(session: Session, stdin: IO[bytes], stdout: IO[bytes]) -> None:
