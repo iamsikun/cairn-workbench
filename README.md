@@ -13,7 +13,7 @@ and is never committed. The Python package and the command are both named `cairn
 
 ## Status
 
-The current release is 0.1.1 on the `stable` channel. Reference acceptance for
+The current release is 0.2.0 on the `stable` channel. Reference acceptance for
 milestones M0–M3 is complete and recorded in [acceptance tracking](docs/acceptance.md),
 measured against the [build plan](CAIRN_BUILD_PLAN.md). All of that evidence comes from
 synthetic data; see also the [evaluation report](docs/evaluation.md) and

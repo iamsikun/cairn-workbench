@@ -9,10 +9,11 @@ increases.
 - **Minor** releases add commands, workflows or guidance.
 - **Patch** releases fix defects without changing behavior otherwise.
 
-## Unreleased
+## 0.2.0 — 2026-10-10
 
-This is a major change (removed commands, changed agent boundary); it is not yet
-released or versioned.
+This release removes commands and changes the agent boundary; read it before
+upgrading. Upgrading from 0.1.x needs one manual step: run `uv run cairn update run`
+from an up-to-date checkout (see `docs/updates.md`).
 
 - **Agent interface.** New `cairn mcp`: a local stdio MCP server for Claude Code, Codex
   or Cursor. Read tools (search, evidence, page, context, view, feedback, capture,
