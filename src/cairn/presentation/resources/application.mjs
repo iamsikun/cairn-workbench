@@ -57,13 +57,13 @@ function runtime() {
     e.preventDefault();
     const comment = form.elements.comment.value.trim();
     if (!comment) return;
-    const data2 = {
+    const data = {
       schema_version: 1,
       bundle_id: form.dataset.bundle,
       bundle_hash: form.dataset.hash,
       entries: [{ target_id: form.elements.target.value, comment, suggested_text: form.elements.suggestion.value || null }]
     };
-    const blob = new Blob([JSON.stringify(data2, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const href = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = href;
@@ -120,13 +120,15 @@ Evidence SHA256: ${text(e.reference.evidence_hash)}</pre></details>`).join("");
 }
 
 // bin/application.js
-var data = "";
+var chunks = [];
+var size = 0;
 try {
   for await (const chunk of process.stdin) {
-    data += chunk;
-    if (Buffer.byteLength(data) > 32 * 1024 * 1024) throw Error("Input budget exceeded");
+    size += chunk.length;
+    if (size > 32 * 1024 * 1024) throw Error("Input budget exceeded");
+    chunks.push(chunk);
   }
-  const document2 = JSON.parse(data);
+  const document2 = JSON.parse(Buffer.concat(chunks).toString("utf8"));
   process.stdout.write(renderApplication(document2));
 } catch {
   process.stderr.write("Application renderer rejected input\n");

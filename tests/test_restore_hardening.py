@@ -222,3 +222,22 @@ def test_restore_staging_marker_blocks_open(ws: Workspace) -> None:
     ws.fs.write("restore.pending", b"synthetic interrupted restore")
     with pytest.raises(RecoveryRequired, match="workspace staging"):
         Workspace(ws.root)
+
+
+def test_history_accepts_case_insensitive_filesystem_profile(ws: Workspace) -> None:
+    # Git adds these keys by default on macOS APFS; history must still work there.
+    snapshot(ws, "Synthetic initial history")
+    ws.fs.write(
+        "history.git/config",
+        b"[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n\tbare = true\n"
+        b"\tignorecase = true\n\tprecomposeunicode = true\n",
+    )
+    ws.fs.write("vault/notes/synthetic-apfs.md", b"Synthetic APFS note\n")
+    assert snapshot(ws, "Synthetic case-insensitive history")
+    for unsafe in (b"\tignorecase = false\n", b"\tsshcommand = touch /tmp/x\n"):
+        ws.fs.write(
+            "history.git/config",
+            b"[core]\nrepositoryformatversion=0\nfilemode=true\nbare=true\n" + unsafe,
+        )
+        with pytest.raises(Denied, match="history configuration"):
+            snapshot(ws, "Reject unexpected settings")

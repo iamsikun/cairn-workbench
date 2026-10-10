@@ -13,8 +13,16 @@ def check_history_config(data: bytes) -> None:
         parser.read_string(data.decode("utf-8"))
     except (ValueError, configparser.Error) as exc:
         raise Denied("unsupported local history configuration") from exc
-    allowed = {"repositoryformatversion": "0", "filemode": "true", "bare": "true"}
-    if parser.defaults() or parser.sections() != ["core"] or dict(parser["core"]) != allowed:
+    required = {"repositoryformatversion": "0", "filemode": "true", "bare": "true"}
+    # Git writes these on case-insensitive or Unicode-normalizing filesystems such as
+    # default macOS APFS. They change path matching only, never execution.
+    optional = {"ignorecase": "true", "precomposeunicode": "true"}
+    if parser.defaults() or parser.sections() != ["core"]:
+        raise Denied("history configuration must use Cairn's local bare repository profile")
+    core = dict(parser["core"])
+    if any(core.get(key) != value for key, value in required.items()) or any(
+        optional.get(key) != value for key, value in core.items() if key not in required
+    ):
         raise Denied("history configuration must use Cairn's local bare repository profile")
 
 

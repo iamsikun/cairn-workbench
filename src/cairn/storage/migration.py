@@ -292,11 +292,15 @@ def recover(ws: Workspace) -> list[MigrationReceipt]:
 
     with ws.lock(write=True, recovery=True):
         # A schema migration is never allowed to overlap a synthesis transaction.
+        from cairn.library.store import LibraryTransaction
         from cairn.transactions.apply import Transaction
 
         for path in ws.fs.files("journal"):
-            tx = Transaction.model_validate(read_json(ws.fs.read(path)))
-            if tx.status == "prepared":
+            if not path.endswith("/transaction.json"):
+                continue
+            data = read_json(ws.fs.read(path))
+            model = LibraryTransaction if data.get("kind") == "library" else Transaction
+            if model.model_validate(data).status == "prepared":
                 raise RecoveryRequired("recover the synthesis transaction before schema migration")
         journals = validate_migrations(durable_contents(ws), ws.config.id, allow_pending=True)
         pending = [(auth, tx) for auth, tx in journals.values() if tx.status == "prepared"]

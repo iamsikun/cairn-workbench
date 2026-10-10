@@ -158,6 +158,42 @@ def test_stale_wiki_update_cannot_overwrite_owner_edit(ws: Workspace, tmp_path: 
     assert ws.fs.read(target) == owner_bytes
 
 
+def test_edit_after_validation_is_rejected_before_journaling(
+    ws: Workspace, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import cairn.transactions.apply as transactions
+
+    target = next(iter(apply(ws, approved(ws, tmp_path)).files))
+    source_id = capture(ws, tmp_path / "paper.txt", domain="research").id
+    envelope = prepare_job(ws, source_id, scope_name="research", related_ids=[])
+    result = FakeProvider().generate(envelope.job)
+    result.candidates[0].body += "\nProposed extension.\n"
+    proposal = stage_result(ws, result)
+    assert proposal
+    approve(ws, proposal.id, acknowledgements=proposal.review_flags, statement="Synthetic review")
+    record, _ = decode(ws.fs.read(target))
+    owner_bytes = encode(record, "Written by an editor that ignores the writer lock.\n")
+    original = transactions.validate_unlocked
+
+    def validate_then_edit(*args: object, **kwargs: object) -> object:
+        envelope = original(*args, **kwargs)  # type: ignore[arg-type]
+        ws.fs.write(target, owner_bytes)
+        return envelope
+
+    journals = set(ws.fs.files("journal"))
+    with monkeypatch.context() as patch:
+        patch.setattr(transactions, "validate_unlocked", validate_then_edit)
+        with pytest.raises(Conflict, match="changed after validation"):
+            apply(ws, proposal.id)
+    assert ws.fs.read(target) == owner_bytes
+    assert set(ws.fs.files("journal")) == journals
+    # The workspace is not wedged: recovery has nothing to do and the stale proposal
+    # is rejected by ordinary validation.
+    assert recover(ws) == []
+    with pytest.raises(Conflict, match="stale"):
+        apply(ws, proposal.id)
+
+
 def test_index_failure_leaves_durable_apply_and_retries(
     ws: Workspace, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

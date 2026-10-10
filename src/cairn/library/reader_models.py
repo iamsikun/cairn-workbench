@@ -6,6 +6,10 @@ from pydantic import Field, model_validator
 from cairn.records.models import ID, Digest, Extraction, Model
 from cairn.records.runtime import ImageID, ProbeResult
 
+# Shared by the device reader and the owner-side text check.
+VISUAL_ONLY = "[Visual evidence; no extracted text]"
+PAGE_TEXT_BUDGET = 12000
+
 
 class DeviceProbe(Model):
     nonce: str

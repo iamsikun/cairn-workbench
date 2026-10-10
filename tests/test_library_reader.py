@@ -1,7 +1,10 @@
+import io
 import json
 from pathlib import Path
 
+import pypdf
 import pytest
+from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 from test_library_catalog import library, pdf
 
 from cairn.errors import Blocked, Conflict, Denied
@@ -54,9 +57,35 @@ def enrolled(ws: Workspace) -> DeviceConfig:
     return enroll(ws, config, probe)
 
 
-def setup(ws: Workspace, tmp_path: Path) -> tuple[str, DeviceConfig]:
+PAGE_TEXT = "Synthetic result: four examples."
+
+
+def text_pdf(text: str = PAGE_TEXT) -> bytes:
+    """A one-page synthetic PDF whose deterministic text extraction is ``text``."""
+    writer = pypdf.PdfWriter()
+    page = writer.add_blank_page(width=300, height=100)
+    font = DictionaryObject(
+        {
+            NameObject("/Type"): NameObject("/Font"),
+            NameObject("/Subtype"): NameObject("/Type1"),
+            NameObject("/BaseFont"): NameObject("/Helvetica"),
+        }
+    )
+    page[NameObject("/Resources")] = DictionaryObject(
+        {NameObject("/Font"): DictionaryObject({NameObject("/F1"): writer._add_object(font)})}
+    )
+    content = DecodedStreamObject()
+    content.set_data(f"BT /F1 10 Tf 10 50 Td ({text}) Tj ET".encode())
+    page[NameObject("/Contents")] = writer._add_object(content)
+    writer.add_metadata({"/Title": "Synthetic paper", "/Author": "A. Example"})
+    out = io.BytesIO()
+    writer.write(out)
+    return out.getvalue()
+
+
+def setup(ws: Workspace, tmp_path: Path, data: bytes | None = None) -> tuple[str, DeviceConfig]:
     root = library(ws, tmp_path)
-    (root / "Example Journal" / "a.pdf").write_bytes(pdf())
+    (root / "Example Journal" / "a.pdf").write_bytes(text_pdf() if data is None else data)
     return scan(ws).added[0], enrolled(ws)
 
 
@@ -73,7 +102,7 @@ def response(config: DeviceConfig, packet: bytes) -> bytes:
                 method="synthetic",
                 method_version="1",
                 coverage="full_text",
-                segments=[Segment(locator="page 1", text="Synthetic result: four examples.")],
+                segments=[Segment(locator="page 1", text=PAGE_TEXT)],
             ),
             summary=PaperSummary(
                 summary="Synthetic reading",
@@ -146,8 +175,44 @@ def test_fabricated_quote_rejected(ws: Workspace, tmp_path: Path) -> None:
     assert run(ws, state.job.id, transport=fabricated).status == "failed"
 
 
-def test_worker_visual_scans_and_bad_references(ws: Workspace, tmp_path: Path) -> None:
+def test_device_text_must_match_owner_extraction(ws: Workspace, tmp_path: Path) -> None:
+    # A device that invents page text and quotes it consistently passes its own
+    # result validation; only the owner-side deterministic comparison catches it.
     paper_id, device = setup(ws, tmp_path)
+    state = enqueue(ws, paper_id, device.id)
+
+    def invented(config: DeviceConfig, packet: bytes) -> bytes:
+        data = json.loads(response(config, packet))
+        data["extraction"]["segments"][0]["text"] = "Synthetic effect is significant."
+        data["summary"]["findings"][0]["quote"] = "effect is significant"
+        return canonical(data)
+
+    failed = run(ws, state.job.id, transport=invented)
+    assert failed.status == "failed"
+    assert not failed.proposal_id
+    assert run(ws, state.job.id, retry=True, transport=response).status == "completed"
+
+
+def test_device_cannot_understate_page_count(ws: Workspace, tmp_path: Path) -> None:
+    writer = pypdf.PdfWriter()
+    for text in ("Synthetic first page.", "Synthetic second page."):
+        writer.add_page(pypdf.PdfReader(io.BytesIO(text_pdf(text))).pages[0])
+    out = io.BytesIO()
+    writer.write(out)
+    paper_id, device = setup(ws, tmp_path, out.getvalue())
+    state = enqueue(ws, paper_id, device.id)
+
+    def one_page(config: DeviceConfig, packet: bytes) -> bytes:
+        data = json.loads(response(config, packet))
+        data["extraction"]["segments"][0]["text"] = "Synthetic first page."
+        data["summary"]["findings"][0]["quote"] = "first page"
+        return canonical(data)
+
+    assert run(ws, state.job.id, transport=one_page).status == "failed"
+
+
+def test_worker_visual_scans_and_bad_references(ws: Workspace, tmp_path: Path) -> None:
+    paper_id, device = setup(ws, tmp_path, pdf())
     job = enqueue(ws, paper_id, device.id).job
     with ws.lock():
         source = ws.record(job.source_id)[1]

@@ -226,6 +226,52 @@ def load_extraction(ws: Workspace, source: Record) -> tuple[Extraction, str]:
     return extraction, key
 
 
+def run_extraction_unlocked(
+    ws: Workspace,
+    source: Record,
+    data: bytes,
+    *,
+    scope_name: str,
+    inline_synthetic: bool = False,
+) -> Extraction:
+    """Deterministic extraction through the route check and isolated worker; no writes."""
+    from cairn.policies.audit import require_local_route_unlocked
+
+    assert source.source is not None
+    require_local_route_unlocked(
+        ws,
+        scope_name=scope_name,
+        records=[source],
+        operation="extraction",
+        provider="extract-v1",
+        payload_hash=digest(
+            canonical(
+                {
+                    "source": source,
+                    "raw_hash": digest(data),
+                    "worker_image": ws.config.worker_image,
+                }
+            )
+        ),
+    )
+    if inline_synthetic and ws.config.synthetic:
+        result = extract_bytes(source, data)
+    elif ws.config.worker_image:
+        job = {
+            "operation": "extract",
+            "source": source.model_dump(mode="json"),
+            "data": base64.b64encode(data).decode(),
+        }
+        result = Extraction.model_validate_json(
+            invoke_worker(ws.config.worker_image, canonical(job))
+        )
+    else:
+        raise Blocked("isolation_unavailable: configure a pinned worker image")
+    if result.source_id != source.id or result.source_hash != source.source.content_hash:
+        raise Conflict("worker returned evidence for another source")
+    return result
+
+
 def extract(
     ws: Workspace,
     source_id: str,
@@ -242,39 +288,9 @@ def extract(
         data = ws.fs.read(source.source.blob)
         attempt = new_id("attempt")
         try:
-            from cairn.policies.audit import require_local_route_unlocked
-
-            require_local_route_unlocked(
-                ws,
-                scope_name=scope_name,
-                records=[source],
-                operation="extraction",
-                provider="extract-v1",
-                payload_hash=digest(
-                    canonical(
-                        {
-                            "source": source,
-                            "raw_hash": digest(data),
-                            "worker_image": ws.config.worker_image,
-                        }
-                    )
-                ),
+            result = run_extraction_unlocked(
+                ws, source, data, scope_name=scope_name, inline_synthetic=inline_synthetic
             )
-            if inline_synthetic and ws.config.synthetic:
-                result = extract_bytes(source, data)
-            elif ws.config.worker_image:
-                job = {
-                    "operation": "extract",
-                    "source": source.model_dump(mode="json"),
-                    "data": base64.b64encode(data).decode(),
-                }
-                result = Extraction.model_validate_json(
-                    invoke_worker(ws.config.worker_image, canonical(job))
-                )
-            else:
-                raise Blocked("isolation_unavailable: configure a pinned worker image")
-            if result.source_id != source.id or result.source_hash != source.source.content_hash:
-                raise Conflict("worker returned evidence for another source")
             evidence_hash = digest(canonical(result))
             if not ws.fs.exists(f"evidence/{evidence_hash}.json"):
                 ws.fs.write(f"evidence/{evidence_hash}.json", canonical(result), exclusive=True)

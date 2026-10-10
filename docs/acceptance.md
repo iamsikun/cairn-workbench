@@ -1,5 +1,52 @@
 # Acceptance evidence
 
+## Review fixes: macOS history, recovery, reader evidence, renderer (2026-10-10)
+
+A code review found five defects; each fix has a regression test.
+
+- **macOS local history.** `git init --bare` on default APFS writes `ignorecase` and
+  `precomposeunicode`. The strict history profile rejected them, so after the first apply
+  history stayed pending and backup, migration and library snapshots failed. Exactly these
+  two keys with value `true` are now allowed. Test:
+  `test_history_accepts_case_insensitive_filesystem_profile`. The keys were observed with
+  Apple git on APFS. The test injects them into Linux containers; it does not run on a
+  native APFS volume.
+- **Migration recovery with library journals.** `schema recover` parsed library journals
+  as apply transactions and crashed. Test:
+  `test_migration_recovery_ignores_committed_library_journal`.
+- **Edit between validation and journaling.** Apply journaled the validated base hash, not
+  the bytes it read. A lock-ignoring editor could leave a prepared journal that could never
+  be recovered. Observed bytes are now checked before any journal write. Test:
+  `test_edit_after_validation_is_rejected_before_journaling`.
+- **Owner-device reader evidence.** Device page text became evidence after binding checks
+  alone. The owner now runs deterministic extraction (the isolated worker for PDFs) and
+  requires each page segment to match it. Understated page counts are rejected. Tests:
+  `test_device_text_must_match_owner_extraction`, `test_device_cannot_understate_page_count`.
+  The earlier synthetic fixture was a blank PDF paired with invented device text, so it
+  had passed only because of this defect.
+- **Renderer UTF-8 decoding.** Per-chunk decoding corrupted multi-byte characters past
+  64 KiB. Test: `test_large_non_ascii_view_is_not_corrupted`. It fails against the
+  previous bundle. The bundle was rebuilt twice in the offline renderer image and was
+  byte-identical; provenance was regenerated.
+
+Executed on revision `0ef37e3`:
+
+- `bash scripts/check.sh`: **290 passed**, ruff and strict mypy clean, both 13-check
+  isolation probes passed, installed worker trials passed, gold set 129/129.
+- `bash scripts/release_check.sh`: offline installation of 15 distributions passed.
+  Release manifest SHA256
+  `f4f9209d4028e58e4ad8a93079c237580cb4fea9fdefad80375d99534410665b`. Installed worker
+  image `sha256:0849d7f9c00250eab05792524ab6f1c5f866094f00bf3361e3d2c0cd06819961`
+  passed all 13 checks.
+- `bash scripts/check_html.sh`: passed. Renderer suite 0 failed; the 2 skips are the
+  known upstream cases. The repeat portable ZIP matched; `cairn-html.zip` SHA256
+  `6283611fde9177cc397856746d3a10726557fb5871308295048ba018b25e26b0`. Browser
+  screenshots were regenerated but not manually re-inspected in this pass.
+
+**Not addressed here:** macOS `F_FULLFSYNC` durability, the streaming-restore digest race,
+and lower-severity review findings. No private workspace, live device or deployment was
+used.
+
 ## Automatic Finch reading (2026-10-10; software checks passed, activation pending)
 
 The owner requested automatic Finch use for paper reading and automatic Cairn workflow

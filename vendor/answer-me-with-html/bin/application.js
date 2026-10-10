@@ -1,10 +1,13 @@
 import { renderApplication } from '../src/application.js';
-let data = '';
+// Decode once after collecting bytes: per-chunk decoding splits multi-byte characters.
+const chunks = [];
+let size = 0;
 try {
   for await (const chunk of process.stdin) {
-    data += chunk;
-    if (Buffer.byteLength(data) > 32 * 1024 * 1024) throw Error('Input budget exceeded');
+    size += chunk.length;
+    if (size > 32 * 1024 * 1024) throw Error('Input budget exceeded');
+    chunks.push(chunk);
   }
-  const document = JSON.parse(data);
+  const document = JSON.parse(Buffer.concat(chunks).toString('utf8'));
   process.stdout.write(renderApplication(document));
 } catch { process.stderr.write('Application renderer rejected input\n'); process.exitCode = 2; }

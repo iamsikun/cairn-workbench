@@ -379,3 +379,32 @@ def test_backup_rejects_changed_migration_receipt(ws: Workspace, tmp_path: Path)
     with pytest.raises(Conflict, match="receipt differs"):
         backup(ws, tmp_path / "invalid.zip")
     assert not (tmp_path / "invalid.zip").exists()
+
+
+def test_migration_recovery_ignores_committed_library_journal(
+    ws: Workspace, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from cairn.library.catalog import configure
+    from cairn.library.models import LibraryConfig
+
+    library_root = tmp_path / "synthetic-library"
+    library_root.mkdir()
+    configure(ws, LibraryConfig(root=str(library_root)))
+    ws = legacy(ws)
+    library_journals = [
+        path
+        for path in ws.fs.files("journal")
+        if json.loads(ws.fs.read(path)).get("kind") == "library"
+    ]
+    assert library_journals
+
+    def interrupt(_: Workspace, label: str) -> None:
+        if label == "migration:write:0":
+            raise OSError("synthetic loss of power")
+
+    with monkeypatch.context() as patch:
+        patch.setattr("cairn.storage.migration._crash", interrupt)
+        with pytest.raises(OSError):
+            migrate(ws, tmp_path)
+    assert len(recover(Workspace(ws.root))) == 1
+    assert Workspace(ws.root).config.schema_version == 2
