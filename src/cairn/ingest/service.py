@@ -126,37 +126,44 @@ def capture_bytes(
     with ws.lock(write=True):
         scope = ws.policy.scope(scope_name) if scope_name else None
         projects = [ws.record(project_id, scope)[1] for project_id in (project_ids or [])]
-        previous: list[str] = []
-        for _, existing, _ in ws.records():
-            meta = existing.source
-            if (
-                meta
-                and meta.identity == source_identity
-                and existing.domain == domain
-                and existing.classification == classification
-                and existing.processing == processing
-                and existing.compartments == (compartments or set())
-                and existing.project_ids == (project_ids or [])
-            ):
-                if meta.content_hash == checksum and meta.version == version:
-                    if scope:
-                        scope.require(existing)
-                    require_inheritance(existing, projects)
-                    if (
-                        meta.source_type != source_type
-                        or meta.source_date != source_date
-                        or meta.external_id != external_id
-                        or meta.citation_key != citation_key
-                        or meta.authors != (authors or [])
-                        or meta.bibliography != bibliography
-                        or meta.library_alias != library_alias
-                        or existing.period != period
-                    ):
-                        raise Conflict("source metadata changed for identical captured bytes")
-                    return existing
-                if version is not None and meta.version == version:
-                    raise Conflict("declared source version has different bytes")
-                previous.append(existing.id)
+        matches = [
+            (existing, meta)
+            for _, existing, _ in ws.records()
+            if (meta := existing.source) is not None
+            and meta.identity == source_identity
+            and existing.domain == domain
+            and existing.classification == classification
+            and existing.processing == processing
+            and existing.compartments == (compartments or set())
+            and sorted(existing.project_ids) == sorted(project_ids or [])
+        ]
+        superseded = {item for _, meta in matches for item in meta.supersedes}
+        heads = [(existing, meta) for existing, meta in matches if existing.id not in superseded]
+        latest = max(heads, key=lambda pair: pair[1].captured_at)[0] if heads else None
+        for existing, meta in matches:
+            if meta.content_hash == checksum and meta.version == version:
+                if version is None and latest is not None and existing.id != latest.id:
+                    # Unversioned bytes reverted to an earlier version: record a new head
+                    # so lineage shows the revert instead of leaving the revision current.
+                    continue
+                if scope:
+                    scope.require(existing)
+                require_inheritance(existing, projects)
+                if (
+                    meta.source_type != source_type
+                    or meta.source_date != source_date
+                    or meta.external_id != external_id
+                    or meta.citation_key != citation_key
+                    or meta.authors != (authors or [])
+                    or meta.bibliography != bibliography
+                    or meta.library_alias != library_alias
+                    or existing.period != period
+                ):
+                    raise Conflict("source metadata changed for identical captured bytes")
+                return existing
+            if version is not None and meta.version == version:
+                raise Conflict("declared source version has different bytes")
+        previous = [existing.id for existing, _ in matches]
         timestamp = now()
         record = Record(
             id=new_id("source"),

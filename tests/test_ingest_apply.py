@@ -82,6 +82,39 @@ def test_revisions_and_declared_version_conflicts(ws: Workspace, tmp_path: Path)
     assert one.source and ws.fs.read(one.source.blob) == b"old synthetic text"
 
 
+def test_unversioned_revert_records_a_new_lineage_head(ws: Workspace, tmp_path: Path) -> None:
+    file = tmp_path / "reverting.txt"
+    file.write_text("original synthetic text")
+    first = capture(ws, file, domain="research")
+    file.write_text("revised synthetic text")
+    revised = capture(ws, file, domain="research")
+    file.write_text("original synthetic text")
+    reverted = capture(ws, file, domain="research")
+    assert reverted.id not in (first.id, revised.id)
+    assert reverted.source and {first.id, revised.id} <= set(reverted.source.supersedes)
+    # Repeating the revert is a no-op, not more churn.
+    assert capture(ws, file, domain="research").id == reverted.id
+
+
+def test_project_order_does_not_duplicate_sources(ws: Workspace, tmp_path: Path) -> None:
+    timestamp = now()
+    for project_id in ("project_alpha", "project_beta"):
+        project = Record(
+            id=project_id,
+            type="project",
+            title=f"Synthetic {project_id}",
+            domain="research",
+            created_at=timestamp,
+            updated_at=timestamp,
+        )
+        ws.fs.write(f"vault/wiki/research/{project_id}.md", encode(project, "Synthetic.\n"))
+    file = tmp_path / "shared.txt"
+    file.write_text("Synthetic shared evidence.")
+    one = capture(ws, file, domain="research", project_ids=["project_alpha", "project_beta"])
+    two = capture(ws, file, domain="research", project_ids=["project_beta", "project_alpha"])
+    assert one.id == two.id
+
+
 def test_failed_extraction_preserves_capture(ws: Workspace, tmp_path: Path) -> None:
     empty = source(ws, tmp_path, "")
     with pytest.raises(Blocked):
