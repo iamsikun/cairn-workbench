@@ -85,7 +85,7 @@ def capture(
         origin=file.name,
         domain=domain,
         title=title or file.name,
-        identity=identity or file.name,
+        identity=identity or f"sha256:{digest(data)}",
         version=version,
         classification=classification,
         processing=processing,

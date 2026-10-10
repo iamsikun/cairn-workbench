@@ -1,5 +1,14 @@
 # Acceptance evidence
 
+## Paper notebooks — six regression fixes (2026-10-10)
+
+The targeted synthetic container suite passed **57 tests** covering MCP, capture/apply,
+context, page writing and six added regression scenarios. The new checks reproduce
+large-source citation writing, same-name captures and explicit revisions, project body
+and concept context, project-scoped revisions, filtering before ranking, and pending
+grant enforcement. No private workspace or real model was used. Full release and HTML
+checks will follow the notebook and rendering milestones; this is not release readiness.
+
 ## One-call agent tools, owner terminal, removed compatibility flags (2026-10-10; software checks passed; no real agent exercised)
 
 The owner asked whether packets were still needed when using skills, then asked to

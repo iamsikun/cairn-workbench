@@ -319,7 +319,7 @@ def test_grants_bound_every_tool(ws, client):
     assert not ws.fs.files("receipts/finch/exports")
     hits = client.ok("search", query="synthetic")
     assert {hit["id"] for hit in hits["hits"]} == {paper.id}
-    assert hits["withheld_local_only_or_ungranted"] >= 1
+    assert set(hits) == {"hits"}
     failed, error = client.call("evidence", source_id=private.id)
     assert failed and error["error"] == "denied"
 

@@ -73,11 +73,11 @@ def test_capture_extract_apply_preserve_and_deduplicate(ws: Workspace, tmp_path:
 def test_revisions_and_declared_version_conflicts(ws: Workspace, tmp_path: Path) -> None:
     file = tmp_path / "revised.txt"
     file.write_text("old synthetic text")
-    one = capture(ws, file, domain="research", version="v1")
+    one = capture(ws, file, domain="research", identity="synthetic-revision", version="v1")
     file.write_text("new synthetic text")
     with pytest.raises(Conflict):
-        capture(ws, file, domain="research", version="v1")
-    two = capture(ws, file, domain="research", version="v2")
+        capture(ws, file, domain="research", identity="synthetic-revision", version="v1")
+    two = capture(ws, file, domain="research", identity="synthetic-revision", version="v2")
     assert two.source and one.id in two.source.supersedes
     assert one.source and ws.fs.read(one.source.blob) == b"old synthetic text"
 
@@ -85,15 +85,15 @@ def test_revisions_and_declared_version_conflicts(ws: Workspace, tmp_path: Path)
 def test_unversioned_revert_records_a_new_lineage_head(ws: Workspace, tmp_path: Path) -> None:
     file = tmp_path / "reverting.txt"
     file.write_text("original synthetic text")
-    first = capture(ws, file, domain="research")
+    first = capture(ws, file, domain="research", identity="synthetic-revert")
     file.write_text("revised synthetic text")
-    revised = capture(ws, file, domain="research")
+    revised = capture(ws, file, domain="research", identity="synthetic-revert")
     file.write_text("original synthetic text")
-    reverted = capture(ws, file, domain="research")
+    reverted = capture(ws, file, domain="research", identity="synthetic-revert")
     assert reverted.id not in (first.id, revised.id)
     assert reverted.source and {first.id, revised.id} <= set(reverted.source.supersedes)
     # Repeating the revert is a no-op, not more churn.
-    assert capture(ws, file, domain="research").id == reverted.id
+    assert capture(ws, file, domain="research", identity="synthetic-revert").id == reverted.id
 
 
 def test_project_order_does_not_duplicate_sources(ws: Workspace, tmp_path: Path) -> None:
@@ -312,9 +312,7 @@ def _staged_variant(ws: Workspace, tmp_path: Path, mutate) -> object:
     return stage_result(ws, result)
 
 
-def test_structured_amounts_outside_finance_must_be_observed(
-    ws: Workspace, tmp_path: Path
-) -> None:
+def test_structured_amounts_outside_finance_must_be_observed(ws: Workspace, tmp_path: Path) -> None:
     from datetime import date
     from decimal import Decimal
 

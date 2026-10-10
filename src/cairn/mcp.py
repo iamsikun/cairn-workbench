@@ -29,7 +29,7 @@ from pydantic import Field, ValidationError
 from cairn import __version__
 from cairn.adapters.protocol import Candidate
 from cairn.errors import CairnError, Denied
-from cairn.policies.models import Operation
+from cairn.policies.models import Operation, Scope
 from cairn.presentation.writing_models import ExplanationAnswer, NewTarget, PageAnswer
 from cairn.reading.models import ReadingAnswer
 from cairn.records.models import ID, Labels, Model, canonical, digest, new_id, now
@@ -102,6 +102,9 @@ class FeedbackShow(Model):
 
 class Capture(Model):
     path: str = Field(min_length=1, max_length=4096, description="File under the capture root.")
+    identity: str | None = Field(default=None, min_length=1, max_length=1000)
+    version: str | None = None
+    project_ids: list[ID] | None = Field(default=None, max_length=20)
 
 
 class Pending(Model):
@@ -171,9 +174,7 @@ def _request_labels(domain: str) -> Labels:
     )
 
 
-def _authorize(
-    session: Session, ws: Workspace, inputs: list[Labels], operation: Operation
-) -> None:
+def _authorize(session: Session, ws: Workspace, inputs: list[Labels], operation: Operation) -> None:
     """Anything a tool returns goes to the agent's provider: it needs a cloud grant."""
     scope = ws.policy.scope(session.scope)
     ws.policy.authorize_route(
@@ -208,20 +209,22 @@ def search(session: Session, args: Search) -> Any:
     from cairn.retrieval.search import search as run
 
     ws = _workspace(session)
-    hits = run(ws, args.query, scope_name=session.scope, limit=args.limit, kind=args.kind)
-    shown, withheld = [], 0
-    with ws.lock():
-        scope = ws.policy.scope(session.scope)
-        for hit in hits:
-            try:
-                _authorize(session, ws, [ws.record(hit.id, scope)[1]], "query")
-            except Denied:
-                withheld += 1  # Local-only or ungranted material never reaches the agent.
-                continue
-            shown.append(hit)
-    return _released(
-        session, ws, {"hits": shown, "withheld_local_only_or_ungranted": withheld}
+    hits = run(
+        ws,
+        args.query,
+        scope_name=session.scope,
+        limit=args.limit,
+        kind=args.kind,
+        cloud_route=(session.provider, session.destination),
     )
+    return _released(session, ws, {"hits": hits})
+
+
+def cloud_scope(session: Session, ws: Workspace) -> Scope:
+    """Filter before indexing or graph traversal; even an empty read needs a grant."""
+    from cairn.retrieval.search import authorized_scope
+
+    return authorized_scope(ws, session.scope, session.provider, session.destination)
 
 
 def evidence(session: Session, args: Evidence) -> Any:
@@ -313,10 +316,25 @@ def capture(session: Session, args: Capture) -> Any:
         classification=labels.classification,
         processing=labels.processing,
         compartments=labels.compartments,
+        identity=args.identity,
+        version=args.version,
+        project_ids=capture_projects(ws, session.scope, args.project_ids),
         scope_name=session.scope,
     )
     extract(ws, source.id, scope_name=session.scope, inline_synthetic=session.inline_synthetic)
     return evidence(session, Evidence(source_id=source.id))
+
+
+def capture_projects(ws: Workspace, scope_name: str, selected: list[str] | None) -> list[str]:
+    scope = ws.policy.scope(scope_name)
+    if selected is None and scope.project_ids:
+        if len(scope.project_ids) != 1:
+            raise Denied("select project_ids within the session's project scope")
+        selected = sorted(scope.project_ids)
+    for key in selected or []:
+        if ws.record(key, scope)[1].type != "project":
+            raise Denied("project_ids must name visible projects")
+    return selected or []
 
 
 def pending(session: Session, args: Pending) -> Any:
@@ -325,17 +343,34 @@ def pending(session: Session, args: Pending) -> Any:
     from cairn.proposals.service import load_job, load_proposal
 
     ws = _workspace(session)
+    _authorize(session, ws, [], "query")
     value = inbox(ws)
     with ws.lock():
 
         def in_scope(proposal_id: str) -> bool:
             try:
-                job_id = load_proposal(ws, proposal_id).job_id
-                return load_job(ws, job_id).job.scope_name == session.scope
+                from cairn.storage.markdown import decode
+
+                proposal = load_proposal(ws, proposal_id)
+                job = load_job(ws, proposal.job_id).job
+                if job.scope_name != session.scope:
+                    return False
+                _authorize(
+                    session,
+                    ws,
+                    [
+                        job.source,
+                        *(p.record for p in job.related),
+                        *(decode(c.content.encode())[0] for c in proposal.changes),
+                    ],
+                    "query",
+                )
+                return True
             except (CairnError, OSError, ValueError):
                 return False  # Unreadable entries are left to the owner's inbox.
 
-        return {"proposals": [p for p in value.proposals if in_scope(p.proposal_id)]}
+        shown = {"proposals": [p for p in value.proposals if in_scope(p.proposal_id)]}
+    return _released(session, ws, shown)
 
 
 def proposal_show(session: Session, args: ProposalShow) -> Any:
@@ -441,9 +476,7 @@ def propose_explanation(session: Session, args: ProposeExplanation) -> Any:
         provider=session.provider,
         destination=session.destination,
     )
-    return kept | {
-        "next": f"owner renders it: cairn view explanation {kept['job_id']} OUTPUT.html"
-    }
+    return kept | {"next": f"owner renders it: cairn view explanation {kept['job_id']} OUTPUT.html"}
 
 
 def _contract(kind: str) -> str:

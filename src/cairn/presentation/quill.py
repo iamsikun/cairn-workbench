@@ -117,6 +117,7 @@ def begin(
     feedback_id: str | None = None,
     request_labels: Labels | None = None,
     attempt: str | None = None,
+    selected_refs: set[tuple[str, str]] | None = None,
 ) -> dict[str, str]:
     """Seal and export one writing packet; no canonical content changes."""
     feedback = None
@@ -179,7 +180,12 @@ def begin(
                     ),
                     text=segment.text,
                 )
-                for i, segment in enumerate(s for s in extraction.segments if s.text.strip())
+                for i, segment in enumerate(
+                    s
+                    for s in extraction.segments
+                    if s.text.strip()
+                    and (selected_refs is None or (record.id, s.locator) in selected_refs)
+                )
             )
         if len(context) + len(sources) + (target is not None) > 20:
             raise Denied("a writing packet supports at most 20 target, context and source pages")
@@ -320,6 +326,22 @@ def _record(
         updated_at=timestamp,
         sources=list({canonical(r): r for r in [*refs, session]}.values()),
         assertions=assertions,
+        project_ids=_projects(packet),
+    )
+
+
+def _projects(packet: QuillPacket) -> list[str]:
+    if packet.target:
+        return packet.target.record.project_ids
+    return sorted(
+        {
+            key
+            for page in packet.context
+            for key in (
+                [page.record.id] if page.record.type == "project" else page.record.project_ids
+            )
+        }
+        | {key for source in packet.sources for key in source.project_ids}
     )
 
 
@@ -362,6 +384,9 @@ def submit(
         feedback_id=feedback_id,
         request_labels=request_labels,
         attempt=digest(canonical(answer)),
+        selected_refs={
+            (ref.source_id, ref.locator) for claim in answer.claims for ref in claim.sources
+        },
     )
     with ws.lock():
         packet = load_packet(ws, sealed["packet_id"])
@@ -442,6 +467,7 @@ def finish_bytes(ws: Workspace, raw: bytes, *, inline_synthetic: bool = False) -
         classification=classification,
         processing=processing,
         compartments=compartments - {domain},
+        project_ids=_projects(packet),
         scope_name=packet.scope,
     )
     extract(ws, source.id, scope_name=packet.scope, inline_synthetic=inline_synthetic)

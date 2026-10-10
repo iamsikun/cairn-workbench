@@ -7,10 +7,10 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from cairn.errors import Blocked, CairnError
+from cairn.errors import Blocked, CairnError, Denied
 from cairn.ingest.service import load_extraction
 from cairn.policies.models import Scope
-from cairn.records.models import EvidenceRef, Model, Period, canonical, digest
+from cairn.records.models import EvidenceRef, Labels, Model, Period, canonical, digest
 from cairn.storage.workspace import Workspace
 
 
@@ -34,6 +34,38 @@ class Hit(Model):
 
 
 ALIASES = {"evidence": "证据", "retrieval": "检索", "decision": "决策"}
+
+
+def authorized_scope(ws: Workspace, name: str, provider: str, destination: str) -> Scope:
+    """Caller holds the workspace lock; excluded records never enter the corpus."""
+    policy = ws.policy
+    scope = policy.scope(name)
+    question = Labels(domain=sorted(scope.domains)[0], processing="cloud_eligible")
+    policy.authorize_route(
+        scope,
+        [],
+        route="cloud",
+        provider=provider,
+        destination=destination,
+        operation="query",
+        question=question,
+    )
+    allowed = set()
+    for _, record, _ in ws.records(scope):
+        try:
+            policy.authorize_route(
+                scope,
+                [record],
+                route="cloud",
+                provider=provider,
+                destination=destination,
+                operation="query",
+                question=question,
+            )
+        except Denied:
+            continue
+        allowed.add(record.id)
+    return scope.model_copy(update={"record_ids": allowed})
 
 
 def _terms(query: str) -> list[str]:
@@ -229,6 +261,7 @@ def search(
     limit: int = 10,
     kind: Literal["evidence", "synthesis", "note"] | None = None,
     include_notes: bool = False,
+    cloud_route: tuple[str, str] | None = None,
 ) -> list[Hit]:
     """Owner notes appear only when requested, so views and packets never carry them."""
     if not 1 <= limit <= 100 or len(query) > 1000:
@@ -248,7 +281,12 @@ def search(
             persist=False,
             payload_hash=digest(canonical({"question": query, "limit": limit, "kind": kind})),
         )
-        connection = _index(ws, ws.policy.scope(scope_name))
+        scope = (
+            authorized_scope(ws, scope_name, *cloud_route)
+            if cloud_route
+            else ws.policy.scope(scope_name)
+        )
+        connection = _index(ws, scope)
         try:
             # FTS syntax is constructed from literal tokens, never accepted as SQL/FTS code.
             expression = " OR ".join('"' + term.replace('"', '""') + '"' for term in terms)

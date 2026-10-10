@@ -72,7 +72,7 @@ def context_pack(
         raise CairnError("context requires an explicit question")
     with ws.lock():
         scope = ws.policy.scope(scope_name)
-        project_path, project, _ = ws.record(project_id, scope)
+        project_path, project, project_body = ws.record(project_id, scope)
         if project.type != "project":
             raise CairnError("context requires a project")
         # Unknown free-text questions are restricted/local-only. Labels only tighten
@@ -114,6 +114,10 @@ def context_pack(
         # closed instead of leaking a conclusion while stripping its denied citation.
         if not supported(project, all_refs(project)):
             raise Denied("project evidence unavailable in this scope")
+        if project_body.strip():
+            sections["objective"].append(
+                ContextItem(id=project.id, text=project_body, sources=all_refs(project))
+            )
         for section in (
             "objective",
             "constraints",
@@ -238,6 +242,15 @@ def context_pack(
                     warnings.append(
                         "A decision lacks an intact adoption receipt; it is not current."
                     )
+            elif record.type == "concept":
+                _, _, body = ws.record(record.id, scope)
+                sections["relevant_literature"].append(
+                    ContextItem(
+                        id=record.id,
+                        text=record.title + "\n" + body,
+                        sources=all_refs(record),
+                    )
+                )
             else:
                 continue
             inputs[record.id] = digest(ws.fs.read(path))
