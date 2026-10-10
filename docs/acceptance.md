@@ -1,5 +1,42 @@
 # Acceptance evidence
 
+## Finch installed by its own updater (2026-10-10; software checks passed, upstream release pending)
+
+The owner asked that a first private setup install Finch for whichever agent uses the
+knowledge base, keep it updated, and replace Cairn's own reading guidance. Finch's
+upstream installer already links the skill into detected agents and schedules a daily
+fast-forward update that skips a clone with local edits. The previous Cairn installer
+appended a hook to `SKILL.md`, which would have dirtied that clone and stopped its
+updates. Finch 0.3.0 therefore ships the Cairn handoff as `references/cairn.md`, and
+Cairn no longer edits an installed Finch. `cairn init` for a private workspace runs the
+checksummed packaged installer only when no Finch is available; failure leaves the
+workspace usable and reports `pending`. The offline reader prompt keeps only the
+worker's evidence contract (now `finch-paper-reader-v2`), and the paper review checklist
+uses Finch's terms.
+
+In the development container, **287 tests**, Ruff and strict mypy (**101 source files**)
+passed. The prompt and checklist commit was also tested by itself (**284 tests**). Five
+installer tests use a synthetic home and a local synthetic git remote: the packaged
+installer links Finch into the detected Claude Code and shared agent directories as a
+clean clone. An existing Finch is preserved byte-for-byte without running the
+installer. A tampered installer is rejected. A failed clone reports pending with no
+links. Synthetic `init` installs only with `--finch`. Scheduled updates were disabled in
+tests, and no real home, launchd or cron was touched.
+
+The fresh offline installed release trial passed at revision
+`b43ae00b895b42ecb03ecb8f13d5f85342106084`: **15 distributions**, **936 verified files**,
+offline `finch install` reported pending without links, an existing synthetic Finch was
+preserved, and the existing Finch packet, HTML, library and restore workflows passed. See
+the [installed trial](evidence/finch-install-release-trial.json). Manifest SHA-256:
+`b7ec109f5f48a3384f483292864b40cf478babb0d9905507d680262748559402`. The 13 isolation
+checks and the released-worker probe (`scripts/check.sh`, `scripts/release_check.sh`)
+were not rerun for this change.
+
+Pending: the bundled snapshot is upstream commit `4de3695` on an unreleased Finch branch.
+Release Finch 0.3.0 to `stable`, then re-record provenance. A real install against a
+live agent home, the scheduled update, and Claude Code plugin installs (not detected)
+remain owner deployment checks.
+
 ## Automatic Finch reading (2026-10-10; software checks passed, activation pending)
 
 The owner requested automatic Finch use for paper reading and automatic Cairn workflow
