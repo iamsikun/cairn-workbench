@@ -150,6 +150,10 @@ def check_reference(ws: Workspace, ref: EvidenceRef, scope_name: str) -> None:
 
 
 def _check_inputs(ws: Workspace, envelope: JobEnvelope) -> None:
+    if envelope.job.id.startswith("job_finch_"):
+        from cairn.reading.workflow import check_proposal_binding
+
+        check_proposal_binding(ws, envelope.job)
     if envelope.job.route == "owner_device":
         from cairn.library.reader import check_binding, state_path
         from cairn.library.reader_models import ReadState

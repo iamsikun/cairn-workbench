@@ -9,6 +9,7 @@ import typer
 from cairn import __version__
 from cairn.cli.commands import guarded, register
 from cairn.cli.domains import register as register_domains
+from cairn.cli.finch import register as register_finch
 from cairn.cli.library import register as register_library
 from cairn.cli.policy import register as register_policy
 from cairn.cli.presentation import register as register_presentation
@@ -28,6 +29,7 @@ register_release(app)
 register_schema(app)
 register_library(app)
 register_presentation(app)
+register_finch(app)
 
 
 @app.command()

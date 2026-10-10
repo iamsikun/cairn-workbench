@@ -16,6 +16,7 @@ from cairn.library.reader_models import DeviceConfig, ReaderJob, ReaderResult, R
 from cairn.library.store import commit_unlocked, entity_bytes, record_path
 from cairn.proposals.models import JobEnvelope
 from cairn.proposals.service import stage_result
+from cairn.reading.skill import guidance_hash
 from cairn.records.models import (
     Assertion,
     Event,
@@ -145,6 +146,7 @@ def enqueue(
             model_hash=device.model_hash,
             projection_hash=device.projection_hash,
             reading_revision=revision,
+            guidance_hash=guidance_hash(),
         )
         job.id = "read_" + digest(canonical(job))[:32]
         path = state_path(job.id)
@@ -156,6 +158,8 @@ def enqueue(
 
 
 def check_binding(ws: Workspace, job: ReaderJob) -> tuple[DeviceConfig, Record, bytes]:
+    if job.prompt_version != "finch-paper-reader-v1" or job.guidance_hash != guidance_hash():
+        raise Conflict("Finch guidance changed; queue a new reading revision")
     device = require_device(ws, job.device_id, job.scope)
     if digest(canonical(device)) != job.device_hash or ws.policy_hash != job.policy_hash:
         raise Conflict("reader route or policy changed")
@@ -308,7 +312,7 @@ def accept_result(ws: Workspace, state: ReadState, result: ReaderResult) -> str:
             Assertion(
                 id=f"assertion_{job.id}_{i}",
                 text=claim.text,
-                kind="reported_result",
+                kind=claim.kind,
                 sources=[refs[i]],
             )
             for i, claim in enumerate(claims)

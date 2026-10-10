@@ -1040,6 +1040,16 @@
     "PaperClaim": {
       "additionalProperties": false,
       "properties": {
+        "kind": {
+          "default": "reported_result",
+          "enum": [
+            "reported_result",
+            "inference",
+            "hypothesis"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
         "page": {
           "minimum": 1,
           "title": "Page",

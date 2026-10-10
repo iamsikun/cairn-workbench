@@ -36,6 +36,7 @@ from cairn.presentation.writing_models import (
     WritingJob,
 )
 from cairn.proposals.models import Approval, Proposal
+from cairn.reading.models import FinchClaim, FinchGuard, FinchPacket, FinchReceipt, FinchResponse
 from cairn.records.continuity import ContextPack, SessionReceipt
 from cairn.records.domains import Calculation, FinancialSnapshot, LifeDossier
 from cairn.records.migration import (
@@ -64,6 +65,11 @@ from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2
         Feedback,
         FeedbackReceipt,
         ExportReceipt,
+        FinchClaim,
+        FinchGuard,
+        FinchPacket,
+        FinchReceipt,
+        FinchResponse,
         DeviceConfig,
         DeviceProbe,
         PaperSummary,

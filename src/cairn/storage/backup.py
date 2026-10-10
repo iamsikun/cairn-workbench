@@ -183,6 +183,9 @@ def validate_payloads(payloads: Mapping[str, bytes]) -> WorkspaceConfiguration:
         from cairn.presentation.validation import validate_presentation
 
         validate_presentation(payloads, records, config.id)
+        from cairn.reading.validation import validate_reading
+
+        validate_reading(payloads, records)
         for record in records.values():
             meta = record.source
             if meta:

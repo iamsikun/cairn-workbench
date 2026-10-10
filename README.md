@@ -40,7 +40,7 @@ owner activation gate. Actual private deployment remains separate from developme
 The CLI provides `init`, `capture`, `ingest`, `proposal show`, `validate`, `approve`,
 `apply`, `recover`, `search`, `query`, `edit`, `lint`, `rebuild-index`, `backup`, `restore`,
 `client run`, `project create`, `bibliography import`, `receipt import`, `decision adopt`,
-`repository inspect`, `context`, `policy`, `release`, `schema`, and `doctor`. Pass
+`repository inspect`, `context`, `finch`, `policy`, `release`, `schema`, and `doctor`. Pass
 `--workspace` (or `CAIRN_WORKSPACE`) and use `--json`
 for structured command output. Development `init` and `restore` use `--synthetic`.
 Private initialization and restore require a reviewed installed release, explicit owner
@@ -72,3 +72,14 @@ and feedback packets preserve owner approval and scoped evidence. See
 [HTML views](docs/html-views.md) for commands and [acceptance](docs/acceptance.md) for
 executed checks and deployment limits. The portable `cairn-html` skill consumes owner
 exports; it grants no workspace access and does not generate unsolicited pages.
+
+## Automatic Finch paper reading
+
+Paper reading uses the bundled Finch skill automatically. Library readings already
+capture evidence and stage reading proposals; they now bind Finch guidance to each job.
+The host-skill installer preserves an existing Finch skill and attaches the Cairn
+lifecycle. In a configured agent session, every Finch invocation captures its supplied
+discussion and stages a validated concept-note proposal before returning the answer.
+Approval and canonical apply remain owner operations. See
+[Finch setup and handoff](docs/finch-reading.md) for installation, packets, retries,
+processing consent and the explicit pending state when no owner launcher is configured.

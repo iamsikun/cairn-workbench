@@ -11,6 +11,16 @@ directory is named `cairn`. These names do not change the Python package or CLI.
 
 ## 1. Intended result and scope
 
+### Authorized Finch reading follow-on
+
+The owner requested automatic Finch use for paper reading, installation when missing,
+and a Cairn workflow on every Finch invocation. The installed runtime bundles the
+licensed skill; library workers automatically use digest-bound guidance. An owner-selected
+host installer adds an instruction-based lifecycle for bounded reading packets and
+automatic conversation capture, concept proposal and validation. No new canonical
+record types, automatic approvals or private activation are authorized. Configuration,
+processing grants and visible pending handoffs are documented in `docs/finch-reading.md`.
+
 ### Authorized HTML follow-on
 
 The HTML follow-on adds auxiliary versioned presentation bundles, seven offline views,

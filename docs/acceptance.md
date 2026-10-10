@@ -1,5 +1,36 @@
 # Acceptance evidence
 
+## Automatic Finch reading (2026-10-10; software checks passed, activation pending)
+
+The owner requested automatic Finch use for paper reading and automatic Cairn workflow
+handoffs on each Finch invocation. The package includes a checksummed MIT Finch 0.2.0
+snapshot. Library jobs bind the guidance and use it in the offline worker. The host-skill
+installer handles missing Finch, preserves existing guidance, and attaches the lifecycle.
+Owner-prepared agent packets and returned responses automatically capture conversations,
+stage concept-note proposals, and validate them. Approval/apply and read status remain
+owner operations; sources and human notes are immutable to these proposals.
+
+`bash scripts/check.sh` passed **284 tests**, Ruff and strict mypy across **100 source
+files**. Both processing profiles passed all **13 isolation checks**, installed worker
+packet/extraction/HTML/domain trials, **129 gold checks**, and real Docker lifecycle and
+hostile-child cleanup checks. All tests used synthetic inputs; no private workspace or
+home directory was mounted. The first full run found an outdated PDF trial fixture
+without the new guidance hash; it was corrected and the complete check rerun passed.
+
+The 24 Finch tests cover packaged guidance use, installation/retry/preservation and
+conflicting hooks/symlinks; cloud grants and full-request labels; immutable raw response
+capture and proposal-only handoff; typed claims, citations and rejected authority fields;
+changed source/human notes/policy, revocation, interrupted and concurrent retries;
+selected project inheritance, denied context, durable bindings and CLI round trips.
+Schemas are regenerated from the typed models. Unrelated protected workspace paths
+remain in owner-only guards rather than exported packets.
+
+Fresh installed-release validation is pending at this implementation milestone. Live
+reading quality, private runtime activation and host skill/launcher configuration remain
+separate owner deployment gates. This instruction-based lifecycle does not monitor
+unconfigured chats. Missing packets/launchers report `cairn_handoff_pending`; no real
+discussion has been ingested or accepted by these development tests.
+
 ## Journal library extension (2026-09-30, software validated; deployment pending)
 
 Catalog hardening preserves bibliographic observations as source snapshots, resolves

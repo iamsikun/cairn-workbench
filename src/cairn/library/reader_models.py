@@ -49,6 +49,7 @@ class PaperClaim(Model):
     text: str = Field(min_length=1, max_length=5000)
     page: int = Field(ge=1)
     quote: str | None = Field(default=None, max_length=2000)
+    kind: Literal["reported_result", "inference", "hypothesis"] = "reported_result"
 
 
 class PaperSummary(Model):
@@ -84,7 +85,8 @@ class ReaderJob(Model):
     title: str
     model_hash: Digest
     projection_hash: Digest
-    prompt_version: Literal["paper-reader-v1"] = "paper-reader-v1"
+    prompt_version: Literal["paper-reader-v1", "finch-paper-reader-v1"] = "finch-paper-reader-v1"
+    guidance_hash: Digest | None = None
     reading_revision: int = Field(default=1, ge=1, le=10000)
     page_limit: int = Field(default=500, ge=1, le=2000)
     chunk_pages: int = Field(default=4, ge=1, le=4)

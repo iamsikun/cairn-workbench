@@ -6,9 +6,10 @@ import os
 import subprocess
 import sys
 import sysconfig
+from datetime import timedelta
 from pathlib import Path
 
-from cairn.records.models import canonical, digest
+from cairn.records.models import canonical, digest, now
 from cairn.storage.release import verify_bundle
 
 
@@ -238,6 +239,113 @@ def trial(bundle: Path) -> None:
         "--inline-synthetic",
     )
     assert len(list(html_output.parent.iterdir())) == 1
+    # Finch resources and lifecycle are exercised through the fresh installed CLI.
+    finch_options = ("--workspace", str(workspace))
+    skill_dir = root / "synthetic-agent-skills"
+    cli("finch", "install", "--skills-dir", str(skill_dir))
+    installed_skill = skill_dir / "finch/SKILL.md"
+    installed_bytes = installed_skill.read_bytes()
+    cli("finch", "install", "--skills-dir", str(skill_dir))
+    assert installed_skill.read_bytes() == installed_bytes
+    assert b"cairn-finch-workflow-v1" in installed_bytes
+    labels_file = root / "synthetic-finch-labels.json"
+    labels_file.write_bytes(
+        canonical(
+            {
+                "domain": "research",
+                "classification": "public",
+                "processing": "cloud_eligible",
+                "compartments": [],
+            }
+        )
+    )
+    grant_file = root / "synthetic-finch-grant.json"
+    grant_file.write_bytes(
+        canonical(
+            {
+                "id": "grant_finch",
+                "scope": "research",
+                "provider": "synthetic-agent",
+                "destination": "https://synthetic.invalid",
+                "operations": ["generation", "client_export"],
+                "valid_until": now() + timedelta(days=1),
+                "owner_consent": "Synthetic Finch trial consent",
+            }
+        )
+    )
+    policy_hash = cli("policy", "show", *options)["sha256"]
+    cli(
+        "policy",
+        "set-grant",
+        str(grant_file),
+        "--base-hash",
+        policy_hash,
+        "--statement",
+        "Synthetic Finch trial consent",
+        *options,
+    )
+    finch_file = root / "synthetic-finch-paper.txt"
+    finch_file.write_text("Synthetic Finch result: 42 under condition C.")
+    finch_packet = root / "finch-packet.json"
+    cli(
+        "finch",
+        "begin",
+        str(finch_file),
+        "--output",
+        str(finch_packet),
+        "--source-labels",
+        str(labels_file),
+        "--request-labels",
+        str(labels_file),
+        "--provider",
+        "synthetic-agent",
+        "--destination",
+        "https://synthetic.invalid",
+        "--inline-synthetic",
+        *finch_options,
+    )
+    exported = json.loads(finch_packet.read_bytes())
+    packet = exported["packet"]
+    finch_response = root / "finch-response.json"
+    finch_response.write_bytes(
+        canonical(
+            {
+                "session_id": packet["id"],
+                "input_hash": exported["input_hash"],
+                "summary": "The synthetic paper reports 42 under condition C.",
+                "messages": [
+                    {"role": "user", "content": "Explain the synthetic paper."},
+                    {"role": "assistant", "content": "It reports 42 under condition C."},
+                ],
+                "claims": [
+                    {
+                        "text": "42 under condition C",
+                        "kind": "reported_result",
+                        "sources": [
+                            {
+                                "id": packet["source"]["id"],
+                                "source_hash": packet["extraction"]["source_hash"],
+                                "evidence_hash": packet["evidence_hash"],
+                                "locator": packet["extraction"]["segments"][0]["locator"],
+                                "quote": "42",
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+    )
+    finch_receipt = cli(
+        "finch", "finish", str(finch_response), "--inline-synthetic", *finch_options
+    )
+    assert finch_receipt["workflow_stage"] == "validated"
+    assert not finch_receipt["processing_verified"]
+    assert (
+        cli("finch", "finish", str(finch_response), "--inline-synthetic", *finch_options)
+        == finch_receipt
+    )
+    assert not (workspace / "approvals" / (finch_receipt["proposal_id"] + ".json")).exists()
+    answer = cli("query", "42", "--scope", "research", *options)
     archive = root / "backup.zip"
     backed_up = cli("backup", str(archive), *options)
     restored = root / "restored"
@@ -264,6 +372,17 @@ def trial(bundle: Path) -> None:
         cli("view", "show", view["bundle_id"], "--workspace", str(restored))["id"]
         == view["bundle_id"]
     )
+    assert (
+        cli(
+            "finch",
+            "finish",
+            str(finch_response),
+            "--inline-synthetic",
+            "--workspace",
+            str(restored),
+        )
+        == finch_receipt
+    )
 
     # Actual installed files are tested, never package mocks or PYTHONPATH substitutions.
     site = runtime / "lib" / f"python{sysconfig.get_python_version()}" / "site-packages"
@@ -277,6 +396,11 @@ def trial(bundle: Path) -> None:
     renderer.write_bytes(saved_renderer + b"\n// synthetic modification\n")
     assert cli(*check_args, status=4)["error"] == "conflict"
     renderer.write_bytes(saved_renderer)
+    finch_resource = site / "cairn/reading/resources/finch/SKILL.md"
+    saved_finch = finch_resource.read_bytes()
+    finch_resource.write_bytes(saved_finch + b"\nSynthetic changed Finch guidance\n")
+    assert cli(*check_args, status=4)["error"] == "conflict"
+    finch_resource.write_bytes(saved_finch)
     extra = site / "synthetic-unreviewed.pth"
     extra.write_text("# synthetic inventory mismatch, no executable content\n")
     assert cli(*check_args, status=3)["error"] == "denied"
@@ -309,6 +433,8 @@ def trial(bundle: Path) -> None:
                 "installed_library_scan_mark_feed_streaming_restore": "passed",
                 "installed_markdown_source_review": "passed",
                 "installed_html_render_retry_restore": "passed",
+                "installed_finch_install_capture_proposal_validate_retry_restore": "passed",
+                "modified_finch_resource_rejected": True,
                 "modified_renderer_rejected": True,
                 "modified_package_rejected": True,
                 "unreviewed_pth_rejected": True,

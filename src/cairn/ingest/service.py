@@ -66,6 +66,7 @@ def capture(
     source_type: SourceType | None = None,
     project_ids: list[str] | None = None,
     compartments: set[str] | None = None,
+    scope_name: str | None = None,
 ) -> Record:
     data = read_source_file(file)
     kinds: dict[str, SourceType] = {
@@ -91,6 +92,7 @@ def capture(
         source_type=kind,
         project_ids=project_ids,
         compartments=compartments,
+        scope_name=scope_name,
     )
 
 

@@ -17,3 +17,15 @@ and recoverable writer. Keep schema exports synchronized with the typed models.
 Use small milestone commits and maintain `docs/acceptance.md` with honest evidence.
 Run meaningful tests for changed boundaries and failure modes; do not claim that fake
 provider results prove semantic quality or production readiness.
+
+## Paper reading and notes
+
+Use Finch automatically for paper reading, explanation, critique, and co-reading,
+including focused follow-ups. The installed runtime bundles Finch 0.2.0; an owner can
+install the host skill with `cairn finch install --skills-dir /srv/agent-skills` if absent.
+Follow its `references/cairn-workflow.md` on every invocation. With an owner-prepared
+packet, complete the automatic response capture, concept proposal and validation
+handoff before returning; no separate save request is needed. Report source/proposal IDs
+or an explicit pending/blocked handoff. Approval/apply and personal read status remain
+owner operations. Do not inspect private configuration or use contributor code against
+a private workspace. Missing owner configuration does not authorize a guessed route.

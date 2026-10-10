@@ -20,6 +20,19 @@
           "title": "Device Id",
           "type": "string"
         },
+        "guidance_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Guidance Hash"
+        },
         "id": {
           "pattern": "^[a-z][a-z0-9_]{2,95}$",
           "title": "Id",
@@ -53,8 +66,11 @@
           "type": "string"
         },
         "prompt_version": {
-          "const": "paper-reader-v1",
-          "default": "paper-reader-v1",
+          "default": "finch-paper-reader-v1",
+          "enum": [
+            "paper-reader-v1",
+            "finch-paper-reader-v1"
+          ],
           "title": "Prompt Version",
           "type": "string"
         },

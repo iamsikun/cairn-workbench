@@ -7,6 +7,7 @@ from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
 from cairn.library.reader_models import PaperClaim, PaperSummary, ReaderJob
 from cairn.library.reader_worker import page_image, read
+from cairn.reading.skill import guidance_hash
 from cairn.records.models import digest
 
 
@@ -51,6 +52,7 @@ def test_real_page_render_and_long_paper_batches() -> None:
         model_hash="3" * 64,
         projection_hash="4" * 64,
         page_limit=10,
+        guidance_hash=guidance_hash(),
     )
     batches = []
 

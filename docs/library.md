@@ -42,3 +42,7 @@ The remaining interfaces are `library discover`, `library read`, `library jobs`,
 `library update`, and `feed latest/history/export/acknowledge`. Reading results enter the
 normal proposal/validate/approve/apply workflow. Filenames never supply personal reading
 status. See [deployment, consent and pilot requirements](library-deployment.md).
+
+All library reading jobs automatically use the packaged Finch skill. Guidance digests
+are bound to the jobs and checked by both launcher and worker; upgrading guidance
+requires a new reading revision. See [Finch reading and agent capture](finch-reading.md).

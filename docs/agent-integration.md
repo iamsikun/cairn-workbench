@@ -1,5 +1,11 @@
 # Agent integration
 
+Paper reading defaults to Finch. The owner-installed skill lifecycle automatically
+hands each supplied reading exchange back for capture, a concept proposal and validation;
+it never grants approval/apply authority. The [Finch handoff](finch-reading.md) documents
+the exact packet/response schemas, configured launcher and pending status. Agent hosts
+without that configured lifecycle are not silently monitored or logged.
+
 `Job` and `Result` schemas define the initial client packet protocol. Jobs bind source
 and extraction versions, the scope, policy hash, related pages, provider, route, and a
 small change budget. Responses bind `job_id` and the canonical input hash and contain

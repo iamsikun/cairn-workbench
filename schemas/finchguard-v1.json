@@ -1,0 +1,25 @@
+{
+  "additionalProperties": false,
+  "description": "Owner-only immutability checks; never export unrelated workspace paths.",
+  "properties": {
+    "protected_hashes": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Protected Hashes",
+      "type": "object"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "protected_hashes"
+  ],
+  "title": "FinchGuard",
+  "type": "object"
+}

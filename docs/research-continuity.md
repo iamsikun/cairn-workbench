@@ -1,5 +1,11 @@
 # Research continuity
 
+Paper reading now defaults to Finch. In a configured agent session, its lifecycle
+automatically preserves the supplied discussion and stages a validated concept-note
+proposal before returning, without a separate save request. The [Finch workflow](finch-reading.md)
+explains the owner packet boundary, project links and explicit pending status. Owner
+approval/apply and adoption of suggestions remain separate operations.
+
 All examples here are synthetic. The owner selects a scope for every research operation.
 The worker never receives workspace paths, the global index, or approval/apply authority.
 
