@@ -32,3 +32,12 @@ def record() -> Record:
         created_at=timestamp,
         updated_at=timestamp,
     )
+
+
+@pytest.fixture(autouse=True)
+def synthetic_cairn_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch) -> Path:
+    # The updater and managed skills live under CAIRN_HOME; never the real home.
+    directory = tmp_path_factory.mktemp("cairn-home")
+    monkeypatch.setenv("CAIRN_HOME", str(directory))
+    monkeypatch.setenv("CAIRN_NO_AUTO_UPDATE", "1")
+    return directory

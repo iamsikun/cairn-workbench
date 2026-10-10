@@ -27,6 +27,11 @@ ENTRYPOINT ["python", "-m", "cairn.adapters.worker"]
 
 FROM base AS development
 USER root
+# ssh-keygen verifies synthetic signed update-channel tags in tests; not in the worker.
+# It requires a passwd entry for the unprivileged test user.
+RUN apt-get update && apt-get install -y --no-install-recommends openssh-client \
+    && rm -rf /var/lib/apt/lists/* \
+    && echo 'cairn-test:x:65532:65532::/nonexistent:/usr/sbin/nologin' >> /etc/passwd
 RUN uv sync --locked --no-editable --extra reader
 COPY tests/ tests/
 COPY scripts/ scripts/
