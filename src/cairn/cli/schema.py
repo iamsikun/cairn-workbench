@@ -59,9 +59,13 @@ def register(app: typer.Typer) -> None:
         statement: Annotated[str, typer.Option()],
         json_output: JsonOption = False,
     ) -> None:
+        from cairn.cli.commands import owner_confirm
+
+        ws = Workspace(workspace)
+        owner_confirm(ws, "migrate", f"Apply schema migration plan {plan_sha256}.")
         emit(
             apply(
-                Workspace(workspace),
+                ws,
                 plan_sha256=plan_sha256,
                 backup_path=backup,
                 statement=statement,

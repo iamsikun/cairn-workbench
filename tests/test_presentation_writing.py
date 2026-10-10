@@ -11,8 +11,11 @@ from cairn.presentation.service import assemble, remember
 from cairn.presentation.writing import (
     explanation_html,
     export_packet,
+    guidance,
     import_explanation,
     prepare,
+    stored_explanation,
+    submit_explanation,
 )
 from cairn.presentation.writing_models import (
     ExplanationBlock,
@@ -71,7 +74,7 @@ def response(job):
 
 def test_quill_packet_roundtrip_and_no_canonical_changes(ws, tmp_path):
     job = prepared(ws, tmp_path)
-    assert "Preserve numbers" in job.guidance and "supplied evidence" in job.guidance
+    assert job.guidance == guidance() and "Preserve numbers" in job.guidance
     before = {p: b for p, b in durable_contents(ws).items() if p.startswith("vault/")}
     file = tmp_path / "response.json"
     file.write_bytes(canonical(response(job)))
@@ -82,6 +85,52 @@ def test_quill_packet_roundtrip_and_no_canonical_changes(ws, tmp_path):
     assert before == {p: b for p, b in durable_contents(ws).items() if p.startswith("vault/")}
     validate_payloads(durable_contents(ws))
     assert import_explanation(ws, file) == imported
+
+
+def test_submit_explanation_keeps_it_for_owner_rendering(ws, tmp_path):
+    from typer.testing import CliRunner
+
+    from cairn.cli import app
+    from cairn.presentation.writing_models import ExplanationAnswer
+    from cairn.records.models import Labels
+
+    grant(ws)
+    record = source(ws, processing="cloud_eligible")
+    bundle = assemble(ws, "evidence", scope="research", object_id=record.id)
+    remember(ws, bundle, save=True)
+    answer = ExplanationAnswer(
+        blocks=[
+            ExplanationBlock(
+                text="The reported value is 42 under condition C.",
+                kind="reported_result",
+                evidence_keys=[bundle.evidence[0].key],
+            )
+        ]
+    )
+    options = {
+        "request": "Explain the result.",
+        "request_labels": Labels(domain="research", processing="cloud_eligible"),
+        "provider": "synthetic-agent",
+        "destination": "https://synthetic.invalid",
+    }
+    kept = submit_explanation(ws, bundle.id, answer, **options)
+    assert submit_explanation(ws, bundle.id, answer, **options) == kept
+    assert stored_explanation(ws, kept["job_id"]).blocks == answer.blocks
+    output = tmp_path / "explained.html"
+    rendered = CliRunner().invoke(
+        app,
+        [
+            "view",
+            "explanation",
+            kept["job_id"],
+            str(output),
+            "--workspace",
+            str(ws.root),
+            "--inline-synthetic",
+        ],
+    )
+    assert rendered.exit_code == 0, rendered.output
+    assert "Generated explanation" in output.read_text()
 
 
 def test_bad_quotes_references_and_authority_fields(ws, tmp_path):

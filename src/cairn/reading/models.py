@@ -47,6 +47,16 @@ class FinchClaim(Model):
         return self
 
 
+class ReadingAnswer(Model):
+    """What the owner's agent returns for a reading; Cairn binds it to the inputs."""
+
+    summary: str = Field(min_length=1, max_length=20000)
+    claims: list[FinchClaim] = Field(default_factory=list, max_length=100)
+    messages: list[ReceiptMessage] = Field(min_length=1, max_length=1000)
+    unresolved: list[str] = Field(default_factory=list, max_length=100)
+    limitations: list[str] = Field(default_factory=list, max_length=40)
+
+
 class FinchResponse(Model):
     schema_version: Literal[1] = 1
     session_id: ID

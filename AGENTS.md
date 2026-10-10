@@ -32,10 +32,11 @@ synthetic remotes and throwaway keys.
 ## Agents, reading and writing
 
 The owner uses Cairn from inside their own agent (Claude Code, Codex, Cursor); Cairn
-never launches an agent. The interface is sealed packets and the local stdio MCP server
-(`cairn mcp`, `src/cairn/mcp.py`). Keep its tool set to scoped reads and packet
-begin/finish; never expose approval, accept, apply, recovery, policy, backup, restore,
-schema or update. Launch arguments fix the scope and granted route; tools must not widen
+never launches an agent. The interface is the local stdio MCP server
+(`cairn mcp`, `src/cairn/mcp.py`). Keep its tool set to scoped reads and one-call
+`propose_*` tools; never expose approval, accept, apply, recovery, policy, backup,
+restore, schema or update. Owner commands require confirmation at the owner's terminal;
+never add a non-interactive bypass that works on a real knowledge base. Launch arguments fix the scope and granted route; tools must not widen
 them. Anything a tool returns reaches the agent's provider, so it needs a cloud grant.
 
 Cairn does not vendor, install, edit or update Finch, Quill or any other skill. Packets
@@ -45,7 +46,7 @@ goes through `finish` validation; a model-supplied approval, actor or status fie
 not authority.
 
 When you read a paper or write a page for the owner inside a Cairn knowledge base, use
-the Cairn tools (or an owner-prepared packet), follow the packet's contract, and report
+the Cairn tools, follow the contract in the `propose_*` tool description, and report
 the source/proposal IDs or an explicit pending/blocked reason. Never run `cairn accept`,
 `approve` or `apply`; acceptance is the owner's step. Do not inspect private
 configuration or use contributor code against a private workspace; missing owner

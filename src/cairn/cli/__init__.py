@@ -11,7 +11,6 @@ from cairn import __version__
 from cairn.cli.agent import register as register_agent
 from cairn.cli.commands import guarded, register
 from cairn.cli.domains import register as register_domains
-from cairn.cli.finch import register as register_finch
 from cairn.cli.library import register as register_library
 from cairn.cli.policy import register as register_policy
 from cairn.cli.presentation import register as register_presentation
@@ -19,7 +18,6 @@ from cairn.cli.release import register as register_release
 from cairn.cli.research import register as register_research
 from cairn.cli.schema import register as register_schema
 from cairn.cli.update import register as register_update
-from cairn.cli.write import register as register_write
 from cairn.errors import CairnError
 from cairn.records.runtime import ReviewAcknowledgement
 from cairn.storage.workspace import Workspace
@@ -33,8 +31,6 @@ register_release(app)
 register_schema(app)
 register_library(app)
 register_presentation(app)
-register_finch(app)
-register_write(app)
 register_update(app)
 register_agent(app)
 
@@ -56,9 +52,6 @@ def init(
     release_sha256: Annotated[str | None, typer.Option()] = None,
     statement: Annotated[str | None, typer.Option()] = None,
     acknowledge: Annotated[list[ReviewAcknowledgement] | None, typer.Option()] = None,
-    # Accepted and ignored: an older updater smoke-tests new runtimes with these flags.
-    _no_quill: Annotated[bool, typer.Option("--no-quill", hidden=True)] = False,
-    _no_finch: Annotated[bool, typer.Option("--no-finch", hidden=True)] = False,
     auto_update: Annotated[
         bool,
         typer.Option(
@@ -105,7 +98,7 @@ def init(
             "workspace_id": ws.config.id,
             "synthetic": ws.config.synthetic,
             "connect": f"cairn mcp --print-config --workspace {shlex.quote(str(ws.root))} "
-            "--provider AGENT --destination DESTINATION --packets-dir DIR",
+            "--provider AGENT --destination DESTINATION",
         }
         if auto_update and statement:
             from cairn.cli.update import ENABLE_STATEMENT, enable_workspace

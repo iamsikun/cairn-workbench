@@ -12,10 +12,16 @@ recorded binding to the release it runs.
 | Cairn runtime | `stable` branch, when its version increases | hourly job and each `cairn` start, at most every 24 h | a new verified runtime; each registered knowledge base is rebound to it |
 
 Cairn does not install or update agent skills. Finch, Quill or any other skill your
-agent uses keeps its own update mechanism; packets carry Cairn's own contracts, so they
-work with whatever version is installed. Copies that earlier releases installed at
+agent uses keeps its own update mechanism; Cairn's contracts travel with its MCP tools,
+so they work with whatever version is installed. Copies that earlier releases installed at
 `<kb>/.claude/skills/quill` are left as they are; delete them if you no longer want
 them.
+
+**Upgrading from 0.1.x.** A 0.1.x updater smoke-tests a new runtime with
+`init --no-quill --no-finch`, flags this release removed, so its scheduled run cannot
+adopt the release. Run the new updater once from an up-to-date checkout,
+`uv run cairn update run`; a checkout is not a managed runtime, so it uses its own,
+newer updater. Later updates work normally.
 
 The schedule and the launch-time check only start `cairn update run --if-due`. No
 model, worker or packet takes part in updating, and paper processing never installs

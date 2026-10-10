@@ -1,6 +1,67 @@
 # Acceptance evidence
 
-## Host-agent model: MCP server, draft packets, no managed skills (2026-10-10; software checks passed; no real agent exercised)
+## One-call agent tools, owner terminal, removed compatibility flags (2026-10-10; software checks passed; no real agent exercised)
+
+The owner asked whether packets were still needed when using skills, then asked to
+simplify accordingly, fix stale packets, close the shell gap and remove the
+compatibility flags, all at once (sole user). The owner chose sandbox guidance plus a
+terminal check for the shell gap, and moving the HTML explanation/feedback flows to
+MCP. Signed approvals were considered and rejected: a same-user agent outside a
+sandbox could replace the key or write files directly.
+
+- **No agent-facing packets.** MCP read tools (`search`, `evidence`, `page`, `context`,
+  `view`, `feedback`, `capture`, `pending`, `proposal_show`) and one-call
+  `propose_reading`, `propose_page`, `propose_changes`, `propose_explanation`. Each
+  `propose_*` seals inputs with an `ExportReceipt` and validates the answer in the same
+  call (`reading.workflow.submit`, `quill.submit`, `draft.submit`,
+  `writing.submit_explanation`). Reads leave receipts in `receipts/agent/`. Contracts
+  travel in tool descriptions. `cairn finch`, `cairn write`, `cairn draft` and
+  `--packets-dir` are removed; `cairn view explanation` renders kept explanations.
+- **Retries and attempts.** A retried reading returns its first receipt (submission
+  record, validated on restore). Different page or draft answers seal a new packet
+  (`QuillPacket.attempt`, omitted when unset so stored packet identities hold; draft job
+  IDs salted by the answer) instead of conflicting. Page revisions require the
+  `base_hash` the agent read.
+- **Stale packets.** Guidance is no longer rechecked when a staged proposal is approved,
+  so contract edits never strand proposals (`test_contract_changes_never_strand_staged_proposals`).
+- **Shell gap.** Owner commands (approve, accept, apply, policy changes, schema apply,
+  update enable/disable) require the action typed at `/dev/tty`; `accept --yes` is gone.
+  `CAIRN_SYNTHETIC_OWNER=1` works only for synthetic workspaces. `--print-config` prints
+  Claude Code sandbox and deny settings and Codex sandbox guidance, taken from the
+  agents' documentation (Claude Code runs MCP servers outside its shell sandbox; Codex
+  documents no per-path deny and does not say where MCP servers run).
+- **Flags.** `init --no-quill/--no-finch` removed; `docs/updates.md` explains running the
+  new updater once from a checkout after release.
+
+| Area | Tests |
+|---|---|
+| Tool surface, protocol errors, contract in descriptions | `test_protocol_and_tool_surface_exclude_owner_operations` |
+| Read-then-propose for reading, page (stale base refused), changes (reviewed verification refused), explanation; pending; review; backup validation | `test_read_then_propose_reading_page_changes_and_explanation` |
+| Feedback revision via tools | `test_feedback_revision_through_tools` |
+| Grants on reads and proposals; local-only withheld | `test_grants_bound_every_tool` |
+| Forged fields and quotes rejected without side effects | `test_untrusted_answers_are_rejected_without_side_effects` |
+| Capture root and labels | `test_file_capture_needs_owner_root_and_labels` |
+| Launch validation, sandbox settings | `test_launch_validation_and_print_config` |
+| Submit idempotency and new attempts | `test_submit_seals_and_stages_one_reading`, `test_submit_seals_and_stages_in_one_step`, `test_submit_maps_citations_and_refuses_stale_or_foreign_evidence`, `test_submit_explanation_keeps_it_for_owner_rendering` |
+| Owner terminal: refused without a terminal, wrong word declined, typed word accepted, override ignored for real knowledge bases | `test_cli_accept_requires_confirmation`, `test_owner_terminal_is_required_for_real_knowledge_bases`, `test_cli_enable_registers_and_disable_unregisters` |
+| Removed commands and flags | `test_plain_ingest_is_blocked_and_packet_commands_are_gone`, `test_setup_and_restore_never_install_or_edit_skills` |
+
+`bash scripts/check.sh` passed in the development container: **341 tests**, Ruff,
+strict mypy (99 files), all 13 isolation checks in both images, worker probe and
+extraction/HTML round trips, gold set 129/129, and the real-engine lifecycle.
+
+Manual run from this session's Claude Code shell (no controlling terminal) on a
+synthetic scratch workspace: `cairn policy set-grant` and `cairn accept` were refused
+as owner commands; `accept --yes` is a usage error; the installed `cairn mcp` captured
+a file, staged a reading with `propose_reading` and listed it in `pending`.
+
+Not established: no real agent or model was connected; the printed sandbox settings
+were not applied to a real Claude Code or Codex configuration; the owner terminal check
+was exercised with a pseudo-terminal and an agent shell, not an adversarial agent.
+`scripts/release_trial.py` was rewritten (MCP reading section) but not executed.
+The section below describes the earlier begin/finish packet tools, now superseded.
+
+## Host-agent model: MCP server, draft packets, no managed skills (2026-10-10; superseded by the section above)
 
 The owner always uses Cairn from inside an agent (Claude Code, Codex, Cursor) and did
 not want Cairn launching Claude Code. The owner chose: the agent calls Cairn through a

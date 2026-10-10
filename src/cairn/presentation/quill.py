@@ -24,6 +24,7 @@ from cairn.presentation.writing_models import (
     ExportReceipt,
     FeedbackReceipt,
     NewTarget,
+    PageAnswer,
     QuillEvidence,
     QuillPacket,
     QuillReceipt,
@@ -86,8 +87,6 @@ def load_packet(ws: Workspace, packet_id: str) -> QuillPacket:
         raise Denied("Quill packet identity mismatch")
     if packet.policy_hash != ws.policy_hash:
         raise Conflict("policy changed; prepare a new writing packet")
-    if packet.guidance_hash != digest(guidance().encode()):
-        raise Conflict("Quill guidance changed; prepare a new writing packet")
     for path, checksum in packet.input_hashes.items():
         if not ws.fs.exists(path) or digest(ws.fs.read(path)) != checksum:
             raise Conflict("writing target, evidence or context changed")
@@ -106,7 +105,7 @@ def load_packet(ws: Workspace, packet_id: str) -> QuillPacket:
 
 def begin(
     ws: Workspace,
-    output: Path,
+    output: Path | None,
     *,
     instructions: str,
     provider: str,
@@ -117,6 +116,7 @@ def begin(
     from_ids: list[str] | None = None,
     feedback_id: str | None = None,
     request_labels: Labels | None = None,
+    attempt: str | None = None,
 ) -> dict[str, str]:
     """Seal and export one writing packet; no canonical content changes."""
     feedback = None
@@ -201,6 +201,7 @@ def begin(
             provider=provider,
             destination=destination,
             guidance_hash=digest(text.encode()),
+            attempt=attempt,
         )
         if new is not None and new.domain not in scope.domains:
             raise Denied("new record domain is outside the writing scope")
@@ -220,6 +221,8 @@ def begin(
                 at=now(),
             )
             ws.fs.write(export_path, canonical(receipt), exclusive=True)
+        if output is None:
+            return {"packet_id": packet.id, "input_hash": digest(canonical(packet))}
         output_bytes(
             ws,
             output,
@@ -229,8 +232,6 @@ def begin(
                     "input_hash": digest(canonical(packet)),
                     "guidance": text,
                     "response_schema": QuillResponse.model_json_schema(),
-                    "workflow": "Return QuillResponse to the owner `cairn write finish` handoff; "
-                    "Cairn formats and stages the proposal. Never approve, accept or apply.",
                 }
             ),
         )
@@ -238,7 +239,6 @@ def begin(
         "packet_id": packet.id,
         "input_hash": digest(canonical(packet)),
         "path": str(output.absolute()),
-        "next": "cairn write finish RESPONSE_FILE",
     }
 
 
@@ -324,8 +324,87 @@ def _record(
 
 
 def finish(ws: Workspace, file: Path, *, inline_synthetic: bool = False) -> QuillReceipt:
-    """Gather Quill's output, format it and stage a validated proposal; never apply."""
-    raw = read_source_file(file)
+    return finish_bytes(ws, read_source_file(file), inline_synthetic=inline_synthetic)
+
+
+def submit(
+    ws: Workspace,
+    answer: PageAnswer,
+    *,
+    instructions: str,
+    provider: str,
+    destination: str,
+    scope_name: str,
+    request_labels: Labels,
+    target_id: str | None = None,
+    new: NewTarget | None = None,
+    from_ids: list[str] | None = None,
+    feedback_id: str | None = None,
+    base_hash: str | None = None,
+    inline_synthetic: bool = False,
+) -> QuillReceipt:
+    """Seal the page's inputs and stage the agent's draft in one owner-side step.
+
+    The agent cites sources by ID and locator; Cairn maps each citation to the sealed
+    evidence, so a citation outside the supplied sources is refused.
+    """
+    cited = [ref.source_id for claim in answer.claims for ref in claim.sources]
+    sealed = begin(
+        ws,
+        None,
+        instructions=instructions,
+        provider=provider,
+        destination=destination,
+        scope_name=scope_name,
+        target_id=target_id,
+        new=new,
+        from_ids=list(dict.fromkeys([*(from_ids or []), *cited])),
+        feedback_id=feedback_id,
+        request_labels=request_labels,
+        attempt=digest(canonical(answer)),
+    )
+    with ws.lock():
+        packet = load_packet(ws, sealed["packet_id"])
+    if packet.target is not None:
+        from cairn.proposals.service import target_path
+
+        # The agent revised the version it read; a newer page must not be overwritten.
+        if base_hash != packet.input_hashes.get(target_path(packet.target.record)):
+            raise Conflict("the page changed since the agent read it; read it again")
+    keys = {(e.reference.id, e.reference.locator): e.key for e in packet.evidence}
+    claims = []
+    for claim in answer.claims:
+        evidence_keys, quotations = [], []
+        for ref in claim.sources:
+            key = keys.get((ref.source_id, ref.locator))
+            if key is None:
+                raise Denied("page claim cites a locator outside the supplied sources")
+            evidence_keys.append(key)
+            if ref.quote is not None:
+                quotations.append({"evidence_key": key, "text": ref.quote})
+        claims.append(
+            {
+                "text": claim.text,
+                "kind": claim.kind,
+                "evidence_keys": list(dict.fromkeys(evidence_keys)),
+                "quotations": quotations,
+            }
+        )
+    response = QuillResponse.model_validate(
+        {
+            "packet_id": packet.id,
+            "input_hash": sealed["input_hash"],
+            "title": answer.title,
+            "body_markdown": answer.body_markdown,
+            "claims": claims,
+            "limitations": answer.limitations,
+        }
+    )
+    return finish_bytes(ws, canonical(response), inline_synthetic=inline_synthetic)
+
+
+def finish_bytes(ws: Workspace, raw: bytes, *, inline_synthetic: bool = False) -> QuillReceipt:
+    """Gather the agent's output, format it and stage a validated proposal; never apply."""
     response = QuillResponse.model_validate_json(raw)
     checksum = digest(raw)
     receipt_path = f"{PREFIX}/finished/{response.packet_id}.json"

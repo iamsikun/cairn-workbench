@@ -941,6 +941,19 @@
   "additionalProperties": false,
   "description": "What to write, where it goes, and the only material Quill may use.",
   "properties": {
+    "attempt": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Attempt"
+    },
     "context": {
       "items": {
         "$ref": "#/$defs/Page"

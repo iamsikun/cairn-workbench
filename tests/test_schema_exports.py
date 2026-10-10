@@ -19,17 +19,26 @@ from cairn.presentation.models import (
     ViewDocument,
 )
 from cairn.presentation.writing_models import (
+    ExplanationAnswer,
     ExplanationResponse,
     ExportReceipt,
     Feedback,
     FeedbackReceipt,
+    PageAnswer,
     QuillPacket,
     QuillReceipt,
     QuillResponse,
     WritingJob,
 )
 from cairn.proposals.models import Approval, DraftReceipt, Proposal
-from cairn.reading.models import FinchClaim, FinchGuard, FinchPacket, FinchReceipt, FinchResponse
+from cairn.reading.models import (
+    FinchClaim,
+    FinchGuard,
+    FinchPacket,
+    FinchReceipt,
+    FinchResponse,
+    ReadingAnswer,
+)
 from cairn.records.continuity import ContextPack, SessionReceipt
 from cairn.records.domains import Calculation, FinancialSnapshot, LifeDossier
 from cairn.records.migration import (
@@ -65,6 +74,9 @@ from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2
         FinchPacket,
         FinchReceipt,
         FinchResponse,
+        ReadingAnswer,
+        PageAnswer,
+        ExplanationAnswer,
         PaperSummary,
         FeedDigest,
         FeedEntry,

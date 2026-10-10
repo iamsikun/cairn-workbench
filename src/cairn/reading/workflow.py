@@ -16,7 +16,13 @@ from cairn.presentation.writing_models import ExportReceipt
 from cairn.proposals.models import JobEnvelope
 from cairn.proposals.service import check_reference, stage_result, validate
 from cairn.reading.contract import guidance, guidance_hash
-from cairn.reading.models import FinchGuard, FinchPacket, FinchReceipt, FinchResponse
+from cairn.reading.models import (
+    FinchGuard,
+    FinchPacket,
+    FinchReceipt,
+    FinchResponse,
+    ReadingAnswer,
+)
 from cairn.records.models import (
     ID,
     Assertion,
@@ -62,8 +68,10 @@ def load_packet(ws: Workspace, session_id: str) -> FinchPacket:
     packet = FinchPacket.model_validate_json(ws.fs.read(packet_path(session_id)))
     if packet.id != session_id or identity(packet) != session_id:
         raise Denied("Finch packet identity mismatch")
-    if packet.policy_hash != ws.policy_hash or packet.guidance_hash != guidance_hash():
-        raise Conflict("Finch policy or guidance changed; prepare a new packet")
+    # The contract is checked when the response arrives, not again at approval, so a
+    # contract edit never strands a staged proposal.
+    if packet.policy_hash != ws.policy_hash:
+        raise Conflict("Finch policy changed; prepare a new packet")
     guard_raw = ws.fs.read(f"{PREFIX}/guards/{session_id}.json")
     if digest(guard_raw) != packet.guard_hash:
         raise Conflict("Finch owner guard changed")
@@ -95,7 +103,7 @@ def check_export(ws: Workspace, session_id: str) -> FinchPacket:
 def begin(
     ws: Workspace,
     source_id: str,
-    output: Path,
+    output: Path | None,
     *,
     scope_name: str,
     request: str,
@@ -159,6 +167,12 @@ def begin(
                 exclusive=True,
             )
         assert source.source is not None
+        if output is None:
+            return {
+                "session_id": packet.id,
+                "source_id": source.id,
+                "input_hash": digest(canonical(packet)),
+            }
         payload = canonical(
             {
                 "packet": packet,
@@ -178,7 +192,67 @@ def begin(
 
 
 def finish(ws: Workspace, file: Path, *, inline_synthetic: bool = False) -> FinchReceipt:
-    raw = read_source_file(file)
+    return finish_bytes(ws, read_source_file(file), inline_synthetic=inline_synthetic)
+
+
+def submit(
+    ws: Workspace,
+    source_id: str,
+    answer: ReadingAnswer,
+    *,
+    scope_name: str,
+    request: str,
+    request_labels: Labels,
+    provider: str,
+    destination: str,
+    related_ids: list[str] | None = None,
+    inline_synthetic: bool = False,
+) -> FinchReceipt:
+    """Seal the reading's inputs and stage the agent's answer in one owner-side step.
+
+    A retry of the same answer for the same request returns the first receipt; the
+    sealed guard would otherwise differ because the first answer added a source.
+    """
+    key = digest(
+        canonical(
+            {
+                "source": source_id,
+                "answer": answer,
+                "scope": scope_name,
+                "request": request,
+                "labels": request_labels,
+                "route": [provider, destination],
+                "related": related_ids or [],
+            }
+        )
+    )
+    submitted = f"{PREFIX}/submissions/{key}.json"
+    with ws.lock():
+        if ws.fs.exists(submitted):
+            return FinchReceipt.model_validate_json(ws.fs.read(submitted))
+    sealed = begin(
+        ws,
+        source_id,
+        None,
+        scope_name=scope_name,
+        request=request,
+        request_labels=request_labels,
+        provider=provider,
+        destination=destination,
+        related_ids=related_ids,
+        inline_synthetic=inline_synthetic,
+    )
+    response = FinchResponse(
+        session_id=sealed["session_id"], input_hash=sealed["input_hash"], **dict(answer)
+    )
+    receipt = finish_bytes(ws, canonical(response), inline_synthetic=inline_synthetic)
+    with ws.lock(write=True):
+        if not ws.fs.exists(submitted):
+            ws.fs.write(submitted, canonical(receipt), exclusive=True)
+    return receipt
+
+
+def finish_bytes(ws: Workspace, raw: bytes, *, inline_synthetic: bool = False) -> FinchReceipt:
     response = FinchResponse.model_validate_json(raw)
     checksum = digest(raw)
     receipt_path = f"{PREFIX}/imports/{response.session_id}.json"

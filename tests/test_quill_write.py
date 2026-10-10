@@ -98,14 +98,12 @@ def test_new_page_from_instructions_reaches_owner_accept(ws: Workspace, tmp_path
         from_ids=[paper.id],
     )
     assert [e.key for e in packet.evidence] == ["ev1"] and packet.target is None
-    assert inbox(ws).packets[0].packet_id == packet.id
     before = vault(ws)
     file = respond(tmp_path, packet)
     receipt = quill.finish(ws, file, inline_synthetic=True)
     assert quill.finish(ws, file, inline_synthetic=True) == receipt
     assert {p: b for p, b in vault(ws).items() if p in before} == before
     pending = inbox(ws)
-    assert pending.packets == []
     assert [(p.proposal_id, p.origin) for p in pending.proposals] == [
         (receipt.proposal_id, "quill")
     ]
@@ -268,53 +266,53 @@ def test_feedback_comments_become_quill_instructions(ws: Workspace, tmp_path: Pa
         begin(ws, tmp_path, feedback_id=feedback.id, target_id="concept_other")
 
 
-def test_cli_write_begin_finish_accept(tmp_path: Path) -> None:
-    runner = CliRunner()
-    workspace, code = tmp_path / "private", tmp_path / "public"
-    code.mkdir()
-    init = ["init", "--workspace", str(workspace), "--code-root", str(code), "--synthetic"]
-    assert runner.invoke(app, init).exit_code == 0
-    ws = Workspace(workspace)
+def test_submit_maps_citations_and_refuses_stale_or_foreign_evidence(
+    ws: Workspace, tmp_path: Path
+) -> None:
+    from cairn.presentation.writing_models import PageAnswer
+
     grant(ws)
     paper = source(ws, processing="cloud_eligible")
-    options = ["--workspace", str(workspace)]
-    packet_file = tmp_path / "packet.json"
-    began = runner.invoke(
-        app,
-        [
-            "write",
-            "begin",
-            "--instructions",
-            "Summarize the result.",
-            "--new",
-            "concept",
-            "--title",
-            "Result C",
-            "--from",
-            paper.id,
-            "--provider",
-            "synthetic-agent",
-            "--destination",
-            "https://synthetic.invalid",
-            "--output",
-            str(packet_file),
-            "--shareable",
-            *options,
-        ],
+    path = concept(ws)
+    base = digest(ws.fs.read(path))
+    answer = PageAnswer.model_validate(
+        {
+            "body_markdown": "Owner draft, now citing 42 under condition C.\n",
+            "claims": [
+                {
+                    "text": "The reported value is 42 under condition C.",
+                    "kind": "reported_result",
+                    "sources": [
+                        {
+                            "source_id": paper.id,
+                            "locator": "line 1",
+                            "quote": "42 under condition C",
+                        }
+                    ],
+                }
+            ],
+        }
     )
-    assert began.exit_code == 0, began.output
-    packet = QuillPacket.model_validate(json.loads(packet_file.read_text())["packet"])
-    finished = runner.invoke(
-        app,
-        ["write", "finish", str(respond(tmp_path, packet)), "--inline-synthetic", *options],
-    )
-    assert finished.exit_code == 0, finished.output
-    result = json.loads(finished.stdout)
-    assert result["next"] == f"cairn accept {result['proposal_id']}"
-    accepted = runner.invoke(app, ["accept", result["proposal_id"], "--yes", *options])
-    assert accepted.exit_code == 0, accepted.output
-    for retired in (["explanation", "prepare"], ["feedback", "stage"]):
-        assert runner.invoke(app, [*retired, "--help"]).exit_code != 0
+    options = {
+        "instructions": "Cite the synthetic result.",
+        "scope_name": "research",
+        "request_labels": SHAREABLE,
+        "target_id": "concept_owner_page",
+        "inline_synthetic": True,
+        **ROUTE,
+    }
+    with pytest.raises(Conflict, match="changed since"):
+        quill.submit(ws, answer, base_hash="0" * 64, **options)
+    receipt = quill.submit(ws, answer, base_hash=base, **options)
+    assert receipt.proposal_id and quill.submit(ws, answer, base_hash=base, **options) == receipt
+    # A different answer to the same instructions seals a new packet, not a conflict.
+    second = answer.model_copy(update={"body_markdown": "A second wording of 42 under C.\n"})
+    assert quill.submit(ws, second, base_hash=base, **options).packet_id != receipt.packet_id
+    foreign = answer.model_copy(deep=True)
+    foreign.claims[0].sources[0].locator = "line 99"
+    with pytest.raises(Denied, match="outside the supplied sources"):
+        quill.submit(ws, foreign, base_hash=base, **options)
+    assert accept(ws, plan(ws, [receipt.proposal_id]))[0].status == "applied"
 
 
 def init_args(tmp_path: Path, *extra: str) -> list[str]:
@@ -329,12 +327,14 @@ def test_setup_and_restore_never_install_or_edit_skills(ws: Workspace, tmp_path:
 
     home = tmp_path / "synthetic-home"
     (home / ".claude" / "skills").mkdir(parents=True)
-    # Flags an older updater passes to a new runtime are still accepted.
     result = CliRunner().invoke(
-        app, init_args(tmp_path, "--no-quill", "--no-finch"), env={"HOME": str(home)}
+        app, init_args(tmp_path), env={"HOME": str(home)}
     )
     assert result.exit_code == 0, result.output
     assert set(json.loads(result.stdout)) == {"workspace_id", "synthetic", "connect"}
+    (tmp_path / "again").mkdir()
+    removed = CliRunner().invoke(app, init_args(tmp_path / "again", "--no-quill"))
+    assert removed.exit_code == 2  # The 0.1.x compatibility flags are gone.
     archive = tmp_path / "backup.zip"
     backup(ws, archive)
     code = tmp_path / "restore-code"
@@ -358,5 +358,5 @@ def test_setup_and_restore_never_install_or_edit_skills(ws: Workspace, tmp_path:
     for root in (tmp_path / "private", tmp_path / "restored"):
         assert not (root / ".claude").exists()
     assert not any((home / ".claude" / "skills").iterdir())
-    for retired in (["quill", "install"], ["finch", "install"], ["finch", "status"]):
+    for retired in (["quill", "install"], ["finch", "install"], ["write", "begin"]):
         assert CliRunner().invoke(app, [*retired, "--help"]).exit_code != 0

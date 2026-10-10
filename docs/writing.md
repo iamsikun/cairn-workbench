@@ -28,33 +28,20 @@ protected inputs. Adding a new note does not.
 
 ## Asking your agent to write
 
-In your agent, ask for the page; with Cairn connected over MCP it calls
-`writing_begin` and `writing_finish` itself (see [agent integration](agent-integration.md)).
-The CLI equivalent, for scripts or agents without MCP:
+In your agent, ask for the page. With Cairn connected over MCP, the agent reads what
+it needs (`evidence`, `page`, `context`), writes with its own method (Quill, if
+installed) and calls `propose_page` (see [agent integration](agent-integration.md)).
 
-```text
-cairn write begin --new concept --title "Result C" --from SOURCE_ID \
-  --instructions "Write a short concept page on the main result" \
-  --provider chosen-agent --destination approved-client --shareable --output packet.json
-# the agent, using the packet, returns response.json
-cairn write finish response.json
-```
-
-`--target PAGE_ID` revises an existing page instead. `--feedback FEEDBACK_ID` turns
-imported view comments into instructions for their target. `--view VIEW_ID` writes an
-unreviewed explanation of a saved view.
-
-- **Packet contents.** The packet holds the instructions, the target or new-record
-  slot, keyed evidence from `--from` sources, context pages and Cairn's writing
-  contract. The agent writes with its own method (Quill, if installed).
-- **Instruction labels.** Instructions default to restricted. `--shareable` marks them
-  private and cloud-eligible. Export needs the usual `generation` and `client_export`
-  grants for the provider and destination.
-- **What the agent returns.** A `QuillResponse`: a body, an optional title, claims with
-  evidence keys and exact quotes, and limitations.
-- **What `finish` does.** It checks the response and preserves it as a source. Cairn
-  then formats the record itself: status, labels and existing assertions are kept,
-  and new claims stay unreviewed. Finally it stages a validated proposal.
+- **New page or revision.** A new page names its type and title. A revision names the
+  target and the `base_hash` the agent read; if the page changed since, the proposal
+  is refused rather than overwriting the newer version.
+- **Feedback.** After `cairn feedback import`, the agent can read the comments with
+  `feedback` and revise their target with `propose_page --feedback_id`.
+- **Citations.** Each claim cites a source ID and locator; quotes must be exact.
+  Cairn maps them to sealed evidence and refuses anything outside the cited sources.
+- **What Cairn does.** It preserves the response as a source, formats the record
+  itself (status, labels and existing assertions are kept; new claims stay
+  unreviewed) and stages a validated proposal.
 
 Cairn does not install or configure Quill. Earlier releases set it up during `init`
 and `restore`; those copies are left in place and no longer updated.
@@ -67,14 +54,13 @@ cairn accept PROPOSAL_ID
 cairn accept --all
 ```
 
-`cairn inbox` lists inbox notes, proposals awaiting acceptance and packets without a
-response.
+`cairn inbox` lists inbox notes and proposals awaiting acceptance.
 
 `cairn accept` runs these steps for each proposal:
 
 1. It prints each proposal's titles, paths and review flags.
-2. It asks for one confirmation for the whole batch. Without a terminal it needs
-   `--yes`.
+2. It asks you to type `accept` at your terminal, once for the whole batch. There is
+   no `--yes`: an agent's shell has no terminal and cannot accept for you.
 3. It validates, approves (acknowledging the shown flags with your statement, by
    default `Owner accepted via cairn accept`) and applies each proposal in order.
 
@@ -85,4 +71,5 @@ interrupted apply.
 `--all` skips stale proposals. It also skips proposals flagged `sensitive_record`,
 `decision_review` or `owner_adoption`; name those explicitly.
 
-`approve` and `apply` remain available for scripted, step-by-step review.
+`approve` and `apply` remain available for step-by-step review; they also ask for
+confirmation at your terminal.

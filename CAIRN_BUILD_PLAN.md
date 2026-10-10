@@ -15,16 +15,19 @@ directory is named `cairn`. These names do not change the Python package or CLI.
 
 The owner always works from inside an agent (Claude Code, Codex, Cursor), so Cairn is a
 tool that agent calls, not something that launches or manages agents. Cairn exposes a
-local stdio MCP server (`cairn mcp`) with scoped reads and packet begin/finish for
-reading, writing and drafting. This realizes the brief's M4 stdio adapter: no approval,
+local stdio MCP server (`cairn mcp`) with scoped reads and one-call `propose_*` tools
+for reading, writing, drafting and view explanations; packets are sealed inside each
+call and are not an agent-facing interface. This realizes the brief's M4 stdio adapter: no approval,
 apply, policy, export-control or shell tools. Every tool result reaches the agent's
 provider, so each call needs the owner's cloud grant for that provider/destination.
 
-Packets carry Cairn-owned contracts. Cairn no longer vendors, installs, edits or updates
-Finch or Quill; skills supply method only. The earlier Finch follow-on (bundled snapshot,
-installer at `init`, Finch-owned `references/cairn.md`) and managed Quill copies are
-retired. Drafting from a source uses the same packet route (`cairn draft`), replacing the
-docker client packet route. No new canonical record types, automatic approvals or
+The `propose_*` tools carry Cairn-owned contracts. Cairn no longer vendors, installs,
+edits or updates Finch or Quill; skills supply method only. The earlier Finch follow-on
+(bundled snapshot, installer at `init`, Finch-owned `references/cairn.md`), managed
+Quill copies and CLI packet commands are retired. Drafting from a source is
+`propose_changes`, replacing the docker client packet route. Owner commands require
+confirmation at the owner's terminal; the agent's own sandbox keeps its shell out of
+the knowledge base. No new canonical record types, automatic approvals or
 private activation are authorized. See `docs/agent-integration.md`.
 
 ### Authorized HTML follow-on
@@ -197,7 +200,7 @@ Define a small provider protocol: an immutable structured job containing only ap
 Implement two provider paths:
 
 1. `FakeProvider`, deterministic and offline, for the complete test/demo workflow, including malformed and adversarial responses.
-2. Draft packets (`cairn draft begin`/`finish`, or the MCP `draft_*` tools), which seal a bounded job for the owner's existing agent client and accept its structured response. Bind responses to job ID, input digest, route, and provider metadata. Pending external work has a resumable status. This is a file protocol, not a new chat client. (It replaced the earlier `ClientPacketProvider` docker client route.)
+2. The MCP `propose_changes` tool, which seals a bounded job for the owner's existing agent client and accepts its structured response in the same call. Bind responses to job ID, input digest, route, and provider metadata. Pending external work has a resumable status. This is a file protocol, not a new chat client. (It replaced the earlier `ClientPacketProvider` docker client route.)
 
 Real client execution requires a demonstrated processing route and isolation profile. A local client that is not installed or cannot prove its configured route yields a blocked status. Do not label the fake provider or a packet-export scaffold as a working local model. A concrete automated local-client adapter can be added after a synthetic capability trial; it is not necessary to test the application without a paid API.
 
@@ -244,9 +247,9 @@ Preserve the brief's commands with the `cairn` prefix. Add a few commands needed
 | --- | --- |
 | Setup and diagnostics | `init`, `doctor` |
 | Evidence and synthesis | `capture` (or `capture -` from stdin), `ingest`, `proposal show`, `validate` |
-| Writing | `note` (owner notes, searchable at once), `write begin`/`write finish`, `inbox` |
-| Agent interface | `mcp` (stdio MCP server), `finch begin`/`finish`, `draft begin`/`finish` |
-| Owner control | `accept` (validate, approve and apply in one confirmed step, batchable), `approve`, `apply`, `edit`, `recover` |
+| Writing | `note` (owner notes, searchable at once), `inbox`, `view explanation` |
+| Agent interface | `mcp` (stdio MCP server; `--print-config` for registration and sandbox settings) |
+| Owner control | `accept` (validate, approve and apply in one step confirmed at the owner's terminal, batchable), `approve`, `apply`, `edit`, `recover` |
 | Reading | `search` (includes owner notes), `query`, `context`, `lint` |
 | Maintenance/integration | `rebuild-index`, `receipt import`, `backup`, `restore` |
 

@@ -55,13 +55,11 @@ def test_draft_roundtrip_is_idempotent_reviewable_and_owner_applied(ws, tmp_path
     assert job.route == "cloud" and job.id.startswith("job_draft_")
     assert job.provider == "synthetic-agent" and job.execution_image is None
     assert begin(ws, tmp_path, paper.id)[0] == began
-    assert [p.kind for p in inbox(ws).packets] == ["draft"]
 
     response = respond(tmp_path, drafted(job))
     receipt = draft.finish(ws, response)
     assert receipt.workflow_stage == "validated" and not receipt.processing_verified
     assert draft.finish(ws, response) == receipt
-    assert not inbox(ws).packets
     proposed = load_proposal(ws, receipt.proposal_id)
     assert proposed.route == "cloud"
     assert [p.origin for p in inbox(ws).proposals] == ["draft"]
@@ -150,34 +148,27 @@ def test_malformed_draft_is_rejected_without_side_effects(ws, tmp_path):
     assert not ws.fs.files("receipts/drafts/responses")
 
 
-def test_cli_draft_begin_finish_and_blocked_plain_ingest(ws, tmp_path):
+def test_submit_seals_and_stages_in_one_step(ws, tmp_path):
+    grant(ws)
+    paper = source(ws, processing="cloud_eligible")
+    _, job = begin(ws, tmp_path, paper.id)
+    candidates = drafted(job).candidates
+    receipt = draft.submit(ws, paper.id, candidates, scope_name="research", **ROUTE)
+    assert receipt.workflow_stage == "validated" and receipt.job_id.startswith("job_draft_")
+    assert draft.submit(ws, paper.id, candidates, scope_name="research", **ROUTE) == receipt
+    # A different answer for the same source is a new attempt, not a conflict.
+    other = draft.submit(
+        ws, paper.id, candidates, scope_name="research", warnings=["Second pass"], **ROUTE
+    )
+    assert other.job_id != receipt.job_id
+
+
+def test_plain_ingest_is_blocked_and_packet_commands_are_gone(ws, tmp_path):
     grant(ws)
     paper = source(ws, processing="cloud_eligible")
     runner = CliRunner()
     options = ["--workspace", str(ws.root)]
-    packet = tmp_path / "packet.json"
-    began = runner.invoke(
-        app,
-        [
-            "draft",
-            "begin",
-            paper.id,
-            "--output",
-            str(packet),
-            "--provider",
-            ROUTE["provider"],
-            "--destination",
-            ROUTE["destination"],
-            *options,
-        ],
-    )
-    assert began.exit_code == 0, began.output
-    job = Job.model_validate(json.loads(packet.read_bytes())["packet"])
-    finished = runner.invoke(
-        app, ["draft", "finish", str(respond(tmp_path, drafted(job))), *options]
-    )
-    assert finished.exit_code == 0, finished.output
-    assert json.loads(finished.stdout)["workflow_stage"] == "validated"
     blocked = runner.invoke(app, ["ingest", paper.id, "--scope", "research", *options])
-    assert blocked.exit_code == 5 and "draft begin" in blocked.output
-    assert runner.invoke(app, ["client", "run", "--help"]).exit_code != 0
+    assert blocked.exit_code == 5 and "propose_changes" in blocked.output
+    for retired in (["client", "run"], ["draft", "begin"], ["finch", "begin"], ["write", "begin"]):
+        assert runner.invoke(app, [*retired, "--help"]).exit_code != 0

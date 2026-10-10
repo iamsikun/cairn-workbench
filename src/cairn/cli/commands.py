@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import json
+import os
 import sqlite3
 import sys
 import unicodedata
@@ -57,6 +58,44 @@ def guarded[**P, R](function: Callable[P, R]) -> Callable[P, R]:
     return wrapper
 
 
+SYNTHETIC_OWNER = "CAIRN_SYNTHETIC_OWNER"
+
+
+def _terminal() -> int:
+    return os.open("/dev/tty", os.O_RDWR)
+
+
+def owner_confirm(ws: Workspace, action: str, detail: str) -> None:
+    """Owner commands are confirmed at the owner's own terminal, never by an agent's shell.
+
+    Agent shells (Claude Code's, for one) run without a controlling terminal, so they
+    cannot answer. A determined agent could allocate one; confining the agent with its
+    sandbox is the real boundary (see `cairn mcp --print-config`). Synthetic workspaces
+    accept `CAIRN_SYNTHETIC_OWNER=1` so tests and trials can run unattended.
+    """
+    if ws.config.synthetic and os.environ.get(SYNTHETIC_OWNER) == "1":
+        return
+    try:
+        fd = _terminal()
+    except OSError:
+        raise Denied(
+            f"`cairn {action}` is an owner command; run it yourself in a terminal"
+        ) from None
+    try:
+        os.write(fd, f"{detail}\nType '{action}' to confirm: ".encode())
+        typed = b""
+        while not typed.endswith(b"\n") and len(typed) < 200:
+            chunk = os.read(fd, 200)
+            if not chunk:
+                break
+            typed += chunk
+    finally:
+        os.close(fd)
+    answer = typed.decode(errors="replace").strip()
+    if answer != action:
+        raise Denied("owner declined")
+
+
 def read_stdin() -> bytes:
     data = sys.stdin.buffer.read(MAX_FILE_BYTES + 1)
     if len(data) > MAX_FILE_BYTES:
@@ -81,8 +120,6 @@ def emit(value: Any, as_json: bool, text: str | None = None) -> None:
 def register(app: typer.Typer) -> None:
     proposals = typer.Typer(help="Inspect sealed proposals.")
     app.add_typer(proposals, name="proposal")
-    drafts = typer.Typer(help="Draft pages from a source with the owner's agent; proposals only.")
-    app.add_typer(drafts, name="draft")
 
     @app.command("evidence")
     @guarded
@@ -129,43 +166,6 @@ def register(app: typer.Typer) -> None:
             + "\n\n".join(f"[{s.locator}] {s.text}" for s in report["segments"])
         )
         emit(report, json_output, text)
-
-    @drafts.command("begin")
-    @guarded
-    def draft_begin(
-        source_id: str,
-        output: Annotated[Path, typer.Option()],
-        workspace: WorkspaceOption,
-        provider: Annotated[str, typer.Option()],
-        destination: Annotated[str, typer.Option()],
-        scope: str = "research",
-        related: Annotated[list[str] | None, typer.Option()] = None,
-        inline_synthetic: bool = False,
-    ) -> None:
-        """Seal a drafting packet for a granted agent route and record the export."""
-        from cairn.proposals.draft import begin
-
-        emit(
-            begin(
-                Workspace(workspace),
-                source_id,
-                output,
-                scope_name=scope,
-                provider=provider,
-                destination=destination,
-                related_ids=related,
-                inline_synthetic=inline_synthetic,
-            ),
-            True,
-        )
-
-    @drafts.command("finish")
-    @guarded
-    def draft_finish(file: Path, workspace: WorkspaceOption) -> None:
-        """Validate the agent's draft and stage it as a proposal for owner review."""
-        from cairn.proposals.draft import finish
-
-        emit(finish(Workspace(workspace), file), True)
 
     @app.command("edit")
     @guarded
@@ -324,7 +324,7 @@ def register(app: typer.Typer) -> None:
     @app.command("inbox")
     @guarded
     def inbox_command(workspace: WorkspaceOption, json_output: JsonOption = False) -> None:
-        """Read-only triage of inbox notes, pending proposals and unanswered packets."""
+        """Read-only triage of inbox notes and proposals awaiting acceptance."""
         result = build_inbox(Workspace(workspace))
         lines = [f"Notes ({len(result.notes)})"]
         lines += [
@@ -338,8 +338,6 @@ def register(app: typer.Typer) -> None:
             f"    review: {', '.join(p.review_flags)}\n    next: {p.next}"
             for p in result.proposals
         ]
-        lines.append(f"Packets without a response ({len(result.packets)})")
-        lines += [f"  {k.kind} {k.packet_id}\n    next: {k.next}" for k in result.packets]
         emit(result, json_output, "\n".join(lines))
 
     @app.command()
@@ -429,8 +427,10 @@ def register(app: typer.Typer) -> None:
         json_output: JsonOption = False,
     ) -> None:
         """Owner-only approval, bound to the exact proposal and policy."""
+        ws = Workspace(workspace)
+        owner_confirm(ws, "approve", f"Approve {proposal_id}.")
         result = approve_proposal(
-            Workspace(workspace),
+            ws,
             proposal_id,
             acknowledgements=set(acknowledge),
             statement=statement,
@@ -443,7 +443,6 @@ def register(app: typer.Typer) -> None:
         workspace: WorkspaceOption,
         proposal_ids: Annotated[list[str] | None, typer.Argument()] = None,
         all_pending: Annotated[bool, typer.Option("--all")] = False,
-        yes: Annotated[bool, typer.Option("--yes", "-y")] = False,
         statement: str = DEFAULT_STATEMENT,
         json_output: JsonOption = False,
     ) -> None:
@@ -463,13 +462,12 @@ def register(app: typer.Typer) -> None:
                     f"    review: {', '.join(item.review_flags)}"
                     + (f"\n    reason: {item.reason}" if item.reason else ""),
                 )
-        if ready and not yes:
-            if not sys.stdin.isatty():
-                raise Denied("non-interactive acceptance requires --yes")
-            if not typer.confirm(
-                f"Accept {len(ready)} proposal(s), acknowledging the review flags shown?"
-            ):
-                raise Denied("owner declined")
+        if ready:
+            owner_confirm(
+                ws,
+                "accept",
+                f"Accept {len(ready)} proposal(s), acknowledging the review flags shown.",
+            )
         results = accept_items(ws, items, statement=statement)
         applied = sum(item.receipt_id is not None for item in results)
         emit(results, json_output, f"Applied {applied} of {len(ready)} ready proposal(s).")
@@ -482,7 +480,9 @@ def register(app: typer.Typer) -> None:
         proposal_id: str, workspace: WorkspaceOption, json_output: JsonOption = False
     ) -> None:
         """Apply a sealed owner approval through the recoverable single writer."""
-        result = apply_proposal(Workspace(workspace), proposal_id)
+        ws = Workspace(workspace)
+        owner_confirm(ws, "apply", f"Apply {proposal_id}.")
+        result = apply_proposal(ws, proposal_id)
         emit(result, json_output, f"Applied {proposal_id}; receipt {result.id}.")
 
     @app.command("recover")

@@ -36,10 +36,10 @@ captured → extracted → proposed → validated → approved → applied → i
   provenance and source locators, so every claim can point back to the exact text.
 - **Models propose, the owner decides.** Extraction runs in a pinned, offline worker
   container. Reading, writing and drafting happen in the agent you already use (Claude
-  Code, Codex, Cursor), which receives a bounded, sealed packet, not your files. Its
-  output is an untrusted proposal. It cannot choose where it is written, relax access
-  labels, or approve itself; an actor or approval field written by a model carries no
-  authority.
+  Code, Codex, Cursor), which reads scoped material through Cairn's tools, not your
+  files. Its output is an untrusted proposal. It cannot choose where it is written,
+  relax access labels, or approve itself; an actor or approval field written by a model
+  carries no authority, and owner commands need your own terminal.
 - **One recoverable writer.** Applying an approved proposal revalidates it under a lock,
   journals the before and after bytes, and records local Git history, so an interrupted
   write can be recovered.
@@ -67,7 +67,7 @@ rebuilt from the canonical records. The [architecture](docs/architecture.md) and
   those skills. See [agent integration](docs/agent-integration.md).
 - **Review and accept.** `cairn note` makes your own notes searchable at once,
   `cairn inbox` lists what awaits you, and `cairn accept` validates, approves and
-  applies proposals in one confirmed step. See [Writing](docs/writing.md).
+  applies proposals in one step you confirm at your terminal. See [Writing](docs/writing.md).
 - **Maintain a journal library.** Catalog a read-only folder of journal PDFs and track
   what is new. See the [journal library](docs/library.md).
 - **Track finances and daily life.** Import structured financial snapshots, run exact

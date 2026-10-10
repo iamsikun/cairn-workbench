@@ -39,6 +39,7 @@ def prepare_job(
     related_ids: list[str] | None = None,
     provider: str = "fake-v1",
     destination: str | None = None,
+    attempt: str | None = None,
 ) -> JobEnvelope:
     """Seal an ingest job. With a destination it is a draft packet for a granted cloud route."""
     if related_ids is None:
@@ -81,7 +82,8 @@ def prepare_job(
             max_changes=policy.max_changes,
         )
         prefix = "job_" if destination is None else "job_draft_"
-        job.id = prefix + digest(canonical(job))[:32]
+        # A draft attempt (the agent's answer digest) makes each answer its own job.
+        job.id = prefix + digest(canonical(job) + (attempt or "").encode())[:32]
         if destination is None:
             require_local_route_unlocked(
                 ws,
@@ -462,9 +464,7 @@ def ingest(
     envelope = prepare_job(ws, source_id, scope_name=scope_name, related_ids=related_ids)
     try:
         if not (inline_synthetic and ws.config.synthetic):
-            raise Blocked(
-                "drafting needs the owner's agent: use `cairn draft begin` or the MCP draft tools"
-            )
+            raise Blocked("drafting needs the owner's agent: use the MCP propose_changes tool")
         result = FakeProvider().generate(envelope.job)
     except Exception as exc:
         with ws.lock(write=True):

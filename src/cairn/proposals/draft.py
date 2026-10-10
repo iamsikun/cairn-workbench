@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from cairn.adapters.protocol import Job, Result
+from cairn.adapters.protocol import Candidate, Job, Result
 from cairn.errors import Conflict, Denied
 from cairn.ingest.service import extract, read_source_file
 from cairn.presentation.service import output_bytes
@@ -62,13 +62,14 @@ def check_proposal_binding(ws: Workspace, job: Job) -> None:
 def begin(
     ws: Workspace,
     source_id: str,
-    output: Path,
+    output: Path | None,
     *,
     scope_name: str,
     provider: str,
     destination: str,
     related_ids: list[str] | None = None,
     inline_synthetic: bool = False,
+    attempt: str | None = None,
 ) -> dict[str, str]:
     extract(ws, source_id, scope_name=scope_name, inline_synthetic=inline_synthetic)
     envelope = prepare_job(
@@ -78,6 +79,7 @@ def begin(
         related_ids=related_ids,
         provider=provider,
         destination=destination,
+        attempt=attempt,
     )
     job = envelope.job
     input_hash = digest(canonical(job))
@@ -102,6 +104,8 @@ def begin(
                 ),
                 exclusive=True,
             )
+        if output is None:
+            return {"job_id": job.id, "source_id": job.source.id, "input_hash": input_hash}
         payload = canonical(
             {
                 "packet": job,
@@ -120,7 +124,44 @@ def begin(
 
 
 def finish(ws: Workspace, file: Path) -> DraftReceipt:
-    raw = read_source_file(file)
+    return finish_bytes(ws, read_source_file(file))
+
+
+def submit(
+    ws: Workspace,
+    source_id: str,
+    candidates: list[Candidate],
+    *,
+    scope_name: str,
+    provider: str,
+    destination: str,
+    related_ids: list[str] | None = None,
+    warnings: list[str] | None = None,
+    inline_synthetic: bool = False,
+) -> DraftReceipt:
+    """Seal the source and chosen related pages, then stage the agent's pages."""
+    sealed = begin(
+        ws,
+        source_id,
+        None,
+        scope_name=scope_name,
+        provider=provider,
+        destination=destination,
+        related_ids=related_ids or [],
+        inline_synthetic=inline_synthetic,
+        attempt=digest(canonical({"candidates": candidates, "warnings": warnings or []})),
+    )
+    result = Result(
+        job_id=sealed["job_id"],
+        input_hash=sealed["input_hash"],
+        provider=provider,
+        candidates=candidates,
+        warnings=warnings or [],
+    )
+    return finish_bytes(ws, canonical(result))
+
+
+def finish_bytes(ws: Workspace, raw: bytes) -> DraftReceipt:
     result = Result.model_validate_json(raw)
     checksum = digest(raw)
     receipt_path = f"{PREFIX}/finished/{result.job_id}.json"

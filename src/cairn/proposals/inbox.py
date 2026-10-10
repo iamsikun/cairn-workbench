@@ -1,4 +1,4 @@
-"""Read-only triage: inbox notes, unaccepted proposals and unanswered writing packets."""
+"""Read-only triage: inbox notes and unaccepted proposals."""
 
 from __future__ import annotations
 
@@ -24,16 +24,9 @@ class InboxProposal(Model):
     next: str
 
 
-class InboxPacket(Model):
-    kind: str
-    packet_id: str
-    next: str
-
-
 class Inbox(Model):
     notes: list[InboxNote]
     proposals: list[InboxProposal]
-    packets: list[InboxPacket]
 
 
 def _origin(provider: str, job_id: str) -> str:
@@ -44,11 +37,6 @@ def _origin(provider: str, job_id: str) -> str:
     if provider.startswith("quill-"):
         return "quill"
     return "ingest"
-
-
-def _unanswered(ws: Workspace, prefix: str, answered: str) -> list[str]:
-    names = [path.rsplit("/", 1)[-1].removesuffix(".json") for path in ws.fs.files(prefix)]
-    return sorted(name for name in names if not ws.fs.exists(f"{answered}/{name}.json"))
 
 
 def inbox(ws: Workspace) -> Inbox:
@@ -70,16 +58,6 @@ def inbox(ws: Workspace) -> Inbox:
             for note in read_notes(ws)
             if note.path.startswith("vault/inbox/")
         ]
-        packets = [
-            InboxPacket(kind="finch", packet_id=key, next="cairn finch finish RESPONSE_FILE")
-            for key in _unanswered(ws, "receipts/finch/exports", "receipts/finch/imports")
-        ] + [
-            InboxPacket(kind="quill", packet_id=key, next="cairn write finish RESPONSE_FILE")
-            for key in _unanswered(ws, "receipts/quill/exports", "receipts/quill/finished")
-        ] + [
-            InboxPacket(kind="draft", packet_id=key, next="cairn draft finish RESPONSE_FILE")
-            for key in _unanswered(ws, "receipts/drafts/exports", "receipts/drafts/finished")
-        ]
     return Inbox(
         notes=notes,
         proposals=[
@@ -94,5 +72,4 @@ def inbox(ws: Workspace) -> Inbox:
             )
             for p in proposals
         ],
-        packets=packets,
     )

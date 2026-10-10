@@ -73,39 +73,32 @@ Publication links are navigation, not fetches. The CSP permits only the bundled
 script hash, inline styles and embedded raster images; native disclosures and print
 styles preserve readability without JavaScript.
 
-## Writing with your agent
+## Explanations from your agent
 
-Your agent writes (with Quill, if installed); Cairn says what to write and where, then
-formats the result. Packets carry Cairn's writing contract, not a Quill copy. See
-[Writing](writing.md) for the full owner path.
+Ask your agent to explain a saved view. It reads the view with the MCP `view` tool
+(document and evidence keys), writes with its own method (Quill, if installed) and
+calls `propose_explanation`. Cairn seals the request, view and evidence, checks the
+grant (`generation` and `client_export`), records the export and keeps the
+explanation. Render it yourself:
 
 ```text
-cairn write begin --view VIEW_ID --instructions "Explain the result" --provider chosen-agent --destination approved-client --output /srv/reports/packet.json --workspace /srv/cairn
-cairn write finish /srv/reports/response.json --output /srv/reports/explanation.html --workspace /srv/cairn
+cairn view explanation JOB_ID /srv/reports/explanation.html --workspace /srv/cairn
 ```
 
-`--view` explains a saved view. The packet binds the entire request, labels, view,
-evidence, writing contract and response schema. Instructions default to restricted
-labels unless the owner passes `--shareable` or `--request-labels`. Export requires
-current `generation` and `client_export` grants for the provider, destination and
-complete request. Neither step calls a model or activates a subscription.
-
-The agent returns structured prose, permitted kinds, supplied evidence keys and
-optional exact quotations. Finish checks job identity, hashes, field/size limits,
-reference membership, quotation presence and current authorization. These mechanical
+Blocks cite the view's evidence keys; quotations must be exact. These mechanical
 checks do not establish entailment or semantic accuracy. The explanation is displayed
-as **generated, unreviewed interpretation** and changes no canonical record. A manual
-packet records unverified execution; it cannot establish local-only processing.
+as **generated, unreviewed interpretation** and changes no canonical record, and its
+processing route is not independently verified.
 
 ## Feedback to revision
 
 Add `--feedback` to an HTML view to offer a bounded JSON download form. It stores
-nothing persistently in the browser and sends no request. The owner can then use:
+nothing persistently in the browser and sends no request. Import it, then ask your
+agent to address it:
 
 ```text
 cairn feedback import /srv/reports/cairn-feedback.json --workspace /srv/cairn
-cairn write begin --feedback FEEDBACK_ID --instructions "Address the comments" --provider chosen-agent --destination approved-client --output /srv/reports/packet.json --workspace /srv/cairn
-cairn write finish /srv/reports/response.json --workspace /srv/cairn
+# the agent reads it with `feedback`, the target with `page`, then calls propose_page
 cairn accept PROPOSAL_ID --workspace /srv/cairn
 ```
 

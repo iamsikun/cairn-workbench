@@ -20,6 +20,14 @@ from cairn.records.json import read_json
 from cairn.storage.workspace import Workspace
 
 
+def _owner(workspace: Path) -> Workspace:
+    from cairn.cli.commands import owner_confirm
+
+    ws = Workspace(workspace)
+    owner_confirm(ws, "policy", "Change this knowledge base's processing policy.")
+    return ws
+
+
 def register(app: typer.Typer) -> None:
     policy = typer.Typer(help="Owner-controlled scopes, processing consent, and route audits.")
     app.add_typer(policy, name="policy")
@@ -46,7 +54,7 @@ def register(app: typer.Typer) -> None:
         """Replace one scope; revoke grants tied to its previous definition."""
         scope = Scope.model_validate(read_json(read_source_file(file)))
         emit(
-            set_scope(Workspace(workspace), scope, base_hash=base_hash, statement=statement),
+            set_scope(_owner(workspace), scope, base_hash=base_hash, statement=statement),
             json_output,
         )
 
@@ -62,7 +70,7 @@ def register(app: typer.Typer) -> None:
         """Record explicit consent for a scope, agent provider/destination and operations."""
         grant = RouteGrant.model_validate(read_json(read_source_file(file)))
         emit(
-            set_grant(Workspace(workspace), grant, base_hash=base_hash, statement=statement),
+            set_grant(_owner(workspace), grant, base_hash=base_hash, statement=statement),
             json_output,
         )
 
@@ -76,7 +84,7 @@ def register(app: typer.Typer) -> None:
         json_output: JsonOption = False,
     ) -> None:
         emit(
-            revoke_grant(Workspace(workspace), grant_id, base_hash=base_hash, statement=statement),
+            revoke_grant(_owner(workspace), grant_id, base_hash=base_hash, statement=statement),
             json_output,
         )
 

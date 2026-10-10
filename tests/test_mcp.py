@@ -4,21 +4,18 @@ import json
 import subprocess
 import sys
 from datetime import timedelta
-from pathlib import Path
 
 import pytest
-from test_draft_packet import drafted
-from test_finch import returned
 from test_presentation import source
+from test_quill_write import concept
 from typer.testing import CliRunner
 
-from cairn.adapters.protocol import Job
 from cairn.cli import app
 from cairn.mcp import TOOLS
 from cairn.policies.audit import set_grant
 from cairn.policies.models import RouteGrant
-from cairn.reading.models import FinchPacket
-from cairn.records.models import canonical, digest, now
+from cairn.presentation.service import assemble, remember
+from cairn.records.models import Labels, canonical, now
 from cairn.storage.backup import durable_contents, validate_payloads
 from cairn.storage.workspace import Workspace
 
@@ -26,15 +23,17 @@ ROUTE = {"provider": "synthetic-agent", "destination": "https://synthetic.invali
 AGENT_TOOLS = {
     "search",
     "evidence",
+    "page",
     "context",
+    "view",
+    "feedback",
+    "capture",
     "pending",
     "proposal_show",
-    "reading_begin",
-    "reading_finish",
-    "writing_begin",
-    "writing_finish",
-    "draft_begin",
-    "draft_finish",
+    "propose_reading",
+    "propose_page",
+    "propose_changes",
+    "propose_explanation",
 }
 
 
@@ -55,8 +54,7 @@ def grant(ws: Workspace, operations=("generation", "client_export", "query", "co
 
 
 class Client:
-    def __init__(self, ws: Workspace, tmp_path: Path, *extra: str):
-        self.packets = tmp_path / "agent-packets"
+    def __init__(self, ws: Workspace, *extra: str):
         self.process = subprocess.Popen(
             [
                 sys.executable,
@@ -71,8 +69,6 @@ class Client:
                 ROUTE["provider"],
                 "--destination",
                 ROUTE["destination"],
-                "--packets-dir",
-                str(self.packets),
                 "--inline-synthetic",
                 *extra,
             ],
@@ -108,6 +104,11 @@ class Client:
             assert result["structuredContent"] == payload
         return bool(result.get("isError")), payload
 
+    def ok(self, name: str, **arguments) -> dict:
+        failed, payload = self.call(name, **arguments)
+        assert not failed, payload
+        return payload
+
     def close(self) -> None:
         assert self.process.stdin
         self.process.stdin.close()
@@ -115,10 +116,38 @@ class Client:
 
 
 @pytest.fixture
-def client(ws, tmp_path):
-    value = Client(ws, tmp_path)
+def client(ws):
+    value = Client(ws)
     yield value
     value.close()
+
+
+def reference(report: dict, quote: str = "42 under condition C") -> dict:
+    """An evidence reference copied from the `evidence` tool, as an agent would."""
+    return {
+        "id": report["source"]["id"],
+        "source_hash": report["source"]["source"]["content_hash"],
+        "evidence_hash": report["evidence_hash"],
+        "locator": report["segments"][0]["locator"],
+        "quote": quote,
+    }
+
+
+def reading(report: dict) -> dict:
+    cited = {"text": "42 under condition C", "kind": "reported_result"}
+    return {
+        "source_id": report["source"]["id"],
+        "summary": "The synthetic paper reports 42 under condition C.",
+        "claims": [
+            cited | {"sources": [reference(report)]},
+            {"text": "Changing C may change the result", "kind": "hypothesis"},
+        ],
+        "messages": [
+            {"role": "user", "content": "Explain this synthetic paper."},
+            {"role": "assistant", "content": "42 under condition C; unreviewed."},
+        ],
+        "limitations": ["Synthetic excerpt only"],
+    }
 
 
 def test_protocol_and_tool_surface_exclude_owner_operations(client):
@@ -140,8 +169,9 @@ def test_protocol_and_tool_surface_exclude_owner_operations(client):
     for owner in ("approve", "accept", "apply", "policy", "backup", "restore", "update", "grant"):
         assert owner not in names
     assert all(tool["inputSchema"]["type"] == "object" for tool in tools)
-    finch_schema = next(t for t in tools if t["name"] == "reading_finish")["inputSchema"]
-    assert "FinchResponse" in finch_schema["$defs"]  # References resolve at the schema root.
+    reading_tool = next(t for t in tools if t["name"] == "propose_reading")
+    assert "FinchClaim" in reading_tool["inputSchema"]["$defs"]
+    assert "exact text" in reading_tool["description"]  # The contract travels with the tool.
     assert client.request("no/such")["error"]["code"] == -32601
     assert client.request("tools/call", {"name": "approve"})["error"]["code"] == -32602
     client.send(b"{not json")
@@ -152,109 +182,159 @@ def test_protocol_and_tool_surface_exclude_owner_operations(client):
     assert failed and error["error"] == "invalid" and "limit" in error["message"]
 
 
-def test_reading_writing_and_drafting_round_trips(ws, tmp_path, client):
+def test_read_then_propose_reading_page_changes_and_explanation(ws, client):
     grant(ws)
     paper = source(ws, processing="cloud_eligible")
+    report = client.ok("evidence", source_id=paper.id)
+    assert report["segments"] and len(ws.fs.files("receipts/agent")) == 1
 
-    failed, began = client.call("reading_begin", source=paper.id)
-    assert not failed, began
-    assert "source_bytes_base64" not in began["packet"]
-    assert Path(began["path"]).is_relative_to(client.packets)
-    assert "source_bytes_base64" in json.loads(Path(began["path"]).read_bytes())
-    packet = FinchPacket.model_validate(began["packet"]["packet"])
-    assert client.call("reading_begin", source=paper.id)[1]["session_id"] == packet.id
-    response = returned(packet).model_dump(mode="json")
-    failed, read = client.call("reading_finish", response=response)
-    assert not failed and read["workflow_stage"] == "validated", read
-    assert client.call("reading_finish", response=response)[1] == read
+    read = client.ok("propose_reading", **reading(report))
+    assert read["workflow_stage"] == "validated"
+    assert client.ok("propose_reading", **reading(report)) == read  # Retry is idempotent.
 
-    failed, wrote = client.call(
-        "writing_begin",
-        instructions="Write a short concept page on the result.",
+    concept(ws)
+    page = client.ok("page", record_id="concept_owner_page")
+    cite = {"source_id": paper.id, "locator": report["segments"][0]["locator"]}
+    claims = [{"text": "42 under condition C", "kind": "reported_result", "sources": [cite]}]
+    revision = {
+        "instructions": "Cite the synthetic result.",
+        "target": "concept_owner_page",
+        "body_markdown": "Owner draft, now citing 42 under condition C.\n",
+        "claims": claims,
+    }
+    failed, error = client.call("propose_page", **revision, base_hash="0" * 64)
+    assert failed and error["error"] == "conflict"
+    written = client.ok("propose_page", **revision, base_hash=page["base_hash"])
+    created = client.ok(
+        "propose_page",
+        instructions="Write a short concept page.",
         new_type="concept",
         title="Result C",
-        from_ids=[paper.id],
+        body_markdown="The synthetic study reports 42 under condition C.\n",
+        claims=claims,
     )
-    assert not failed, wrote
-    quill_packet = wrote["packet"]["packet"]
-    failed, written = client.call(
-        "writing_finish",
-        response={
-            "packet_id": quill_packet["id"],
-            "input_hash": wrote["input_hash"],
-            "body_markdown": "The synthetic study reports 42 under condition C.\n",
-            "claims": [
+
+    candidate = {
+        "record": {
+            "id": "concept_mcp_draft",
+            "type": "concept",
+            "title": "Draft from the synthetic paper",
+            "domain": "research",
+            "classification": "public",
+            "processing": "cloud_eligible",
+            "created_at": paper.created_at.isoformat(),
+            "updated_at": paper.updated_at.isoformat(),
+            "sources": [reference(report)],
+            "assertions": [
                 {
-                    "text": "The reported value is 42 under condition C.",
+                    "id": "assertion_mcp_draft",
+                    "text": "Reports 42 under condition C.",
                     "kind": "reported_result",
-                    "evidence_keys": ["ev1"],
-                    "quotations": [{"evidence_key": "ev1", "text": "42 under condition C"}],
+                    "sources": [reference(report)],
                 }
             ],
         },
-    )
-    assert not failed, written
+        "body": "The source reports 42 under condition C.\n",
+        "rationale": "Integrate the reported result.",
+    }
+    drafted = client.ok("propose_changes", source_id=paper.id, candidates=[candidate])
+    assert drafted["workflow_stage"] == "validated"
+    candidate["record"]["assertions"][0]["verification"] = "reviewed"
+    failed, error = client.call("propose_changes", source_id=paper.id, candidates=[candidate])
+    assert failed and error["error"] == "denied"
 
-    failed, began_draft = client.call("draft_begin", source=paper.id)
-    assert not failed, began_draft
-    job = Job.model_validate(began_draft["packet"]["packet"])
-    failed, drafted_receipt = client.call(
-        "draft_finish", response=drafted(job).model_dump(mode="json")
-    )
-    assert not failed and drafted_receipt["workflow_stage"] == "validated", drafted_receipt
+    bundle = assemble(ws, "evidence", scope="research", object_id=paper.id)
+    remember(ws, bundle, save=True)
+    shown = client.ok("view", view_id=bundle.id)
+    key = shown["evidence"][0]["key"]
+    block = {"text": "The value is 42.", "kind": "reported_result", "evidence_keys": [key]}
+    explained = client.ok("propose_explanation", view_id=bundle.id, blocks=[block])
+    assert explained["next"].startswith("owner renders it: cairn view explanation")
 
-    failed, queue = client.call("pending")
-    assert not failed and not queue["packets"]
-    staged = {item["proposal_id"] for item in queue["proposals"]}
-    assert staged == {
+    queue = client.ok("pending")
+    assert {item["proposal_id"] for item in queue["proposals"]} == {
         read["proposal_id"],
         written["proposal_id"],
-        drafted_receipt["proposal_id"],
+        created["proposal_id"],
+        drafted["proposal_id"],
     }
-    failed, report = client.call("proposal_show", proposal_id=read["proposal_id"])
-    assert not failed and report["id"] == read["proposal_id"]
-    failed, hits = client.call("search", query="synthetic result")
-    assert not failed and hits["hits"]
-    failed, evidence = client.call("evidence", source_id=paper.id)
-    assert not failed and evidence["segments"]
+    assert client.ok("proposal_show", proposal_id=read["proposal_id"])["id"] == read["proposal_id"]
+    assert client.ok("search", query="synthetic result")["hits"]
     # Nothing was approved or applied; the owner's steps remain.
     assert not ws.fs.files("approvals")
     validate_payloads(durable_contents(Workspace(ws.root)))
 
 
-def test_grants_bound_every_tool(ws, tmp_path, client):
+def test_feedback_revision_through_tools(ws, tmp_path, client):
+    from cairn.presentation.writing import import_feedback
+    from cairn.presentation.writing_models import Feedback, FeedbackEntry
+    from cairn.records.models import digest
+
+    grant(ws)
+    concept(ws)
+    bundle = assemble(
+        ws,
+        "query",
+        scope="research",
+        question="Owner",
+        question_labels=Labels(
+            domain="research", classification="public", processing="cloud_eligible"
+        ),
+    )
+    remember(ws, bundle)
+    file = tmp_path / "feedback.json"
+    file.write_bytes(
+        canonical(
+            Feedback(
+                bundle_id=bundle.id,
+                bundle_hash=digest(canonical(bundle)),
+                entries=[FeedbackEntry(target_id="concept_owner_page", comment="Add context.")],
+            )
+        )
+    )
+    imported = import_feedback(ws, file, inline_synthetic=True)
+    shown = client.ok("feedback", feedback_id=imported.id)
+    assert shown["feedback"]["entries"][0]["comment"] == "Add context."
+    page = client.ok("page", record_id="concept_owner_page")
+    revised = client.ok(
+        "propose_page",
+        instructions="Address the feedback.",
+        feedback_id=imported.id,
+        base_hash=page["base_hash"],
+        body_markdown="Owner draft with context.\n",
+    )
+    assert revised["proposal_id"]
+
+
+def test_grants_bound_every_tool(ws, client):
     paper = source(ws, processing="cloud_eligible")
     private = source(ws, text="Local-only synthetic 42.", processing="local_only")
-    failed, error = client.call("reading_begin", source=paper.id)
-    assert failed and error["error"] == "denied"
     failed, error = client.call("evidence", source_id=paper.id)
     assert failed and error["error"] == "denied"
+    assert not ws.fs.files("receipts/agent")
+    grant(ws, operations=("query",))
+    report = client.ok("evidence", source_id=paper.id)
+    failed, error = client.call("propose_reading", **reading(report))
+    assert failed and error["error"] == "denied"
     assert not ws.fs.files("receipts/finch/exports")
-    assert not client.packets.exists() or not any(client.packets.rglob("*.json"))
-    grant(ws)
-    failed, hits = client.call("search", query="synthetic")
-    assert not failed
+    hits = client.ok("search", query="synthetic")
     assert {hit["id"] for hit in hits["hits"]} == {paper.id}
     assert hits["withheld_local_only_or_ungranted"] >= 1
     failed, error = client.call("evidence", source_id=private.id)
     assert failed and error["error"] == "denied"
-    failed, error = client.call("draft_begin", source=private.id)
-    assert failed and error["error"] == "denied"
 
 
-def test_untrusted_responses_are_rejected_without_side_effects(ws, tmp_path, client):
+def test_untrusted_answers_are_rejected_without_side_effects(ws, client):
     grant(ws)
     paper = source(ws, processing="cloud_eligible")
-    _, began = client.call("reading_begin", source=paper.id)
-    packet = FinchPacket.model_validate(began["packet"]["packet"])
-    forged = returned(packet).model_dump(mode="json") | {"approved": True}
-    failed, error = client.call("reading_finish", response=forged)
+    report = client.ok("evidence", source_id=paper.id)
+    failed, error = client.call("propose_reading", **reading(report), approved=True)
     assert failed and error["error"] == "invalid"
-    wrong = returned(packet).model_dump(mode="json") | {"input_hash": "0" * 64}
-    failed, error = client.call("reading_finish", response=wrong)
-    assert failed and error["error"] == "denied"
-    assert not ws.fs.files("receipts/finch/imports")
-    assert digest(canonical(packet)) == began["input_hash"]
+    forged = reading(report)
+    forged["claims"][0]["sources"][0]["quote"] = "Fabricated 99"
+    failed, error = client.call("propose_reading", **forged)
+    assert failed
+    assert not ws.fs.files("receipts/finch/imports") and not ws.fs.files("proposals")
 
 
 def test_file_capture_needs_owner_root_and_labels(ws, tmp_path):
@@ -265,20 +345,18 @@ def test_file_capture_needs_owner_root_and_labels(ws, tmp_path):
     inside.write_text("Synthetic captured result: 42 under condition C.")
     outside = tmp_path / "elsewhere.txt"
     outside.write_text("Synthetic outside file.")
-    unconfigured = Client(ws, tmp_path)
-    failed, error = unconfigured.call("reading_begin", source=str(inside))
+    unconfigured = Client(ws)
+    failed, error = unconfigured.call("capture", path=str(inside))
     assert failed and "capture" in error["message"]
     unconfigured.close()
     labels = tmp_path / "labels.json"
     labels.write_text(json.dumps({"domain": "research", "processing": "cloud_eligible"}))
-    client = Client(
-        ws, tmp_path, "--capture-root", str(papers), "--capture-labels", str(labels)
-    )
-    failed, error = client.call("reading_begin", source=str(outside))
+    client = Client(ws, "--capture-root", str(papers), "--capture-labels", str(labels))
+    failed, error = client.call("capture", path=str(outside))
     assert failed and "capture root" in error["message"]
-    failed, began = client.call("reading_begin", source=str(inside))
-    assert not failed, began
-    assert began["source_id"].startswith("source_")
+    captured = client.ok("capture", path=str(inside))
+    assert captured["source"]["id"].startswith("source_") and captured["segments"]
+    assert client.ok("propose_reading", **reading(captured))["workflow_stage"] == "validated"
     client.close()
 
 
@@ -286,16 +364,22 @@ def test_launch_validation_and_print_config(ws, tmp_path):
     runner = CliRunner()
     base = ["mcp", "--workspace", str(ws.root), "--provider", "synthetic-agent"]
     base += ["--destination", "https://synthetic.invalid"]
-    inside = runner.invoke(app, [*base, "--packets-dir", str(ws.root / "packets")])
-    assert inside.exit_code == 3 and "outside the workspace" in inside.output
-    unknown = runner.invoke(
-        app, [*base, "--packets-dir", str(tmp_path / "p"), "--scope", "nowhere"]
+    assert runner.invoke(app, [*base, "--scope", "nowhere"]).exit_code == 3
+    labels = tmp_path / "labels.json"
+    labels.write_text(json.dumps({"domain": "research"}))
+    inside = runner.invoke(
+        app, [*base, "--capture-root", str(ws.root), "--capture-labels", str(labels)]
     )
-    assert unknown.exit_code == 3
-    printed = runner.invoke(app, [*base, "--packets-dir", str(tmp_path / "p"), "--print-config"])
+    assert inside.exit_code == 3 and "outside the knowledge base" in inside.output
+    printed = runner.invoke(app, [*base, "--print-config"])
     assert printed.exit_code == 0, printed.output
     config = json.loads(printed.stdout)
     assert config["claude_code"].startswith("claude mcp add cairn -- ")
     assert config["codex"].startswith("codex mcp add cairn -- ")
     assert config["cursor_mcp_json"]["mcpServers"]["cairn"]["args"][0] == "mcp"
-    assert "Bash(cairn approve:*)" in config["claude_code_deny_rules"]
+    settings = config["claude_code_settings"]
+    assert settings["sandbox"]["enabled"]
+    assert str(ws.root.absolute()) in settings["sandbox"]["filesystem"]["denyWrite"]
+    assert f"Edit(/{ws.root.absolute()}/**)" in settings["permissions"]["deny"]
+    assert "Bash(cairn approve *)" in settings["permissions"]["deny"]
+    assert "writable_roots" in config["codex_sandbox"]

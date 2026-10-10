@@ -10,6 +10,7 @@ from cairn.presentation.models import ViewBlock, ViewSection
 from cairn.presentation.render import document, run_renderer, validate_html
 from cairn.presentation.service import load_view, output_bytes, recheck, remember
 from cairn.presentation.writing_models import (
+    ExplanationAnswer,
     ExplanationResponse,
     ExportReceipt,
     Feedback,
@@ -123,7 +124,7 @@ def authorize_export(ws: Workspace, job: WritingJob) -> None:
         )
 
 
-def export_packet(ws: Workspace, job_id: str, output: Path) -> dict[str, str]:
+def export_packet(ws: Workspace, job_id: str, output: Path | None) -> dict[str, str]:
     with ws.lock(write=True):
         job = load_job(ws, job_id)
         authorize_export(ws, job)
@@ -151,7 +152,8 @@ def export_packet(ws: Workspace, job_id: str, output: Path) -> dict[str, str]:
         # Record export intent before releasing any bytes. A missing output can be retried;
         # a file reaching an agent is never mistaken for a proven execution receipt.
         ws.fs.write(f"{PREFIX}/exports/{job.id}.json", canonical(receipt))
-        output_bytes(ws, output, payload)
+        if output is not None:
+            output_bytes(ws, output, payload)
     return {"job_id": job.id, "path": str(output), "input_hash": digest(canonical(job))}
 
 
@@ -182,7 +184,58 @@ def validate_explanation(job: WritingJob, response: ExplanationResponse) -> None
 
 
 def import_explanation(ws: Workspace, file: Path) -> ExplanationResponse:
-    response = ExplanationResponse.model_validate_json(read_source_file(file))
+    return import_explanation_bytes(ws, read_source_file(file))
+
+
+def submit_explanation(
+    ws: Workspace,
+    view_id: str,
+    answer: ExplanationAnswer,
+    *,
+    request: str,
+    request_labels: Labels,
+    provider: str,
+    destination: str,
+) -> dict[str, str]:
+    """Seal a saved view for the owner's agent and keep its unreviewed explanation."""
+    job = prepare(
+        ws,
+        view_id,
+        provider=provider,
+        route="cloud",
+        destination=destination,
+        request=request,
+        request_labels=request_labels,
+    )
+    sealed = export_packet(ws, job.id, None)
+    response = ExplanationResponse(
+        job_id=job.id, input_hash=sealed["input_hash"], **dict(answer)
+    )
+    import_explanation_bytes(ws, canonical(response))
+    return {"job_id": job.id, "explanation": digest(canonical(response))}
+
+
+def stored_explanation(ws: Workspace, job_id: str, key: str | None = None) -> ExplanationResponse:
+    """A kept explanation for a writing job; name its digest when there are several."""
+    from pydantic import TypeAdapter
+
+    from cairn.records.models import ID
+
+    TypeAdapter(ID).validate_python(job_id)
+    with ws.lock():
+        paths = [
+            path
+            for path in ws.fs.files(f"{PREFIX}/explanations")
+            if path.rsplit("/", 1)[-1].startswith(f"{job_id}-")
+            and (key is None or path.endswith(f"-{key}.json"))
+        ]
+        if len(paths) != 1:
+            raise Conflict(f"{len(paths)} matching explanations; name one with --digest")
+        return ExplanationResponse.model_validate_json(ws.fs.read(paths[0]))
+
+
+def import_explanation_bytes(ws: Workspace, raw: bytes) -> ExplanationResponse:
+    response = ExplanationResponse.model_validate_json(raw)
     with ws.lock(write=True):
         job = _returned(ws, response.job_id, response.input_hash)
         validate_explanation(job, response)

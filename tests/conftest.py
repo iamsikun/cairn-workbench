@@ -34,3 +34,9 @@ def synthetic_cairn_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch) 
     monkeypatch.setenv("CAIRN_NO_AUTO_UPDATE", "1")
     return directory
 
+
+
+@pytest.fixture(autouse=True)
+def synthetic_owner(monkeypatch) -> None:
+    # Owner commands need the owner's terminal; synthetic workspaces may skip it in tests.
+    monkeypatch.setenv("CAIRN_SYNTHETIC_OWNER", "1")

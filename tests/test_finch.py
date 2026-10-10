@@ -7,14 +7,12 @@ from datetime import timedelta
 import pytest
 from pydantic import ValidationError
 from test_presentation import source
-from typer.testing import CliRunner
 
-from cairn.cli import app
 from cairn.errors import CairnError, Conflict, Denied
 from cairn.policies.audit import revoke_grant, set_grant
 from cairn.policies.models import RouteGrant
 from cairn.proposals.service import approve, load_proposal, validate
-from cairn.reading.contract import guidance
+from cairn.reading.contract import guidance_hash
 from cairn.reading.models import FinchClaim, FinchPacket, FinchResponse
 from cairn.reading.workflow import begin, finish
 from cairn.records.continuity import ReceiptMessage
@@ -309,46 +307,33 @@ def test_backup_rejects_finch_receipt_corruption(ws, tmp_path):
         validate_payloads(payloads)
 
 
-def test_cli_install_begin_finish(ws, tmp_path):
-    runner = CliRunner()
-    grant(ws)
-    paper_file = tmp_path / "synthetic-paper.txt"
-    paper_file.write_text("Synthetic result: 42 under condition C.")
-    labels = tmp_path / "labels.json"
-    labels.write_bytes(
-        canonical(Labels(domain="research", classification="public", processing="cloud_eligible"))
+def test_submit_seals_and_stages_one_reading(ws, tmp_path):
+    from cairn.reading.models import ReadingAnswer
+    from cairn.reading.workflow import submit
+
+    packet = prepare(ws, tmp_path)
+    paper = packet.source
+    answer = ReadingAnswer.model_validate(
+        returned(packet).model_dump(include=set(ReadingAnswer.model_fields))
     )
-    output = tmp_path / "cli-packet.json"
-    result = runner.invoke(
-        app,
-        [
-            "finch",
-            "begin",
-            str(paper_file),
-            "--output",
-            str(output),
-            "--workspace",
-            str(ws.root),
-            "--provider",
-            "synthetic-agent",
-            "--destination",
-            "https://synthetic.invalid",
-            "--source-labels",
-            str(labels),
-            "--request-labels",
-            str(labels),
-            "--inline-synthetic",
-        ],
-    )
-    assert result.exit_code == 0, result.output
-    payload = json.loads(output.read_bytes())
-    packet = FinchPacket.model_validate(payload["packet"])
-    # The packet carries Cairn's own contract; it never depends on an installed Finch.
-    assert payload["guidance"] == guidance() and "workflow" not in payload
-    assert packet.skill_version == "cairn-1"
-    file = response_file(tmp_path, returned(packet))
-    result = runner.invoke(
-        app, ["finch", "finish", str(file), "--workspace", str(ws.root), "--inline-synthetic"]
-    )
-    assert result.exit_code == 0, result.output
-    assert json.loads(result.output)["workflow_stage"] == "validated"
+    options = {
+        "scope_name": "research",
+        "request": "Explain the synthetic result.",
+        "request_labels": Labels(domain="research", processing="cloud_eligible"),
+        "provider": "synthetic-agent",
+        "destination": "https://synthetic.invalid",
+        "inline_synthetic": True,
+    }
+    receipt = submit(ws, paper.id, answer, **options)
+    assert receipt.workflow_stage == "validated"
+    assert submit(ws, paper.id, answer, **options) == receipt
+    assert packet.skill_version == "cairn-1" and packet.guidance_hash == guidance_hash()
+
+
+def test_contract_changes_never_strand_staged_proposals(ws, tmp_path, monkeypatch):
+    packet = prepare(ws, tmp_path)
+    receipt = finish(ws, response_file(tmp_path, returned(packet)), inline_synthetic=True)
+    # A later release edits the contract; the staged proposal stays approvable.
+    monkeypatch.setattr("cairn.reading.contract.guidance", lambda: "A different contract")
+    proposed = validate(ws, receipt.proposal_id)
+    approve(ws, proposed.id, acknowledgements=proposed.review_flags, statement="Owner review")

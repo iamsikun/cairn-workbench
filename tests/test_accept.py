@@ -134,7 +134,7 @@ def test_model_supplied_approval_grants_nothing(ws: Workspace, tmp_path: Path) -
         approve(ws, proposal_id, acknowledgements=flags, statement=" ")
 
 
-def test_cli_accept_requires_confirmation(tmp_path: Path) -> None:
+def test_cli_accept_requires_confirmation(tmp_path: Path, monkeypatch) -> None:
     runner = CliRunner()
     workspace, code = tmp_path / "private", tmp_path / "public"
     code.mkdir()
@@ -157,15 +157,52 @@ def test_cli_accept_requires_confirmation(tmp_path: Path) -> None:
     )
     proposal_id = json.loads(staged.stdout)["id"]
     assert runner.invoke(app, ["accept", *options]).exit_code == 2
+    # Without the owner's terminal (an agent's shell), acceptance is refused.
+    monkeypatch.delenv("CAIRN_SYNTHETIC_OWNER")
+    monkeypatch.setattr("cairn.cli.commands._terminal", no_terminal)
     refused = runner.invoke(app, ["accept", "--all", *options])
-    assert refused.exit_code == 3 and "requires --yes" in refused.output
+    assert refused.exit_code == 3 and "run it yourself in a terminal" in refused.output
     assert proposal_id in refused.output
-    done = runner.invoke(app, ["accept", "--all", "--yes", *options, "--json"])
+    assert runner.invoke(app, ["accept", "--all", "--yes", *options]).exit_code == 2
+    monkeypatch.setattr("cairn.cli.commands._terminal", terminal("nope"))
+    assert runner.invoke(app, ["accept", "--all", *options]).exit_code == 3
+    monkeypatch.setattr("cairn.cli.commands._terminal", terminal("accept"))
+    done = runner.invoke(app, ["accept", "--all", *options, "--json"])
     assert done.exit_code == 0, done.output
     assert json.loads(done.stdout)[0]["status"] == "applied"
+    monkeypatch.setenv("CAIRN_SYNTHETIC_OWNER", "1")
     found = runner.invoke(app, ["search", "42", "--scope", "research", *options, "--json"])
     assert any(hit["kind"] == "synthesis" for hit in json.loads(found.stdout))
     assert runner.invoke(app, ["apply", proposal_id, *options]).exit_code == 0
+
+
+def no_terminal():
+    raise OSError(6, "Device not configured")
+
+
+def terminal(answer: str):
+    """A pseudo-terminal where the owner types `answer`."""
+
+    def opener():
+        main, secondary = os.openpty()
+        os.write(main, answer.encode() + b"\n")
+        return secondary
+
+    return opener
+
+
+def test_owner_terminal_is_required_for_real_knowledge_bases(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from cairn.cli.commands import owner_confirm
+
+    real = SimpleNamespace(config=SimpleNamespace(synthetic=False))
+    monkeypatch.setattr("cairn.cli.commands._terminal", no_terminal)
+    # The synthetic test override is ignored for a real knowledge base.
+    with pytest.raises(Denied, match="owner command"):
+        owner_confirm(real, "approve", "Approve.")  # type: ignore[arg-type]
+    monkeypatch.setattr("cairn.cli.commands._terminal", terminal("approve"))
+    owner_confirm(real, "approve", "Approve.")  # type: ignore[arg-type]
 
 
 def test_explicit_apply_still_requires_approval(ws: Workspace, tmp_path: Path) -> None:

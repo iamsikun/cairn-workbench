@@ -129,7 +129,11 @@ def register(app: typer.Typer) -> None:
     @guarded
     def enable(workspace: WorkspaceOption, statement: str = ENABLE_STATEMENT) -> None:
         """Record standing owner consent for automatic updates of this knowledge base."""
-        emit(enable_workspace(Home.from_env(), Workspace(workspace), statement), True)
+        from cairn.cli.commands import owner_confirm
+
+        ws = Workspace(workspace)
+        owner_confirm(ws, "enable", "Allow automatic Cairn updates for this knowledge base.")
+        emit(enable_workspace(Home.from_env(), ws, statement), True)
 
     @update.command("disable")
     @guarded
@@ -138,8 +142,12 @@ def register(app: typer.Typer) -> None:
         statement: str = "I stop automatic updates for this knowledge base.",
     ) -> None:
         """Stop automatic updates; the current release binding remains valid."""
+        from cairn.cli.commands import owner_confirm
+
         home = Home.from_env()
-        revocation = upgrade.disable(Workspace(workspace), statement=statement)
+        ws = Workspace(workspace)
+        owner_confirm(ws, "disable", "Stop automatic Cairn updates for this knowledge base.")
+        revocation = upgrade.disable(ws, statement=statement)
         if home.config() is not None:
             register_workspace(home, workspace, add=False)
         emit({"disabled": True, "revocation": revocation}, True)

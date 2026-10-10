@@ -15,10 +15,10 @@ The worker never receives workspace paths, the global index, or approval/apply a
    captures an exact export plus independently hashed items. Import is read-only against
    the selected file. Use a stable library alias and stable export IDs. Reimporting an
    unchanged item keeps its source ID even when another item in the export changes.
-3. `cairn draft begin SOURCE_ID --scope research --related PROJECT_ID ...` seals a
-   drafting packet for the owner's agent; `cairn draft finish` stages its note and
-   bounded related updates (the MCP `draft_*` tools do the same). On a synthetic
-   workspace, `cairn ingest SOURCE_ID --inline-synthetic` uses the deterministic fake.
+3. Ask your agent to integrate the source: over MCP it reads the evidence and the
+   project page and calls `propose_changes` with a note and bounded related updates.
+   On a synthetic workspace, `cairn ingest SOURCE_ID --inline-synthetic` uses the
+   deterministic fake.
 4. `cairn receipt import session.json --scope research` preserves the structured session
    receipt and stages project observations plus draft decisions. Its schema is
    `schemas/sessionreceipt-v1.json`. Reported failures are attributed observations, not

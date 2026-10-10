@@ -41,6 +41,13 @@ def validate_reading(payloads: Mapping[str, bytes], records: dict[str, Record]) 
     for path, raw in payloads.items():
         if not path.startswith(f"{PREFIX}/") or path.startswith(f"{PREFIX}/jobs/"):
             continue
+        if path.startswith(f"{PREFIX}/submissions/"):
+            # Retry records name the receipt they returned; it must be the saved import.
+            submitted = FinchReceipt.model_validate_json(raw)
+            imported = payloads.get(f"{PREFIX}/imports/{submitted.session_id}.json")
+            if imported is None or FinchReceipt.model_validate_json(imported) != submitted:
+                raise Conflict("saved Finch submission does not match its import")
+            continue
         session_id = path.rsplit("/", 1)[-1].removesuffix(".json")
         packet = packets.get(session_id)
         if packet is None:

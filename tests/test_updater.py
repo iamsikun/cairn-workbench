@@ -340,11 +340,16 @@ def test_cli_enable_registers_and_disable_unregisters(
         statement="Synthetic fixture owner review; not a real activation.",
         acknowledgements=REQUIRED_REVIEWS.copy(),
     )
+    from test_accept import terminal
+
     runner = CliRunner()
+    # A private-mode knowledge base needs the owner's terminal for these commands.
+    monkeypatch.setattr("cairn.cli.commands._terminal", terminal("enable"))
     enabled = runner.invoke(app, ["update", "enable", "--workspace", str(ws.root)])
     assert enabled.exit_code == 0, enabled.output
     assert updater["home"].config().workspaces == [str(ws.root)]  # type: ignore[union-attr]
     assert upgrade.active_authorization(Workspace(ws.root)) is not None
+    monkeypatch.setattr("cairn.cli.commands._terminal", terminal("disable"))
     disabled = runner.invoke(app, ["update", "disable", "--workspace", str(ws.root)])
     assert disabled.exit_code == 0, disabled.output
     assert updater["home"].config().workspaces == []  # type: ignore[union-attr]

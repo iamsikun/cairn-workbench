@@ -54,9 +54,10 @@ derived metadata, output handling, and trace content. Missing labels remain rest
 and local-only. Cited source labels are included even when only synthesis was selected.
 Grants must match every route dimension and all labels. An otherwise eligible cloud
 request returns `blocked: cloud_adapter_unavailable`; it transmits nothing. An audit's
-`allowed` decision is only a policy decision, never evidence that a model ran. Packets
-reach the agent only through `begin` commands or MCP tools that check the grant and
-record an `ExportReceipt`; nothing grants authority to source text.
+`allowed` decision is only a policy decision, never evidence that a model ran. Material
+reaches the agent only through MCP tools that check the grant and leave a receipt
+(`receipts/agent/` for reads, an `ExportReceipt` for each `propose_*` call); nothing
+grants authority to source text.
 
 Extraction, generation, and explicit client-packet preparation save route decisions bound
 to the complete input packet hash. Receipts contain hashes and policy metadata, without

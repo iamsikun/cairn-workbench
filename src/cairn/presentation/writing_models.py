@@ -56,6 +56,13 @@ class ExplanationBlock(Model):
         return self
 
 
+class ExplanationAnswer(Model):
+    """What the owner's agent returns to explain a saved view."""
+
+    blocks: list[ExplanationBlock] = Field(min_length=1, max_length=100)
+    limitations: list[str] = Field(default_factory=list, max_length=40)
+
+
 class ExplanationResponse(Model):
     schema_version: Literal[1] = 1
     job_id: ID
@@ -133,6 +140,9 @@ class QuillPacket(Model):
     guidance_hash: Digest
     # The old revision marks packets that carried a vendored Quill snapshot.
     quill_revision: Literal["d6bc7de15d1779c58286cbdec1a54eec52bdef22", "cairn-1"] = "cairn-1"
+    # Digest of the agent's answer, so a different answer seals a new packet. Omitted when
+    # unset, which keeps the identity of packets sealed before it existed.
+    attempt: Digest | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @model_validator(mode="after")
     def one_target(self) -> "QuillPacket":
@@ -167,6 +177,33 @@ class QuillResponse(Model):
     title: str | None = Field(default=None, min_length=1, max_length=500)
     body_markdown: str = Field(min_length=1, max_length=200000)
     claims: list[QuillClaim] = Field(default_factory=list, max_length=100)
+    limitations: list[str] = Field(default_factory=list, max_length=40)
+
+
+class SourceCitation(Model):
+    source_id: ID
+    locator: str = Field(min_length=1, max_length=200)
+    quote: str | None = Field(default=None, min_length=1, max_length=10000)
+
+
+class PageClaim(Model):
+    text: str = Field(min_length=1, max_length=10000)
+    kind: Literal["reported_result", "inference", "hypothesis"]
+    sources: list[SourceCitation] = Field(default_factory=list, max_length=40)
+
+    @model_validator(mode="after")
+    def cited(self) -> "PageClaim":
+        if self.kind == "reported_result" and not self.sources:
+            raise ValueError("reported results require supplied evidence")
+        return self
+
+
+class PageAnswer(Model):
+    """What the owner's agent returns for a page; Cairn binds and formats it."""
+
+    title: str | None = Field(default=None, min_length=1, max_length=500)
+    body_markdown: str = Field(min_length=1, max_length=200000)
+    claims: list[PageClaim] = Field(default_factory=list, max_length=100)
     limitations: list[str] = Field(default_factory=list, max_length=40)
 
 

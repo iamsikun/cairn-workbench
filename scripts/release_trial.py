@@ -25,6 +25,8 @@ def trial(bundle: Path) -> None:
         UV_PYTHON_DOWNLOADS="never",
         UV_COMPILE_BYTECODE="0",
         PYTHONDONTWRITEBYTECODE="1",
+        # Synthetic workspaces only: owner commands run unattended in this trial.
+        CAIRN_SYNTHETIC_OWNER="1",
     )
     env.pop("PYTHONPATH", None)
     subprocess.run(
@@ -239,7 +241,7 @@ def trial(bundle: Path) -> None:
         "--inline-synthetic",
     )
     assert len(list(html_output.parent.iterdir())) == 1
-    # Finch resources and lifecycle are exercised through the fresh installed CLI.
+    # The owner's agent reads a paper through the installed MCP server.
     finch_options = ("--workspace", str(workspace))
     labels_file = root / "synthetic-finch-labels.json"
     labels_file.write_bytes(
@@ -260,7 +262,7 @@ def trial(bundle: Path) -> None:
                 "scope": "research",
                 "provider": "synthetic-agent",
                 "destination": "https://synthetic.invalid",
-                "operations": ["generation", "client_export"],
+                "operations": ["generation", "client_export", "query"],
                 "valid_until": now() + timedelta(days=1),
                 "owner_consent": "Synthetic Finch trial consent",
             }
@@ -277,66 +279,69 @@ def trial(bundle: Path) -> None:
         "Synthetic Finch trial consent",
         *options,
     )
-    finch_file = root / "synthetic-finch-paper.txt"
+    papers = root / "synthetic-papers"
+    papers.mkdir()
+    finch_file = papers / "synthetic-finch-paper.txt"
     finch_file.write_text("Synthetic Finch result: 42 under condition C.")
-    finch_packet = root / "finch-packet.json"
-    cli(
-        "finch",
-        "begin",
-        str(finch_file),
-        "--output",
-        str(finch_packet),
-        "--source-labels",
-        str(labels_file),
-        "--request-labels",
-        str(labels_file),
-        "--provider",
-        "synthetic-agent",
-        "--destination",
-        "https://synthetic.invalid",
-        "--inline-synthetic",
-        *finch_options,
-    )
-    exported = json.loads(finch_packet.read_bytes())
-    packet = exported["packet"]
-    finch_response = root / "finch-response.json"
-    finch_response.write_bytes(
-        canonical(
+
+    def mcp(target: Path, *calls: tuple[str, dict]) -> list[dict]:
+        """One agent session against the installed server; returns each tool result."""
+        lines = [{"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {}}]
+        lines += [
             {
-                "session_id": packet["id"],
-                "input_hash": exported["input_hash"],
-                "summary": "The synthetic paper reports 42 under condition C.",
-                "messages": [
-                    {"role": "user", "content": "Explain the synthetic paper."},
-                    {"role": "assistant", "content": "It reports 42 under condition C."},
-                ],
-                "claims": [
+                "jsonrpc": "2.0",
+                "id": i,
+                "method": "tools/call",
+                "params": {"name": n, "arguments": a},
+            }
+            for i, (n, a) in enumerate(calls, 1)
+        ]
+        completed = subprocess.run(
+            [str(python), "-I", "-B", "-m", "cairn", "mcp", "--workspace", str(target)]
+            + ["--provider", "synthetic-agent", "--destination", "https://synthetic.invalid"]
+            + ["--capture-root", str(papers), "--capture-labels", str(labels_file)]
+            + ["--inline-synthetic"],
+            input=b"".join(canonical(line) + b"\n" for line in lines),
+            capture_output=True,
+            env=env,
+            check=True,
+        )
+        results = [json.loads(line)["result"] for line in completed.stdout.splitlines()][1:]
+        assert not any(r.get("isError") for r in results), results
+        return [r["structuredContent"] for r in results]
+
+    (captured,) = mcp(workspace, ("capture", {"path": str(finch_file)}))
+    reading = {
+        "source_id": captured["source"]["id"],
+        "summary": "The synthetic paper reports 42 under condition C.",
+        "messages": [
+            {"role": "user", "content": "Explain the synthetic paper."},
+            {"role": "assistant", "content": "It reports 42 under condition C."},
+        ],
+        "claims": [
+            {
+                "text": "42 under condition C",
+                "kind": "reported_result",
+                "sources": [
                     {
-                        "text": "42 under condition C",
-                        "kind": "reported_result",
-                        "sources": [
-                            {
-                                "id": packet["source"]["id"],
-                                "source_hash": packet["extraction"]["source_hash"],
-                                "evidence_hash": packet["evidence_hash"],
-                                "locator": packet["extraction"]["segments"][0]["locator"],
-                                "quote": "42",
-                            }
-                        ],
+                        "id": captured["source"]["id"],
+                        "source_hash": captured["source"]["source"]["content_hash"],
+                        "evidence_hash": captured["evidence_hash"],
+                        "locator": captured["segments"][0]["locator"],
+                        "quote": "42",
                     }
                 ],
             }
-        )
+        ],
+    }
+    finch_receipt, retried = mcp(
+        workspace, ("propose_reading", reading), ("propose_reading", reading)
     )
-    finch_receipt = cli(
-        "finch", "finish", str(finch_response), "--inline-synthetic", *finch_options
-    )
+    finch_receipt.pop("next")
+    retried.pop("next")
     assert finch_receipt["workflow_stage"] == "validated"
     assert not finch_receipt["processing_verified"]
-    assert (
-        cli("finch", "finish", str(finch_response), "--inline-synthetic", *finch_options)
-        == finch_receipt
-    )
+    assert retried == finch_receipt
     assert not (workspace / "approvals" / (finch_receipt["proposal_id"] + ".json")).exists()
     answer = cli("query", "42", "--scope", "research", *options)
     # The new export consent advanced policy; prior views must be regenerated.
@@ -368,17 +373,9 @@ def trial(bundle: Path) -> None:
         cli("view", "show", view["bundle_id"], "--workspace", str(restored))["id"]
         == view["bundle_id"]
     )
-    assert (
-        cli(
-            "finch",
-            "finish",
-            str(finch_response),
-            "--inline-synthetic",
-            "--workspace",
-            str(restored),
-        )
-        == finch_receipt
-    )
+    (restored_receipt,) = mcp(restored, ("propose_reading", reading))
+    restored_receipt.pop("next")
+    assert restored_receipt == finch_receipt
 
     # Actual installed files are tested, never package mocks or PYTHONPATH substitutions.
     site = runtime / "lib" / f"python{sysconfig.get_python_version()}" / "site-packages"
@@ -429,7 +426,7 @@ def trial(bundle: Path) -> None:
                 "installed_library_scan_mark_feed_streaming_restore": "passed",
                 "installed_markdown_source_review": "passed",
                 "installed_html_render_retry_restore": "passed",
-                "installed_finch_capture_proposal_validate_retry_restore": "passed",
+                "installed_mcp_capture_reading_proposal_retry_restore": "passed",
                 "modified_reading_contract_rejected": True,
                 "modified_renderer_rejected": True,
                 "modified_package_rejected": True,

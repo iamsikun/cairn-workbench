@@ -9,7 +9,7 @@ from cairn.storage.workspace import Workspace
 
 
 def register(app: typer.Typer) -> None:
-    feedback = typer.Typer(help="Preserve view feedback; revise with `cairn write --feedback`.")
+    feedback = typer.Typer(help="Preserve view feedback; your agent revises pages from it.")
     views = typer.Typer(help="Inspect saved knowledge snapshots.")
     app.add_typer(feedback, name="feedback")
     app.add_typer(views, name="view")
@@ -46,6 +46,22 @@ def register(app: typer.Typer) -> None:
             ),
             True,
         )
+
+    @views.command("explanation")
+    @guarded
+    def explanation(
+        job_id: str,
+        output: Path,
+        workspace: WorkspaceOption,
+        digest: str | None = None,
+        inline_synthetic: bool = False,
+    ) -> None:
+        """Render an agent's kept explanation of a view as unreviewed HTML."""
+        from cairn.presentation.writing import explanation_html, stored_explanation
+
+        ws = Workspace(workspace)
+        response = stored_explanation(ws, job_id, digest)
+        emit(explanation_html(ws, response, output, inline_synthetic=inline_synthetic), True)
 
     @feedback.command("import")
     @guarded
