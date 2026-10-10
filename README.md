@@ -1,105 +1,113 @@
-# Cairn Workbench
+# Cairn
 
-Cairn compiles selected evidence into a reviewable Markdown wiki and scoped project
-context. Sources and human notes are preserved. Models propose changes; the owner
-approves and applies them.
+**A local-first knowledge base that AI agents can propose changes to but never edit.**
 
-The software repository is named `cairn-workbench`. The separately configured private
-knowledge-base directory is named `cairn`. The Python package and CLI remain `cairn`.
+Cairn turns the sources you select (papers, PDFs, bibliographies, agent sessions,
+financial statements, notes) into a reviewable Markdown wiki, plus scoped context packs
+for coding agents. Your original sources and your own notes stay untouched. A model only
+proposes changes, and nothing enters the knowledge base until you approve and apply it.
 
-M0–M3 reference acceptance is complete. See [the build plan](CAIRN_BUILD_PLAN.md) and
-[acceptance tracking](docs/acceptance.md). Do not use this checkout with private data.
+This repository, `cairn-workbench`, contains the software. Your knowledge base is a
+separate private directory (by convention named `cairn`) that lives outside this checkout
+and is never committed. The Python package and the command are both named `cairn`.
 
-M0 and M1 now have an executable synthetic workflow: capture, text/PDF/conversation
-extraction, bounded proposals, exact owner approval, recoverable apply, local history,
-scoped evidence/synthesis search, staged owner edits, and backup/restore. M2 adds selected
-CSL-JSON bibliography import, project framing, attributed session receipts, explicit
-decision adoption, bounded context packs, and repository-staleness checks. The supplied
-manual second-session response passes the narrow design-level continuity review, with
-receipt-format and citation limits recorded. M3 includes structured financial snapshots,
-exact Decimal calculations, dated financial notes, sourced life hubs, and direct evidence
-review, audited owner scopes/grants, and complete-request route checks. Cloud execution
-remains unavailable. Explicit backed-up workspace migration and the
-[synthetic evaluation report](docs/evaluation.md) are implemented. The
-[requirements audit](docs/requirements.md) and installed-release checks are complete;
-the [manual M2 result](docs/research-continuity.md#recorded-manual-result) closes the last
-milestone gate. This is not owner approval for private deployment.
+## Status
 
-Python package: `cairn`; command: `cairn`. Development uses synthetic workspaces outside
-the checkout. A private deployment requires a reviewed, pinned installation and a
-verified execution boundary. No network or cloud processing is enabled by default.
+Version 0.1.0 is the first release on the `stable` channel. Reference acceptance for
+milestones M0–M3 is complete and recorded in [acceptance tracking](docs/acceptance.md),
+measured against the [build plan](CAIRN_BUILD_PLAN.md). All of that evidence comes from
+synthetic data; see also the [evaluation report](docs/evaluation.md) and
+[requirements audit](docs/requirements.md). Passing it does not approve any private deployment, and the
+fake provider used in tests does not show that a real model produces useful content.
+Cloud processing is not available; no network access is enabled by default.
 
-Run `bash scripts/check.sh` to build the pinned development and worker images and execute
-the tests, lint, strict typing, isolation probes, and installed packet/extraction trials.
-The checks use synthetic data and do not mount a private workspace or host home.
-For a clean committed checkout, `bash scripts/release_check.sh` prepares a pinned
-wheelhouse and runs a separate offline installed-CLI trial. The
-[installation runbook](docs/installation.md) describes its verified target and the
-owner activation gate. Actual private deployment remains separate from development.
+Do not use this development checkout with private data.
 
-The CLI provides `init`, `capture`, `ingest`, `proposal show`, `validate`, `approve`,
-`apply`, `recover`, `search`, `query`, `edit`, `lint`, `rebuild-index`, `backup`, `restore`,
-`client run`, `project create`, `bibliography import`, `receipt import`, `decision adopt`,
-`repository inspect`, `context`, `finch`, `policy`, `release`, `schema`, `update`, and `doctor`. Pass
-`--workspace` (or `CAIRN_WORKSPACE`) and use `--json`
-for structured command output. Development `init` and `restore` use `--synthetic`.
-Private initialization and restore require a reviewed installed release, explicit owner
-acknowledgements, and a fresh worker-isolation probe.
-The [schema migration runbook](docs/schema-migrations.md) covers explicit format changes,
-pending-approval invalidation, backups, and interrupted-migration recovery.
+## How it works
 
-Read the [architecture](docs/architecture.md), [threat model](docs/threat-model.md),
-[processing policy](docs/privacy.md), [recovery procedure](docs/recovery.md), and
-[agent protocol](docs/agent-integration.md) before choosing an execution profile.
-The [review procedure](docs/review.md) explains terminal/Markdown diffs, local evidence
-links, dated conflicts, and the distinction between quote support and owner approval.
+Every change to the knowledge base follows one explicit path:
 
-The [research workflow and manual continuity procedure](docs/research-continuity.md)
-explain the M2 distinction between preserved session suggestions and adopted decisions.
-The [synthetic context fixture](examples/continuity/context.json), supplied response, and
-separate reviewer assessment retain the manual trial. The owner's verdict remains
-"unclear"; the reviewer explains the observed pass without inferring owner approval.
+```text
+captured → extracted → proposed → validated → approved → applied → indexed
+```
 
-The [personal domain workflows](docs/personal-domains.md) cover `finance import`,
-`finance calculate`, `finance note`, `life import`, and `evidence`. Calculation inputs
-come from preserved structured sources, with owner/account/date/unit/currency separation.
+- **Sources are evidence.** Captured files are stored as hashed blobs with recorded
+  provenance and source locators, so every claim can point back to the exact text.
+- **Models propose, the owner decides.** Extraction and drafting run in a pinned,
+  offline worker container that receives a bounded job, not your files. Its output is an
+  untrusted proposal. It cannot choose where it is written, relax access labels, or
+  approve itself; an actor or approval field written by a model carries no authority.
+- **One recoverable writer.** Applying an approved proposal revalidates it under a lock,
+  journals the before and after bytes, and records local Git history, so an interrupted
+  write can be recovered.
+- **Retrieval is scoped.** Access scope, classification and domain (research, finance,
+  daily life) are enforced before search, so an agent working on one project does not see
+  another domain's titles, snippets or counts.
 
-## Requested HTML and writing packets
+Records are ordinary Markdown, YAML and JSON. Search uses SQLite FTS5 indexes that are
+rebuilt from the canonical records. The [architecture](docs/architecture.md) and
+[threat model](docs/threat-model.md) describe these boundaries in detail.
 
-Cairn now provides explicit offline HTML views for project context, extractive queries,
-evidence, paper readings, proposals, catalogs and journal feeds. See
-[HTML views](docs/html-views.md) for commands and [acceptance](docs/acceptance.md) for
-executed checks and deployment limits. The portable `cairn-html` skill consumes owner
-exports; it grants no workspace access and does not generate unsolicited pages.
+## What you can do with it
 
-## Writing
+- **Build a research wiki.** Capture text, PDFs and conversations; import CSL-JSON
+  bibliographies; review and apply proposals; search evidence and synthesis; back up and
+  restore. See the [review procedure](docs/review.md) and [recovery](docs/recovery.md).
+- **Keep research continuity across agent sessions.** Create projects, import attributed
+  session receipts, adopt decisions explicitly, and generate bounded context packs with
+  verified citations and repository-staleness checks. See
+  [research continuity](docs/research-continuity.md).
+- **Read papers with Finch.** Paper reading uses [Finch](docs/finch-reading.md)
+  automatically. In a configured agent session inside a knowledge base, each Finch
+  answer also saves the discussion and stages a concept-note proposal for your review.
+  If Finch is missing, `cairn init` for a private knowledge base runs Finch's installer.
+- **Write pages with Quill.** `cairn write begin` prepares a packet for Quill, and
+  `cairn write finish` turns the draft into a proposal. `cairn note` makes your own notes
+  searchable at once, `cairn inbox` lists what awaits you, and `cairn accept` validates,
+  approves and applies proposals in one confirmed step. See [Writing](docs/writing.md).
+- **Maintain a journal library.** Catalog a read-only folder of journal PDFs, track what
+  is new, and queue readings. See the [journal library](docs/library.md).
+- **Track finances and daily life.** Import structured financial snapshots, run exact
+  decimal calculations, and keep dated notes and sourced life hubs, with owner, account,
+  date, unit and currency kept separate. See [personal domains](docs/personal-domains.md).
+- **Export offline HTML views** of project context, queries, evidence, readings,
+  proposals, catalogs and journal feeds. See [HTML views](docs/html-views.md).
 
-Quill writes; Cairn tells it what to write and where, then formats the draft into a
-proposal. `cairn note` makes your own notes searchable immediately, `cairn inbox` lists
-what awaits you, and `cairn accept` validates, approves and applies proposals in one
-confirmed, batchable step. Setup installs Quill for the knowledge base unless it is
-already available machine-wide. See [Writing](docs/writing.md).
+Run `cairn --help` for the full command list. Most commands take `--workspace` (or
+`CAIRN_WORKSPACE`), and `--json` gives structured output.
 
-## Automatic updates
+## Development
 
-After a one-time `cairn update setup`, Cairn checks its `stable` branch hourly and
-whenever `cairn` starts (at most daily), like Finch and Quill. When the version number
-increases, it builds, verifies and installs that release, and rebinds each opted-in knowledge
-base with a backup and automatic schema migration. It also refreshes the
-knowledge-base Quill from Quill's `stable` release. Opt a knowledge base in with
-`cairn init --auto-update` or `cairn update enable`. See [Automatic updates](docs/updates.md).
+Contributors work only with synthetic data, inside the development container. Never
+mount a home directory, a private knowledge base, credentials, or the Docker socket.
 
-## Automatic Finch paper reading
+```sh
+bash scripts/check.sh           # build images; run tests, lint, strict typing,
+                                # isolation probes and installed-CLI trials
+bash scripts/release_check.sh   # on a clean commit: pinned wheelhouse + offline install trial
+```
 
-Paper reading uses Finch automatically. Library readings already capture evidence and
-stage reading proposals; they bind the bundled Finch guidance to each job. When a private
-workspace is initialized and no Finch is available, `cairn init` runs Finch's own
-installer, which links Finch into every detected agent (Claude Code, Codex, Gemini CLI,
-Cursor, Copilot, OpenCode) and schedules Finch's daily update. Pass `--no-finch` to skip it
-or `--no-finch-auto-update` to install without the scheduled update. An existing Finch is
-left untouched. Finch carries its own Cairn handoff guide, so in a configured agent
-session, every Finch invocation inside the knowledge base captures its supplied
-discussion and stages a validated concept-note proposal before returning the answer.
-Approval and canonical apply remain owner operations. See
-[Finch setup and handoff](docs/finch-reading.md) for installation, packets, retries,
-processing consent and the explicit pending state when no owner launcher is configured.
+Create development fixtures with `cairn init --synthetic`. See
+[synthetic development](docs/development.md) for the container profile and
+[AGENTS.md](AGENTS.md) for the rules every change must follow.
+
+## Using Cairn with your own knowledge base
+
+A private knowledge base requires a reviewed, pinned installation, explicit owner
+acknowledgements, and a fresh check that the worker is isolated. Follow the
+[installation runbook](docs/installation.md), then read the
+[processing policy](docs/privacy.md) and [agent protocol](docs/agent-integration.md)
+before choosing how models run. Format changes are handled by an explicit, backed-up
+[schema migration](docs/schema-migrations.md).
+
+After a one-time `cairn update setup`, Cairn checks its `stable` branch hourly and when
+`cairn` starts (at most once a day). When the version number increases, it builds,
+verifies and installs the new release, then rebinds each opted-in knowledge base with a
+backup and any needed schema migration. It also keeps the knowledge base's Quill copy on
+Quill's stable release. Opt in with `cairn init --auto-update` or `cairn update enable`.
+See [automatic updates](docs/updates.md) and the [changelog](CHANGELOG.md).
+
+## License
+
+Cairn is released under the [MIT License](LICENSE). The bundled Finch snapshot and the
+vendored `answer-me-with-html` keep their own MIT licenses.
