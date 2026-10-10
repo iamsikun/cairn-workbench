@@ -65,7 +65,7 @@ It does not install software, replace a release approval, weaken a route grant, 
 record schema 1 to an invented new record version. Replacing a private installation with
 a different release is the [automatic update](updates.md) operation: a workspace bound to
 an earlier release is never opened by unchecked newer code. The new runtime verifies
-itself and the signed release and takes a backup before rebinding. It then runs
+itself and the channel release and takes a backup before rebinding. It then runs
 supported migrations automatically, each with its own backup, under the owner's standing
 update authorization. Private operation still checks the approved installation before
 inspection, migration, or recovery.

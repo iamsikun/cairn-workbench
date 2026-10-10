@@ -12,17 +12,9 @@ from cairn.updater import schedule, service, skills
 from cairn.updater.home import DEFAULT_REF, DEFAULT_REPOSITORY, Home, UpdaterConfig, bound_release
 
 ENABLE_STATEMENT = (
-    "I authorize this knowledge base to adopt future Cairn releases signed by the "
-    "configured keys, with automatic backups and schema migrations."
+    "I authorize this knowledge base to adopt future Cairn releases from the configured "
+    "channel, with automatic backups and schema migrations."
 )
-
-
-def read_signers(file: Path) -> list[str]:
-    lines = [line.strip() for line in file.read_text().splitlines()]
-    signers = [line for line in lines if line and not line.startswith("#")]
-    if not signers:
-        raise Denied("allowed signers file lists no keys")
-    return signers
 
 
 def configured(home: Home) -> UpdaterConfig:
@@ -46,7 +38,6 @@ def enable_workspace(home: Home, ws: Workspace, statement: str) -> dict[str, obj
         ws,
         repository=config.repository,
         ref=config.ref,
-        allowed_signers=config.allowed_signers,
         statement=statement,
     )
     register_workspace(home, ws.root, add=True)
@@ -55,33 +46,28 @@ def enable_workspace(home: Home, ws: Workspace, statement: str) -> dict[str, obj
         "update_authorization_id": authorization.id,
         "repository": authorization.repository,
         "ref": authorization.ref,
-        "signers": len(authorization.allowed_signers),
     }
 
 
 def register(app: typer.Typer) -> None:
-    update = typer.Typer(help="Automatic, signed Cairn updates and managed skills.")
+    update = typer.Typer(help="Automatic Cairn updates from the stable channel and managed skills.")
     app.add_typer(update, name="update")
 
     @update.command("setup")
     @guarded
     def setup(
-        signers: Annotated[
-            Path, typer.Option(help="SSH allowed-signers file of keys that sign releases.")
-        ],
         repository: str = DEFAULT_REPOSITORY,
         ref: str = DEFAULT_REF,
         bin_dir: Annotated[Path | None, typer.Option(help="Where to put `cairn`.")] = None,
         schedule_updates: Annotated[bool, typer.Option("--schedule/--no-schedule")] = True,
         interval_hours: int = 24,
     ) -> None:
-        """Install the newest signed release as a managed runtime and keep it current."""
+        """Install the current stable release as a managed runtime and keep it current."""
         home = Home.from_env()
         existing = home.config()
         config = UpdaterConfig(
             repository=repository,
             ref=ref,
-            allowed_signers=read_signers(signers),
             workspaces=existing.workspaces if existing else [],
             interval_hours=interval_hours,
             path=os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
@@ -89,7 +75,7 @@ def register(app: typer.Typer) -> None:
         home.save_config(config)
         result = service.run(home)
         if home.current_runtime() is None:
-            raise Blocked(f"no signed release could be installed: {result.get('reason', '')}")
+            raise Blocked(f"no release could be installed: {result.get('reason', '')}")
         user_home = Path.home()
         report: dict[str, object] = {"update": result, "home": str(home.root)}
         report["shim"] = str(schedule.write_shim(home, bin_dir or user_home / ".local" / "bin"))
@@ -103,7 +89,7 @@ def register(app: typer.Typer) -> None:
         if_due: Annotated[bool, typer.Option("--if-due")] = False,
         quiet: Annotated[bool, typer.Option("--quiet")] = False,
     ) -> None:
-        """Check the channel now; install, verify and adopt a newer signed release."""
+        """Check the channel now; install, verify and adopt a newer release."""
         result = service.run(Home.from_env(), if_due=if_due)
         if not quiet or result.get("status") in ("updated", "failed"):
             emit(result, True)

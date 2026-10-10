@@ -1,12 +1,13 @@
-"""Check, build, verify, install and adopt signed Cairn releases on the owner's machine.
+"""Check, build, verify, install and adopt Cairn releases on the owner's machine.
 
-One cycle: refresh the channel mirror; pick the newest signed tag above the current
-runtime; export that exact tree; build the worker image and a release bundle for this
-machine; install it offline into a new runtime; verify it with its own `release
-check-runtime`/`check-worker` and a synthetic smoke run; ask that runtime to rebind each
-registered knowledge base (backup, signature re-check, migration); switch `current`;
-and refresh managed skills. Any failure leaves `current` and every unchanged
-knowledge base on the previous runtime. Models and workers take no part.
+One cycle: refresh the channel mirror; take the channel head if it declares a higher
+release number and builds on the current runtime's commit; export that exact tree;
+build the worker image and a release bundle for this machine; install it offline into
+a new runtime; verify it with its own `release check-runtime`/`check-worker` and a
+synthetic smoke run; ask that runtime to rebind each registered knowledge base (backup,
+channel re-check, migration); switch `current`; and refresh managed skills. Any failure
+leaves `current` and every unchanged knowledge base on the previous runtime. Models
+and workers take no part.
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ from cairn.records.release import ReleaseManifest
 from cairn.records.runtime import tag_version
 from cairn.storage.release import verify_bundle
 from cairn.updater.home import Busy, Home, RuntimeInfo, UpdaterConfig, bound_release
-from cairn.updater.source import VerifiedRelease, candidates, fetch, git, verify_release
+from cairn.updater.source import ChannelRelease, channel_head, fetch, git, has_commit, is_ancestor
 
 type Runner = Callable[..., subprocess.CompletedProcess[bytes]]
 BUILD_TIMEOUT = 3600
@@ -67,19 +68,20 @@ def environment(config: UpdaterConfig) -> dict[str, str]:
     return env | {"PATH": config.path, "UV_NO_PROGRESS": "1", "CAIRN_NO_AUTO_UPDATE": "1"}
 
 
-def newest_release(home: Home, config: UpdaterConfig) -> tuple[VerifiedRelease | None, list[str]]:
-    """Newest signed channel tag above the current runtime; unverifiable tags are skipped."""
+def newest_release(home: Home, config: UpdaterConfig) -> ChannelRelease | None:
+    """The channel head, if it is a newer release that fast-forwards the current one."""
     fetch(home.mirror, config.repository, config.ref)
     current = home.current_runtime()
-    skipped: list[str] = []
-    for tag in candidates(home.mirror, config.ref):
-        if current and tag_version(tag) <= tag_version(current.release_tag):
-            break
-        try:
-            return verify_release(home.mirror, tag, config.ref, config.allowed_signers), skipped
-        except Denied as exc:
-            skipped.append(f"{tag}: {exc}")
-    return None, skipped
+    head = channel_head(home.mirror, config.ref)
+    if current is None:
+        return head
+    if tag_version(head.tag) <= tag_version(current.release_tag):
+        return None
+    if has_commit(home.mirror, current.commit) and not is_ancestor(
+        home.mirror, current.commit, head.commit
+    ):
+        raise Denied("the update channel was rewritten; stable must only fast-forward")
+    return head
 
 
 def export_tree(home: Home, commit: str, destination: Path) -> None:
@@ -90,7 +92,7 @@ def export_tree(home: Home, commit: str, destination: Path) -> None:
 
 
 def install(
-    home: Home, release: VerifiedRelease, config: UpdaterConfig, runner: Runner
+    home: Home, release: ChannelRelease, config: UpdaterConfig, runner: Runner
 ) -> RuntimeInfo:
     env = environment(config)
     home.runtimes.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -132,7 +134,7 @@ def install(
         sha = digest(raw)
         manifest = ReleaseManifest.model_validate(read_json(raw))
         if manifest.code_revision != release.commit or manifest.source_hash != release.source_hash:
-            raise Conflict("built release does not match the signed source")
+            raise Conflict("built release does not match the channel source")
         verify_bundle(bundle, expected_sha256=sha)
         interpreter = (source / ".venv" / "bin" / "python").resolve()
         if existing := home.installed(sha):
@@ -324,7 +326,7 @@ def run(
 
 def _cycle(home: Home, config: UpdaterConfig, runner: Runner) -> dict[str, Any]:
     previous = home.current_runtime()
-    release, skipped = newest_release(home, config)
+    release = newest_release(home, config)
     if release is None:
         result: dict[str, Any] = {
             "status": "up_to_date",
@@ -333,7 +335,7 @@ def _cycle(home: Home, config: UpdaterConfig, runner: Runner) -> dict[str, Any]:
         if previous:
             # Retry any knowledge base still bound to an older runtime.
             result["workspaces"] = rebind_all(home, previous, config, runner)
-        return result | ({"skipped_tags": skipped} if skipped else {})
+        return result
     info = install(home, release, config, runner)
     workspaces = rebind_all(home, info, config, runner)
     home.set_current(info.release_sha256)
@@ -346,4 +348,4 @@ def _cycle(home: Home, config: UpdaterConfig, runner: Runner) -> dict[str, Any]:
         "previous": previous.release_tag if previous else None,
         "workspaces": workspaces,
         "removed_runtimes": removed,
-    } | ({"skipped_tags": skipped} if skipped else {})
+    }

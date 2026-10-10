@@ -3,9 +3,10 @@
 A workspace stays bound to one exact release. Rebinding it to a newer release is an
 owner maintenance operation authorized once, in advance, by an `UpdateAuthorization`
 stored in the workspace. Each rebind is run by the new installed runtime, which must
-verify itself, re-verify the signed release tag against the workspace's own signer
-list, recompute the source hash from the signed tree, pass a fresh worker probe, and
-take a backup before the configuration (the single commit point) names the new release.
+verify itself, confirm that the release commit is on the authorized channel branch and
+declares a higher release number, recompute the source hash from that tree, pass a
+fresh worker probe, and take a backup before the configuration (the single commit
+point) names the new release.
 Schema migrations then run automatically with their own mandatory backup.
 """
 
@@ -61,10 +62,8 @@ def active_authorization(ws: Workspace) -> UpdateAuthorization | None:
     return active[0] if active else None
 
 
-def enable(
-    ws: Workspace, *, repository: str, ref: str, allowed_signers: list[str], statement: str
-) -> UpdateAuthorization:
-    """Record the owner's standing consent to adopt releases signed by these keys."""
+def enable(ws: Workspace, *, repository: str, ref: str, statement: str) -> UpdateAuthorization:
+    """Record the owner's standing consent to adopt releases from this channel."""
     if ws.config.synthetic:
         raise Denied("automatic updates apply to private workspaces")
     with ws.lock(write=True):
@@ -76,7 +75,6 @@ def enable(
             at=now(),
             repository=repository,
             ref=ref,
-            allowed_signers=allowed_signers,
             owner_statement=statement,
         )
         ws.fs.write(f"{UPDATES}/{authorization.id}.json", canonical(authorization), exclusive=True)
@@ -126,11 +124,9 @@ def rebind(
         authorization = active_authorization(ws)
         if authorization is None:
             raise Denied("automatic updates are not enabled for this workspace")
-        verified = verify_release(mirror, tag, authorization.ref, authorization.allowed_signers)
-        if verified.commit != manifest.code_revision or verified.source_hash != (
-            manifest.source_hash
-        ):
-            raise Conflict("release manifest does not match the signed source")
+        verified = verify_release(mirror, manifest.code_revision, authorization.ref, tag)
+        if verified.source_hash != manifest.source_hash:
+            raise Conflict("release manifest does not match the channel source")
         if previous.release_tag and tag_version(tag) <= tag_version(previous.release_tag):
             raise Denied("automatic updates never move to an older or equal release")
         worker = check_worker(manifest.worker_image)
@@ -149,7 +145,6 @@ def rebind(
             previous_approval_id=previous.id,
             update_authorization_id=authorization.id,
             release_tag=tag,
-            release_signer=verified.signer,
             backup_sha256=str(backed_up["sha256"]),
         )
         path = release_path(release_sha256)

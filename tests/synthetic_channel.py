@@ -1,12 +1,12 @@
-"""A local synthetic update channel: throwaway SSH signing keys and signed tags.
+"""A local synthetic update channel shaped like Cairn's: versioned commits on `stable`.
 
-No real keys, remotes or homes are involved; every repository lives under tmp_path.
+No real remotes or homes are involved; every repository lives under tmp_path.
 """
 
 from __future__ import annotations
 
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 IDENTITY = ("-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid")
@@ -21,25 +21,17 @@ def env(tmp_path: Path) -> dict[str, str]:
     }
 
 
-def signing_key(tmp_path: Path, name: str) -> tuple[Path, str]:
-    """Return a private key path and its allowed-signers line."""
-    key = tmp_path / f"synthetic-{name}-key"
-    subprocess.run(
-        ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", name, "-f", str(key)],
-        check=True,
-        capture_output=True,
-    )
-    public = key.with_suffix(".pub").read_text().split()
-    return key, f'{name}@example.invalid namespaces="git" {public[0]} {public[1]}'
+def version_files(version: str, package: str | None = None) -> dict[str, bytes]:
+    return {
+        "pyproject.toml": f'[project]\nname = "cairn-workbench"\nversion = "{version}"\n'.encode(),
+        "src/cairn/__init__.py": f'__version__ = "{package or version}"\n'.encode(),
+    }
 
 
 @dataclass
 class Channel:
     root: Path
     work: Path
-    key: Path
-    signer: str
-    files: dict[str, bytes] = field(default_factory=dict)
 
     def git(self, *args: str) -> str:
         completed = subprocess.run(
@@ -51,46 +43,32 @@ class Channel:
         )
         return completed.stdout.decode().strip()
 
-    def commit(self, files: dict[str, bytes], message: str = "Synthetic release") -> str:
+    def commit(self, files: dict[str, bytes], message: str = "Synthetic change") -> str:
         for name, raw in files.items():
             path = self.work / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(raw)
-        self.files.update(files)
         self.git("add", "-A")
         self.git("commit", "-qm", message)
         return self.git("rev-parse", "HEAD")
 
-    def tag(self, name: str, *, key: Path | None = None, signed: bool = True) -> str:
-        if signed:
-            self.git(
-                "-c",
-                "gpg.format=ssh",
-                "-c",
-                f"user.signingkey={key or self.key}",
-                "tag",
-                "-s",
-                name,
-                "-m",
-                f"Synthetic {name}",
-            )
-        else:
-            self.git("tag", name)
-        return self.git("rev-parse", f"{name}^{{commit}}")
+    def release(self, version: str, extra: dict[str, bytes] | None = None) -> str:
+        """Bump the release number (and optionally other files) and commit."""
+        return self.commit(version_files(version) | (extra or {}), f"Release {version}")
 
 
 def channel(tmp_path: Path, branch: str = "stable") -> Channel:
     work = tmp_path / "synthetic-cairn-source"
     work.mkdir()
-    key, signer = signing_key(tmp_path, "owner")
-    result = Channel(tmp_path, work, key, signer)
+    result = Channel(tmp_path, work)
     result.git("init", "-q", "-b", branch)
     result.commit(
-        {
-            "pyproject.toml": b'[project]\nname = "cairn-workbench"\nversion = "0.2.0"\n',
+        version_files("0.1.0")
+        | {
             "uv.lock": b"# synthetic lock\n",
-            "src/cairn/__init__.py": b'__version__ = "0.2.0"\n',
+            "src/cairn/cli.py": b"VALUE = 1\n",
             "README.md": b"Synthetic channel; not hashed.\n",
-        }
+        },
+        "Synthetic 0.1.0",
     )
     return result

@@ -1,22 +1,25 @@
 # Acceptance evidence
 
-## Automatic signed updates and managed skills (2026-10-10; software checks passed, live update pending)
+## Automatic updates and managed skills (2026-10-10; software checks passed, live update pending)
 
 The owner asked that a knowledge base update automatically whenever the workbench is
 updated, like a self-updating terminal application, and that knowledge-base skills
 follow their upstream. Previously a private workspace was bound to one release with no
-upgrade path. The owner chose signed release tags as the authority and automatic schema
-migrations with backups.
+upgrade path. The owner first chose SSH-signed release tags, then asked to follow Finch
+and Quill instead: a release is the `stable` branch with a higher version number, and no
+signing setup is required. Schema migrations run automatically with backups.
 
 - **Rebind.** `storage/upgrade.py` rebinds a workspace under a standing
   `UpdateAuthorization` stored in that workspace. The new runtime verifies itself, then
-  re-verifies the SSH-signed tag against the workspace's own signer list. It checks
-  that the tag object names its ref, that the commit is on the channel branch, and that
-  the manifest's revision and source hash match the signed tree. It refuses downgrades,
+  checks that the release commit is on the branch named in that authorization and that
+  both version declarations (`pyproject.toml`, `src/cairn/__init__.py`) agree on the
+  expected version. It also checks that the manifest's revision and source hash match
+  that tree. It refuses downgrades,
   runs a fresh worker probe, and backs up before replacing `workspace.json`. Upgrade
   approvals chain back to an acknowledged `init`/`restore` and are checked on every open
   and in backups.
-- **Updater.** `cairn update setup|run|status|enable|disable|schedule`, a launchd/cron
+- **Updater.** It adopts the `stable` head only when its version increases and it
+  fast-forwards the installed commit. `cairn update setup|run|status|enable|disable|schedule`, a launchd/cron
   job, a background check when `cairn` starts, a one-time notice, and serving a
   workspace from the runtime it is still bound to. A failed build, verification or
   smoke run keeps the previous runtime.
@@ -25,34 +28,31 @@ migrations with backups.
   its marker, so owner edits and unmanaged copies are kept. Finch's own updater is
   invoked when present.
 
-Tests (synthetic only; throwaway SSH keys, local repositories, synthetic `CAIRN_HOME`
-and `FINCH_HOME`):
+Tests (synthetic only; local repositories, synthetic `CAIRN_HOME` and `FINCH_HOME`):
 
 | Area | Tests |
 |---|---|
-| Signed rebind, chain, backup, restore of upgraded archive | `test_signed_release_rebinds_with_backup_chain_and_history` |
+| Channel rebind, chain, backup, restore of upgraded archive | `test_channel_release_rebinds_with_backup_chain_and_history` |
 | Missing/revoked authorization | `test_rebind_requires_active_owner_authorization` |
-| Unsigned, foreign-key, renamed and off-channel tags | `test_rebind_rejects_unsigned_foreign_renamed_and_off_channel_tags` |
-| Manifest/source binding, no downgrade | `test_rebind_binds_manifest_to_signed_source_and_never_downgrades` |
+| Wrong version, disagreeing declarations, off-channel commit | `test_rebind_requires_a_channel_commit_declaring_the_release` |
+| Manifest/source binding, no downgrade | `test_rebind_binds_manifest_to_channel_source_and_never_downgrades` |
 | Probe failure before backup; interruption before commit | `test_failed_worker_probe_blocks_before_backup`, `test_interrupted_rebind_leaves_previous_binding_valid` |
-| Tampered signer detected on open | `test_upgrade_chain_is_checked_on_every_open` |
+| Forged authorization reference detected on open | `test_upgrade_chain_is_checked_on_every_open` |
 | Automatic legacy migration with second backup | `test_upgrade_migrates_legacy_format_automatically_with_backup` |
-| Tag selection, cycle ordering, failure keeps runtime, busy, GC | `tests/test_updater.py` |
+| Version-bump selection, rewritten history refused, cycle ordering, failure keeps runtime, busy, GC | `tests/test_updater.py` |
 | Bound-runtime re-exec, notice, background check, schedules, shim | `tests/test_updater.py` |
 | Managed Quill install, refresh, local edits, offline fallback | `tests/test_managed_skills.py` |
 
-`bash scripts/check.sh` passed at `2b5b1a6`: **363 tests**, Ruff, strict mypy (**115
-source files**), all 13 isolation checks, worker and installed round trips, gold set
-129/129, and the real-engine lifecycle. A follow-up change (skills refresh even when a
-Cairn build fails) was then tested in the development container (Ruff, mypy, full
-pytest). The development image gained `openssh-client` and a passwd entry for the test
-user so `ssh-keygen` can sign and verify synthetic tags; the worker image is unchanged.
+After switching to version-based releases, `bash scripts/check.sh` passed: **365
+tests**, Ruff, strict mypy, all 13 isolation checks, worker and installed round trips,
+gold set 129/129, and the real-engine lifecycle. The temporary `openssh-client`
+addition to the development image was removed with the signing code; the worker image
+was never changed.
 
 Not executed: build, install and verification steps are simulated by a fake runner.
 No live `cairn update setup`/`run` was run on a real macOS host, so the native host
 build (`uv run ... build_release.py`, local `docker build`, offline install and the new
-runtime's `check-runtime`) is unverified. The repository has no `stable` branch or
-signed tags yet. `scripts/release_check.sh` was not rerun. Live launchd/cron
+runtime's `check-runtime`) is unverified. The repository has no `stable` branch yet. `scripts/release_check.sh` was not rerun. Live launchd/cron
 registration, Quill's upstream over the network, and the owner's first activation
 remain owner deployment checks.
 

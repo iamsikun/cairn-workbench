@@ -1,4 +1,4 @@
-"""Updater cycle against a synthetic CAIRN_HOME and a local signed channel.
+"""Updater cycle against a synthetic CAIRN_HOME and a local versioned channel.
 
 Docker, uv, the release build and the new runtime's commands are simulated by a fake
 runner: these tests cover selection, ordering, failure handling and state, not a live
@@ -12,11 +12,12 @@ import sys
 from pathlib import Path
 
 import pytest
-from synthetic_channel import channel, signing_key
+from synthetic_channel import channel
 from test_release import manifest
 from typer.testing import CliRunner
 
 from cairn.cli import app
+from cairn.errors import Conflict, Denied
 from cairn.records.models import canonical, digest, now
 from cairn.storage.release import requirements
 from cairn.updater import launch, schedule, service
@@ -71,9 +72,7 @@ class FakeRunner:
 def updater(tmp_path: Path, synthetic_cairn_home: Path) -> dict:
     source = channel(tmp_path)
     home = Home(synthetic_cairn_home)
-    config = UpdaterConfig(
-        repository=str(source.work), allowed_signers=[source.signer], path=os.environ["PATH"]
-    )
+    config = UpdaterConfig(repository=str(source.work), path=os.environ["PATH"])
     home.save_config(config)
     return {"home": home, "channel": source, "config": config, "tmp": tmp_path}
 
@@ -82,13 +81,13 @@ def no_skills(home: Home, config: object) -> dict:
     return {"skipped": "synthetic"}
 
 
-def install_fake_runtime(home: Home, tag: str, sha: str) -> None:
+def install_fake_runtime(home: Home, tag: str, sha: str, commit: str = "c" * 40) -> None:
     root = home.runtime(sha)
     (root / "venv" / "bin").mkdir(parents=True)
     (root / "venv" / "bin" / "python").write_text("placeholder")
     info = RuntimeInfo(
         release_tag=tag,
-        commit="c" * 40,
+        commit=commit,
         release_sha256=sha,
         worker_image="sha256:" + "2" * 64,
         installed_at=now(),
@@ -96,27 +95,44 @@ def install_fake_runtime(home: Home, tag: str, sha: str) -> None:
     (root / "runtime.json").write_bytes(canonical(info))
 
 
-def test_newest_signed_tag_above_current_is_selected(updater: dict) -> None:
-    home, source = updater["home"], updater["channel"]
-    source.tag("v0.2.0")
-    source.commit({"src/cairn/x.py": b"X = 1\n"})
-    source.tag("v0.3.0", signed=False)
-    source.commit({"src/cairn/y.py": b"Y = 1\n"})
-    foreign, _ = signing_key(updater["tmp"], "stranger")
-    source.tag("v0.4.0", key=foreign)
-    release, skipped = service.newest_release(home, updater["config"])
-    assert release is not None and release.tag == "v0.2.0"
-    assert [item.split(":")[0] for item in skipped] == ["v0.4.0", "v0.3.0"]
-    install_fake_runtime(home, "v0.2.0", "a" * 64)
+def test_channel_head_is_adopted_only_for_a_higher_release_number(updater: dict) -> None:
+    home, source, config = updater["home"], updater["channel"], updater["config"]
+    first = source.release("0.2.0")
+    release = service.newest_release(home, config)
+    assert release is not None and (release.tag, release.commit) == ("v0.2.0", first)
+    install_fake_runtime(home, "v0.2.0", "a" * 64, commit=first)
     home.set_current("a" * 64)
-    assert service.newest_release(home, updater["config"])[0] is None
+    # Commits without a version bump are development, not a release.
+    source.commit({"src/cairn/x.py": b"X = 1\n"})
+    assert service.newest_release(home, config) is None
+    later = source.release("0.3.0")
+    assert service.newest_release(home, config).commit == later  # type: ignore[union-attr]
+    # Disagreeing version declarations are refused.
+    source.commit({"src/cairn/__init__.py": b'__version__ = "0.3.9"\n'})
+    source.commit({"pyproject.toml": b'[project]\nname = "cairn-workbench"\nversion = "0.4.0"\n'})
+    with pytest.raises(Conflict, match="versions differ"):
+        service.newest_release(home, config)
+
+
+def test_rewritten_stable_history_is_refused(updater: dict) -> None:
+    home, source, config = updater["home"], updater["channel"], updater["config"]
+    first = source.release("0.2.0")
+    service.newest_release(home, config)  # Mirror now holds the installed commit.
+    install_fake_runtime(home, "v0.2.0", "a" * 64, commit=first)
+    home.set_current("a" * 64)
+    source.git("reset", "-q", "--hard", "HEAD~1")
+    source.release("0.3.0")
+    with pytest.raises(Denied, match="fast-forward"):
+        service.newest_release(home, config)
+    result = service.run(home, runner=FakeRunner(home), refresh_skills=no_skills)
+    assert result["status"] == "failed" and home.current_runtime().commit == first  # type: ignore[union-attr]
 
 
 def test_cycle_installs_verifies_rebinds_and_switches(updater: dict) -> None:
     home, source = updater["home"], updater["channel"]
     workspaces = [str(updater["tmp"] / "kb-one"), str(updater["tmp"] / "kb-two")]
     home.save_config(updater["config"].model_copy(update={"workspaces": workspaces}))
-    commit = source.tag("v0.2.0")
+    commit = source.release("0.2.0")
     runner = FakeRunner(home)
     result = service.run(home, runner=runner, refresh_skills=no_skills)
     assert result["status"] == "updated" and result["release_tag"] == "v0.2.0"
@@ -141,7 +157,7 @@ def test_failed_verification_keeps_previous_runtime(updater: dict, step: str) ->
     install_fake_runtime(home, "v0.1.0", "a" * 64)
     home.set_current("a" * 64)
     home.save_config(updater["config"].model_copy(update={"workspaces": ["/synthetic/kb"]}))
-    source.tag("v0.2.0")
+    source.release("0.2.0")
     runner = FakeRunner(home, fail=step)
     result = service.run(home, runner=runner, refresh_skills=no_skills)
     assert result["status"] == "failed" and result["skills"] == {"skipped": "synthetic"}
@@ -153,16 +169,16 @@ def test_failed_verification_keeps_previous_runtime(updater: dict, step: str) ->
 
 def test_build_that_does_not_match_signed_source_is_refused(updater: dict) -> None:
     home = updater["home"]
-    updater["channel"].tag("v0.2.0")
+    updater["channel"].release("0.2.0")
     result = service.run(home, runner=FakeRunner(home, revision="b" * 40), refresh_skills=no_skills)
-    assert result["status"] == "failed" and "signed source" in result["reason"]
+    assert result["status"] == "failed" and "channel source" in result["reason"]
     assert home.current_runtime() is None
 
 
 def test_failed_rebind_is_reported_and_retried(updater: dict) -> None:
     home = updater["home"]
     home.save_config(updater["config"].model_copy(update={"workspaces": ["/synthetic/kb"]}))
-    updater["channel"].tag("v0.2.0")
+    updater["channel"].release("0.2.0")
     result = service.run(home, runner=FakeRunner(home, fail="rebind"), refresh_skills=no_skills)
     assert result["status"] == "updated"
     assert result["workspaces"]["/synthetic/kb"]["status"] == "failed"
@@ -301,9 +317,8 @@ def test_cli_status_and_setup_requirements(tmp_path: Path) -> None:
         ],
     )
     assert refused.exit_code != 0 and not (tmp_path / "kb").exists()
-    empty = tmp_path / "signers"
-    empty.write_text("# none\n")
-    assert runner.invoke(app, ["update", "setup", "--signers", str(empty)]).exit_code != 0
+    unreachable = ["update", "setup", "--repository", str(tmp_path / "absent"), "--no-schedule"]
+    assert runner.invoke(app, unreachable).exit_code != 0
 
 
 def test_cli_enable_registers_and_disable_unregisters(
@@ -338,3 +353,14 @@ def test_cli_enable_registers_and_disable_unregisters(
     assert disabled.exit_code == 0, disabled.output
     assert updater["home"].config().workspaces == []  # type: ignore[union-attr]
     assert upgrade.active_authorization(Workspace(ws.root)) is None
+
+
+def test_repository_version_declarations_agree() -> None:
+    """The updater refuses a release whose two version declarations differ."""
+    import re
+    import tomllib
+
+    root = Path(__file__).resolve().parents[1]
+    declared = tomllib.loads((root / "pyproject.toml").read_text())["project"]["version"]
+    package = re.search(r'__version__ = "([^"]+)"', (root / "src/cairn/__init__.py").read_text())
+    assert package is not None and package.group(1) == declared

@@ -151,8 +151,6 @@ def check_upgrade_chain(
             current.update_authorization_id
         ):
             raise Denied("upgrade approval does not bind this workspace's update authorization")
-        if current.release_signer not in authorization.allowed_signers:
-            raise Denied("upgrade signer is not in the owner's update authorization")
         previous = read_approval(current.previous_approval_id, read)
         if (
             previous.id != current.previous_approval_id

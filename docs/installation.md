@@ -117,8 +117,9 @@ image, and immutable `receipts/runtime/` approval. The exact manifest is retaine
 Subsequent private-workspace opens and locked operations verify that binding and the
 installed package inventory. A changed installation or worker cannot silently become the
 runtime for existing private data. It is adopted only through the
-[automatic update](updates.md) path: a release signed by a key in the workspace's own
-update authorization, verified, backed up and recorded as an `upgrade` approval.
+[automatic update](updates.md) path: a higher-versioned release from the channel named in
+the workspace's own update authorization, verified, backed up and recorded as an
+`upgrade` approval.
 `--inline-synthetic` never bypasses isolation in private mode. A custom client image must
 be part of the reviewed release, not a new command-line override.
 

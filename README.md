@@ -82,9 +82,9 @@ already available machine-wide. See [Writing](docs/writing.md).
 
 ## Automatic updates
 
-After a one-time `cairn update setup --signers FILE`, Cairn checks its `stable` channel
-hourly and whenever `cairn` starts (at most daily). It builds, verifies and installs any
-newer release whose tag is signed by an allowed key, and rebinds each opted-in knowledge
+After a one-time `cairn update setup`, Cairn checks its `stable` branch hourly and
+whenever `cairn` starts (at most daily), like Finch and Quill. When the version number
+increases, it builds, verifies and installs that release, and rebinds each opted-in knowledge
 base with a backup and automatic schema migration. It also refreshes the
 knowledge-base Quill from Quill's `stable` release. Opt a knowledge base in with
 `cairn init --auto-update` or `cairn update enable`. See [Automatic updates](docs/updates.md).

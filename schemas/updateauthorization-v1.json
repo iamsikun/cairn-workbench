@@ -1,19 +1,7 @@
 {
   "additionalProperties": false,
-  "description": "Standing owner consent to adopt future releases signed by the listed keys.",
+  "description": "Standing owner consent to adopt future releases from one channel branch.",
   "properties": {
-    "allowed_signers": {
-      "items": {
-        "maxLength": 8192,
-        "minLength": 1,
-        "pattern": "^[^\\r\\n\\x00]+$",
-        "type": "string"
-      },
-      "maxItems": 32,
-      "minItems": 1,
-      "title": "Allowed Signers",
-      "type": "array"
-    },
     "at": {
       "format": "date-time",
       "title": "At",
@@ -66,7 +54,6 @@
     "at",
     "repository",
     "ref",
-    "allowed_signers",
     "owner_statement"
   ],
   "title": "UpdateAuthorization",

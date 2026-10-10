@@ -167,21 +167,6 @@
       "title": "Release Hash",
       "type": "string"
     },
-    "release_signer": {
-      "anyOf": [
-        {
-          "maxLength": 8192,
-          "minLength": 1,
-          "pattern": "^[^\\r\\n\\x00]+$",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Release Signer"
-    },
     "release_tag": {
       "anyOf": [
         {

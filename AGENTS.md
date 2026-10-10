@@ -21,10 +21,11 @@ provider results prove semantic quality or production readiness.
 ## Updates
 
 The updater (`cairn update`) is an owner-machine operation outside the processing
-boundary. A release is adopted only when its tag is signed by a key listed in the knowledge
-base's own `UpdateAuthorization`; the new runtime verifies itself, takes a backup and
-records an `upgrade` approval chained to an owner-acknowledged activation. Never weaken
-signature, source-hash or downgrade checks, and never run `setup`, `run` or the scheduler
+boundary. A release is the `stable` branch with a higher version number (see
+`CHANGELOG.md` and `docs/updates.md`); the new runtime checks it against the knowledge
+base's own `UpdateAuthorization`, verifies itself, takes a backup and records an
+`upgrade` approval chained to an owner-acknowledged activation. Never weaken the
+channel, fast-forward, source-hash or downgrade checks, and never run `setup`, `run` or the scheduler
 against a real home from contributor code. Tests use a synthetic `CAIRN_HOME`, local
 synthetic remotes and throwaway keys. Managed skill copies must never overwrite owner edits.
 

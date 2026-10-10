@@ -72,7 +72,6 @@ class WorkerProfile(Model):
 
 _PART = r"(0|[1-9][0-9]{0,8})"
 ReleaseTag = Annotated[str, Field(pattern=rf"^v{_PART}\.{_PART}\.{_PART}$")]
-SignerLine = Annotated[str, Field(min_length=1, max_length=8192, pattern=r"^[^\r\n\x00]+$")]
 
 
 def tag_version(tag: str) -> tuple[int, int, int]:
@@ -81,7 +80,7 @@ def tag_version(tag: str) -> tuple[int, int, int]:
 
 
 class UpdateAuthorization(Model):
-    """Standing owner consent to adopt future releases signed by the listed keys."""
+    """Standing owner consent to adopt future releases from one channel branch."""
 
     schema_version: Literal[1] = 1
     id: ID
@@ -89,7 +88,6 @@ class UpdateAuthorization(Model):
     at: datetime
     repository: str = Field(min_length=1, max_length=2048, pattern=r"^[^\r\n\x00]+$")
     ref: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$")
-    allowed_signers: list[SignerLine] = Field(min_length=1, max_length=32)
     migrations: Literal["automatic_with_backup"] = "automatic_with_backup"
     owner_statement: str = Field(min_length=1, max_length=4000)
 
@@ -120,12 +118,11 @@ class RuntimeApproval(Model):
     acknowledgements: set[ReviewAcknowledgement]
     worker: WorkerProfile
     archive_hash: Digest | None = None
-    # An upgrade is authorized by a standing owner authorization and a signed release tag,
+    # An upgrade is authorized by a standing owner authorization for a release channel,
     # not by per-release acknowledgements; it always names the binding it replaces.
     previous_approval_id: ID | None = None
     update_authorization_id: ID | None = None
     release_tag: ReleaseTag | None = None
-    release_signer: SignerLine | None = None
     backup_sha256: Digest | None = None
 
     @field_validator("owner_statement")
@@ -141,7 +138,6 @@ class RuntimeApproval(Model):
             self.previous_approval_id,
             self.update_authorization_id,
             self.release_tag,
-            self.release_signer,
             self.backup_sha256,
         )
         if self.operation == "upgrade":

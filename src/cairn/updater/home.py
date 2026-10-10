@@ -2,9 +2,9 @@
 
 Layout::
 
-    updater.json           channel, signer keys and registered knowledge bases
+    updater.json           channel and registered knowledge bases
     state.json             last check and the one-time update notice
-    source.git/            bare mirror of the channel branch and its tags
+    source.git/            bare mirror of the channel branch
     runtimes/<sha256>/     bundle/, venv/ and runtime.json (written last = complete)
     current -> runtimes/<sha256>
     backups/<workspace>/   pre-upgrade and pre-migration archives
@@ -27,7 +27,7 @@ from pydantic import Field
 
 from cairn.errors import Conflict
 from cairn.records.models import Digest, Model, canonical, now
-from cairn.records.runtime import ReleaseTag, SignerLine
+from cairn.records.runtime import ReleaseTag
 
 HOME_ENV = "CAIRN_HOME"
 DEFAULT_REPOSITORY = "https://github.com/iamsikun/cairn-workbench.git"
@@ -42,7 +42,6 @@ class UpdaterConfig(Model):
     schema_version: int = 1
     repository: str = Field(default=DEFAULT_REPOSITORY, min_length=1, max_length=2048)
     ref: str = Field(default=DEFAULT_REF, pattern=r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$")
-    allowed_signers: list[SignerLine] = Field(min_length=1, max_length=32)
     workspaces: list[str] = Field(default_factory=list)
     enabled: bool = True
     interval_hours: int = Field(default=24, ge=1, le=168)

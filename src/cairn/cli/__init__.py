@@ -71,7 +71,7 @@ def init(
         bool,
         typer.Option(
             "--auto-update/--no-auto-update",
-            help="Adopt future signed Cairn releases automatically (managed runtime only).",
+            help="Adopt future stable Cairn releases automatically (managed runtime only).",
         ),
     ] = False,
 ) -> None:

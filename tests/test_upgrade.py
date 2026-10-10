@@ -1,7 +1,7 @@
-"""Owner-authorized runtime upgrade against synthetic workspaces and a local signed channel.
+"""Owner-authorized runtime upgrade against synthetic workspaces and a local channel.
 
 Runtime verification and the worker probe are test doubles here; these tests cover the
-authorization, signature, binding and recovery logic, not installation or isolation.
+authorization, channel/version, binding and recovery logic, not installation or isolation.
 """
 
 import json
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
-from synthetic_channel import Channel, channel, signing_key
+from synthetic_channel import Channel, channel, version_files
 from test_activation import passing_probe
 from test_release import manifest
 
@@ -28,9 +28,9 @@ from cairn.storage.backup import validate_payloads
 from cairn.storage.files import RootFS
 from cairn.storage.streaming_backup import durable_contents, restore
 from cairn.storage.workspace import Workspace
-from cairn.updater.source import fetch, source_hash
+from cairn.updater.source import fetch, git, source_hash
 
-STATEMENT = "Synthetic owner consent to signed automatic updates."
+STATEMENT = "Synthetic owner consent to automatic updates."
 
 
 @pytest.fixture
@@ -49,18 +49,28 @@ def private(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict:
         acknowledgements=REQUIRED_REVIEWS.copy(),
     )
     source = channel(tmp_path)
-    return {"ws": ws, "channel": source, "mirror": tmp_path / "mirror.git", "tmp": tmp_path}
+    return {
+        "ws": ws,
+        "channel": source,
+        "mirror": tmp_path / "mirror.git",
+        "tmp": tmp_path,
+        "released": {},
+    }
 
 
-def release_for(fixture: dict, tag: str, **changes: object) -> tuple[Path, str]:
-    """Publish a signed tag and the manifest a build of that tag would produce."""
+def release_for(
+    fixture: dict, tag: str, commit: str | None = None, **changes: object
+) -> tuple[Path, str]:
+    """Publish a release on stable (once per tag) and the manifest its build would produce."""
     source: Channel = fixture["channel"]
-    commit = source.tag(tag) if tag not in source.git("tag", "--list") else ""
+    if commit is None:
+        if tag not in fixture["released"]:
+            fixture["released"][tag] = source.release(tag.removeprefix("v"))
+        commit = fixture["released"][tag]
     fetch(fixture["mirror"], str(source.work), "stable")
-    commit = commit or source.git("rev-parse", f"{tag}^{{commit}}")
     fields = {"code_revision": commit, "source_hash": source_hash(fixture["mirror"], commit)}
     built = manifest().model_copy(update=fields | changes)
-    path = fixture["tmp"] / f"release-{tag}-{len(changes)}.json"
+    path = fixture["tmp"] / f"release-{tag}-{commit[:8]}-{len(changes)}.json"
     path.write_bytes(canonical(built))
     return path, digest(path.read_bytes())
 
@@ -76,17 +86,16 @@ def rebind(fixture: dict, tag: str, release: Path, sha: str) -> dict[str, object
     )
 
 
-def enable(fixture: dict, signers: list[str] | None = None) -> None:
+def enable(fixture: dict) -> None:
     upgrade.enable(
         fixture["ws"],
         repository=str(fixture["channel"].work),
         ref="stable",
-        allowed_signers=signers or [fixture["channel"].signer],
         statement=STATEMENT,
     )
 
 
-def test_signed_release_rebinds_with_backup_chain_and_history(private: dict) -> None:
+def test_channel_release_rebinds_with_backup_chain_and_history(private: dict) -> None:
     enable(private)
     before = private["ws"].config
     release, sha = release_for(private, "v0.2.0")
@@ -99,7 +108,6 @@ def test_signed_release_rebinds_with_backup_chain_and_history(private: dict) -> 
     )
     assert approval.operation == "upgrade" and approval.release_tag == "v0.2.0"
     assert approval.previous_approval_id == before.runtime_approval_id
-    assert approval.release_signer == private["channel"].signer
     assert ws.fs.read(f"policy/runtime-releases/{sha}.json") == release.read_bytes()
     backups = list((private["tmp"] / "update-backups" / ws.config.id).glob("*.zip"))
     assert len(backups) == 1 and digest(backups[0].read_bytes()) == approval.backup_sha256
@@ -107,7 +115,7 @@ def test_signed_release_rebinds_with_backup_chain_and_history(private: dict) -> 
     assert validate_payloads(durable_contents(ws)).runtime_release_hash == sha
     assert rebind(private, "v0.2.0", release, sha)["status"] == "current"
 
-    # A later signed release chains onto the upgrade, and an upgraded archive restores.
+    # A later release chains onto the upgrade, and an upgraded archive restores.
     private["channel"].commit({"src/cairn/later.py": b"VALUE = 3\n"})
     later, later_sha = release_for(private, "v0.3.0")
     assert rebind(private, "v0.3.0", later, later_sha)["status"] == "upgraded"
@@ -150,39 +158,31 @@ def test_rebind_requires_active_owner_authorization(private: dict) -> None:
     assert rebind(private, "v0.2.0", release, sha)["status"] == "upgraded"
 
 
-def test_rebind_rejects_unsigned_foreign_renamed_and_off_channel_tags(private: dict) -> None:
+def test_rebind_requires_a_channel_commit_declaring_the_release(private: dict) -> None:
     enable(private)
     source: Channel = private["channel"]
-    source.commit({"src/cairn/a.py": b"A = 1\n"})
-    source.tag("v0.2.0", signed=False)
-    release, sha = release_for(private, "v0.2.0")
+    # A commit that declares another version than the requested release.
+    head = source.commit({"src/cairn/a.py": b"A = 1\n"})
+    release, sha = release_for(private, "v0.2.0", commit=head)
     unchanged(private, lambda: rebind(private, "v0.2.0", release, sha))
 
-    source.commit({"src/cairn/b.py": b"B = 1\n"})
-    foreign, _ = signing_key(private["tmp"], "stranger")
-    source.tag("v0.3.0", key=foreign)
-    release, sha = release_for(private, "v0.3.0")
-    unchanged(private, lambda: rebind(private, "v0.3.0", release, sha))
+    # Disagreeing version declarations are not a release.
+    mismatch = source.commit(version_files("0.2.0", package="0.1.9"))
+    release, sha = release_for(private, "v0.2.0", commit=mismatch)
+    unchanged(private, lambda: rebind(private, "v0.2.0", release, sha))
 
-    # A validly signed tag object republished under a newer name is refused.
-    source.commit({"src/cairn/c.py": b"C = 1\n"})
-    source.tag("v0.4.0")
-    tag_object = source.git("rev-parse", "v0.4.0")
-    source.git("update-ref", "refs/tags/v0.9.0", tag_object)
-    release, sha = release_for(private, "v0.9.0")
-    unchanged(private, lambda: rebind(private, "v0.9.0", release, sha))
-
+    # A versioned commit that is not on stable.
     source.git("checkout", "-qb", "experimental")
-    source.commit({"src/cairn/d.py": b"D = 1\n"})
-    source.tag("v0.5.0")
+    side = source.release("0.5.0")
     source.git("checkout", "-q", "stable")
     fetch(private["mirror"], str(source.work), "stable")
-    release, sha = release_for(private, "v0.5.0")
+    git(private["mirror"], "fetch", "--quiet", str(source.work), "experimental")
+    release, sha = release_for(private, "v0.5.0", commit=side)
     unchanged(private, lambda: rebind(private, "v0.5.0", release, sha))
     assert not (private["tmp"] / "update-backups").exists()
 
 
-def test_rebind_binds_manifest_to_signed_source_and_never_downgrades(private: dict) -> None:
+def test_rebind_binds_manifest_to_channel_source_and_never_downgrades(private: dict) -> None:
     enable(private)
     release, sha = release_for(private, "v0.2.0", source_hash="9" * 64)
     unchanged(private, lambda: rebind(private, "v0.2.0", release, sha))
@@ -191,7 +191,6 @@ def test_rebind_binds_manifest_to_signed_source_and_never_downgrades(private: di
     with pytest.raises(Conflict, match="verified build"):
         rebind(private, "v0.2.0", release, "0" * 64)
 
-    private["channel"].commit({"src/cairn/new.py": b"NEW = 1\n"})
     newer, newer_sha = release_for(private, "v0.3.0")
     assert rebind(private, "v0.3.0", newer, newer_sha)["status"] == "upgraded"
     older, older_sha = release_for(private, "v0.2.0")
@@ -244,9 +243,9 @@ def test_upgrade_chain_is_checked_on_every_open(private: dict) -> None:
     ws = Workspace(private["ws"].root)
     path = f"receipts/runtime/{ws.config.runtime_approval_id}.json"
     approval = RuntimeApproval.model_validate_json(ws.fs.read(path))
-    _, other = signing_key(private["tmp"], "other")
-    ws.fs.write(path, canonical(approval.model_copy(update={"release_signer": other})))
-    with pytest.raises(Denied, match="signer"):
+    forged = approval.model_copy(update={"update_authorization_id": "update_forged"})
+    ws.fs.write(path, canonical(forged))
+    with pytest.raises((Denied, FileNotFoundError)):
         Workspace(ws.root)
 
 
@@ -282,7 +281,6 @@ def test_upgrade_approval_shape_is_enforced() -> None:
             previous_approval_id="runtime_previous",
             update_authorization_id="update_synthetic",
             release_tag="v1.0.0",
-            release_signer="synthetic",
             backup_sha256="5" * 64,
             **base,
         )
@@ -290,9 +288,7 @@ def test_upgrade_approval_shape_is_enforced() -> None:
 
 def test_synthetic_workspaces_cannot_enable_updates(ws: Workspace) -> None:
     with pytest.raises(Denied):
-        upgrade.enable(
-            ws, repository="/synthetic", ref="stable", allowed_signers=["x"], statement="s"
-        )
+        upgrade.enable(ws, repository="/synthetic", ref="stable", statement="s")
 
 
 def test_git_failures_are_reported_as_blocked(tmp_path: Path) -> None:
