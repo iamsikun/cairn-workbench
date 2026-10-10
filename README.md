@@ -65,6 +65,9 @@ rebuilt from the canonical records. The [architecture](docs/architecture.md) and
   you have it), writes pages (with Quill, if you have it) and drafts pages from sources;
   each result is staged as a proposal for your review. Cairn never edits or installs
   those skills. See [agent integration](docs/agent-integration.md).
+- **Connect papers to notebooks.** Follow-up readings revise one paper note while
+  preserving each exchange separately. Topic notebooks are ordinary concept pages;
+  the agent proposes note and notebook updates together for one owner acceptance.
 - **Review and accept.** `cairn note` makes your own notes searchable at once,
   `cairn inbox` lists what awaits you, and `cairn accept` validates, approves and
   applies proposals in one step you confirm at your terminal. See [Writing](docs/writing.md).
@@ -74,7 +77,10 @@ rebuilt from the canonical records. The [architecture](docs/architecture.md) and
   decimal calculations, and keep dated notes and sourced life hubs, with owner, account,
   date, unit and currency kept separate. See [personal domains](docs/personal-domains.md).
 - **Export offline HTML views** of project context, queries, evidence, readings,
-  proposals, catalogs and journal feeds. See [HTML views](docs/html-views.md).
+  proposals, catalogs and journal feeds. Requested notebook HTML includes linked
+  paper notes and refreshes after accepted Markdown updates. Configure `--html-root`
+  for chat requests; use `cairn view sync` after direct editor changes. Markdown
+  remains the source of truth. See [HTML views](docs/html-views.md).
 
 Run `cairn --help` for the full command list. Most commands take `--workspace` (or
 `CAIRN_WORKSPACE`), and `--json` gives structured output.

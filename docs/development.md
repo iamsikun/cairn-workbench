@@ -74,7 +74,8 @@ is for the outer isolated container only. Capture and inspect light/dark screens
 at desktop and narrow widths, feedback downloads, print output and request logs.
 
 Build twice and compare the application runtime byte for byte with the committed
-resource. The unchanged generic CLI's historical bundle includes esbuild dependency
+resource. The application uses whitespace minification to remove machine-dependent
+dependency path comments. The unchanged generic CLI's historical bundle includes esbuild dependency
 path comments: reproduce its original one-level build directory (`/build`) and
 `/opt/dependencies/node_modules` layout when comparing its exact checksum. A different
 working-directory depth changes those comments, not behavior. Never hand-edit a

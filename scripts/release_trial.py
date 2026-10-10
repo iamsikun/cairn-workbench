@@ -300,6 +300,7 @@ def trial(bundle: Path) -> None:
             [str(python), "-I", "-B", "-m", "cairn", "mcp", "--workspace", str(target)]
             + ["--provider", "synthetic-agent", "--destination", "https://synthetic.invalid"]
             + ["--capture-root", str(papers), "--capture-labels", str(labels_file)]
+            + ["--html-root", str(root / "installed-html")]
             + ["--inline-synthetic"],
             input=b"".join(canonical(line) + b"\n" for line in lines),
             capture_output=True,
@@ -314,6 +315,15 @@ def trial(bundle: Path) -> None:
     reading = {
         "source_id": captured["source"]["id"],
         "summary": "The synthetic paper reports 42 under condition C.",
+        "related": ["@topic"],
+        "pages": [
+            {
+                "key": "topic",
+                "title": "Synthetic recommendation notebook",
+                "body_markdown": "A connected synthetic paper.",
+                "related": ["@paper"],
+            }
+        ],
         "messages": [
             {"role": "user", "content": "Explain the synthetic paper."},
             {"role": "assistant", "content": "It reports 42 under condition C."},
@@ -377,6 +387,28 @@ def trial(bundle: Path) -> None:
     restored_receipt.pop("next")
     assert restored_receipt == finch_receipt
 
+    cli("accept", finch_receipt["proposal_id"], "--workspace", str(restored), "--json")
+    (evidence,) = mcp(restored, ("evidence", {"source_id": reading["source_id"]}))
+    assert len(evidence["paper_notes"]) == 1
+    note_id = evidence["paper_notes"][0]["id"]
+    (note,) = mcp(restored, ("page", {"record_id": note_id}))
+    topic_id = note["record"]["related"][0]
+    (html,) = mcp(restored, ("view", {"record_id": topic_id, "format": "html"}))
+    assert "42 under condition C" in Path(html["path"]).read_text()
+    followup = {
+        **reading,
+        "summary": "Installed follow-up: earlier result retained.",
+        "target": note_id,
+        "base_hash": note["base_hash"],
+        "related": [topic_id],
+        "pages": [],
+    }
+    (proposal,) = mcp(restored, ("propose_reading", followup))
+    cli("accept", proposal["proposal_id"], "--workspace", str(restored), "--json")
+    assert "Installed follow-up" in Path(html["path"]).read_text()
+    (evidence,) = mcp(restored, ("evidence", {"source_id": reading["source_id"]}))
+    assert [n["id"] for n in evidence["paper_notes"]] == [note_id]
+
     # Actual installed files are tested, never package mocks or PYTHONPATH substitutions.
     site = runtime / "lib" / f"python{sysconfig.get_python_version()}" / "site-packages"
     module = site / "cairn/__init__.py"
@@ -427,6 +459,7 @@ def trial(bundle: Path) -> None:
                 "installed_markdown_source_review": "passed",
                 "installed_html_render_retry_restore": "passed",
                 "installed_mcp_capture_reading_proposal_retry_restore": "passed",
+                "installed_evolving_note_notebook_html_sync": "passed",
                 "modified_reading_contract_rejected": True,
                 "modified_renderer_rejected": True,
                 "modified_package_rejected": True,

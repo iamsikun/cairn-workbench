@@ -21,7 +21,8 @@ def request() -> RenderJob:
                 ViewSection(
                     title="Evidence",
                     blocks=[
-                        ViewBlock(text="Value 42 under condition C. <script>hostile()</script>")
+                        ViewBlock(text="Value 42 under condition C. <script>hostile()</script>"),
+                        ViewBlock(kind="markdown", text="## Notebook\n\n- Synthetic paper"),
                     ],
                 )
             ],
@@ -40,4 +41,5 @@ else:
     html = base64.b64decode(result["html"], validate=True)
     validate_html(html, request().document)
     assert b"&lt;script&gt;hostile()&lt;/script&gt;" in html
+    assert b"<h2>Notebook</h2>" in html and b"<li>Synthetic paper</li>" in html
     print('{"no_mount_html_worker": "passed"}')
