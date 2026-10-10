@@ -167,7 +167,7 @@ def enqueue(
 
 
 def check_binding(ws: Workspace, job: ReaderJob) -> tuple[DeviceConfig, Record, bytes]:
-    if job.prompt_version != "finch-paper-reader-v1" or job.guidance_hash != guidance_hash():
+    if job.prompt_version != "finch-paper-reader-v2" or job.guidance_hash != guidance_hash():
         raise Conflict("Finch guidance changed; queue a new reading revision")
     device = require_device(ws, job.device_id, job.scope)
     if digest(canonical(device)) != job.device_hash or ws.policy_hash != job.policy_hash:

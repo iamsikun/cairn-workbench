@@ -20,7 +20,7 @@ from cairn.policies.audit import revoke_grant, set_grant
 from cairn.policies.models import RouteGrant
 from cairn.proposals.service import approve, load_proposal, validate
 from cairn.reading.models import FinchClaim, FinchPacket, FinchResponse
-from cairn.reading.skill import HOOK, MARKER, files, guidance, guidance_hash, install
+from cairn.reading.skill import HANDOFF, files, guidance_hash
 from cairn.reading.workflow import begin, finish
 from cairn.records.continuity import ReceiptMessage
 from cairn.records.models import EvidenceRef, Labels, Record, canonical, digest, now
@@ -101,42 +101,6 @@ def response_file(tmp_path, value):
     path = tmp_path / "response.json"
     path.write_bytes(canonical(value))
     return path
-
-
-def test_skill_install_missing_existing_and_retry(tmp_path):
-    assert files()["LICENSE"].startswith(b"MIT License")
-    assert "Finch: reading" in guidance()
-    root = tmp_path / "synthetic-skills"
-    install(root)
-    entrypoint = root / "finch/SKILL.md"
-    assert entrypoint.read_bytes().startswith(files()["SKILL.md"])
-    assert entrypoint.read_text().count(MARKER) == 1
-    before = {p: (p.read_bytes(), p.stat().st_mtime_ns) for p in root.rglob("*") if p.is_file()}
-    install(root)
-    assert before == {
-        p: (p.read_bytes(), p.stat().st_mtime_ns) for p in root.rglob("*") if p.is_file()
-    }
-    custom = tmp_path / "existing/finch"
-    custom.mkdir(parents=True)
-    (custom / "SKILL.md").write_text("---\nname: finch\n---\nOwner custom Finch\n")
-    install(custom.parent)
-    assert (custom / "SKILL.md").read_text().startswith("---\nname: finch\n")
-    assert "Owner custom Finch" in (custom / "SKILL.md").read_text()
-    assert (custom / HOOK).exists()
-
-
-def test_install_conflict_and_symlink_do_not_mutate(tmp_path):
-    root = tmp_path / "synthetic-skills"
-    hook = root / "finch" / HOOK
-    hook.parent.mkdir(parents=True)
-    hook.write_text("Owner changed hook")
-    with pytest.raises(Conflict, match="hook differs"):
-        install(root)
-    assert [p for p in root.rglob("*") if p.is_file()] == [hook]
-    link = tmp_path / "symlink"
-    link.symlink_to(root, target_is_directory=True)
-    with pytest.raises(Conflict, match="symlink"):
-        install(link)
 
 
 def test_reader_uses_finch_and_preserves_claim_kind(ws, tmp_path, monkeypatch):
@@ -415,8 +379,6 @@ def test_backup_rejects_finch_receipt_corruption(ws, tmp_path):
 
 def test_cli_install_begin_finish(ws, tmp_path):
     runner = CliRunner()
-    result = runner.invoke(app, ["finch", "install", "--skills-dir", str(tmp_path / "skills")])
-    assert result.exit_code == 0, result.output
     grant(ws)
     paper_file = tmp_path / "synthetic-paper.txt"
     paper_file.write_text("Synthetic result: 42 under condition C.")
@@ -447,7 +409,10 @@ def test_cli_install_begin_finish(ws, tmp_path):
         ],
     )
     assert result.exit_code == 0, result.output
-    packet = FinchPacket.model_validate(json.loads(output.read_bytes())["packet"])
+    payload = json.loads(output.read_bytes())
+    packet = FinchPacket.model_validate(payload["packet"])
+    # Agents receive the Cairn handoff in the packet even if their installed Finch is older.
+    assert payload["workflow"] == files()[HANDOFF].decode()
     file = response_file(tmp_path, returned(packet))
     result = runner.invoke(
         app, ["finch", "finish", str(file), "--workspace", str(ws.root), "--inline-synthetic"]

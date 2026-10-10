@@ -462,9 +462,48 @@ def check_proposal_binding(ws: Workspace, job: Job) -> None:
         raise Denied("Quill proposal route binding mismatch")
 
 
+HOOK = "references/cairn-workflow.md"
+
+
+def install_skill(
+    skills_dir: Path, name: str, resources: dict[str, bytes], *, marker: str, hook_section: str
+) -> Path:
+    """Owner-selected skill directory only; preserve an existing skill and its guidance."""
+    from cairn.storage.files import RootFS
+
+    root = skills_dir.absolute()
+    if any(p.is_symlink() for p in (root, *root.parents)):
+        raise Conflict("skill destination must not contain symlinks")
+    fs = RootFS(Path(root.anchor))
+    prefix = root.relative_to(root.anchor).as_posix() + f"/{name}"
+    path = f"{prefix}/SKILL.md"
+    original = fs.read(path) if fs.exists(path) else None
+    installed = original if original is not None else resources["SKILL.md"]
+    if marker.encode() not in installed:
+        installed += f"\n\n{marker}\n{hook_section}".encode()
+    # Preflight collisions before creating any files. Preserve existing skill guidance.
+    missing = {}
+    for relative, raw in resources.items():
+        if relative == "SKILL.md":
+            continue
+        destination = f"{prefix}/{relative}"
+        if fs.exists(destination):
+            if relative == HOOK and fs.read(destination) != raw:
+                raise Conflict(
+                    f"existing Cairn {name.title()} hook differs; review before replacing it"
+                )
+            continue
+        missing[destination] = raw
+    # Install support before the entrypoint so an interrupted install remains retryable.
+    for destination, raw in missing.items():
+        fs.write(destination, raw, exclusive=True)
+    if installed != original:
+        fs.write(path, installed)
+    return root / name
+
+
 def skill_files() -> dict[str, bytes]:
     from cairn.presentation.service import RESOURCE
-    from cairn.reading.skill import HOOK
 
     manifest = json.loads((RESOURCE / "provenance.json").read_bytes())["quill"]["files"]
     values = {name: (RESOURCE / "quill" / name).read_bytes() for name in manifest}
@@ -475,8 +514,6 @@ def skill_files() -> dict[str, bytes]:
 
 def install(skills_dir: Path) -> dict[str, str]:
     """Install Quill (or keep an existing one) and add the Cairn writing handoff."""
-    from cairn.reading.skill import HOOK, install_skill
-
     path = install_skill(
         skills_dir,
         "quill",

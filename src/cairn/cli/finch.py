@@ -6,7 +6,7 @@ import typer
 from cairn.cli.commands import WorkspaceOption, emit, guarded
 from cairn.errors import Denied
 from cairn.ingest.service import capture, read_source_file
-from cairn.reading.skill import install
+from cairn.reading.skill import install, status
 from cairn.reading.workflow import begin, finish
 from cairn.records.models import Labels
 from cairn.storage.workspace import Workspace
@@ -18,8 +18,19 @@ def register(app: typer.Typer) -> None:
 
     @finch.command("install")
     @guarded
-    def install_command(skills_dir: Annotated[Path, typer.Option()]) -> None:
-        emit(install(skills_dir), True)
+    def install_command(
+        auto_update: Annotated[
+            bool, typer.Option(help="Let Finch schedule its own daily update.")
+        ] = True,
+    ) -> None:
+        """Install Finch for every detected agent if it is not already available."""
+        emit(install(auto_update=auto_update), True)
+
+    @finch.command("status")
+    @guarded
+    def status_command() -> None:
+        """Report the agent-facing Finch and the bundled offline-reader version."""
+        emit(status(), True)
 
     @finch.command("begin")
     @guarded

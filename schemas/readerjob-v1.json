@@ -64,10 +64,11 @@
       "type": "string"
     },
     "prompt_version": {
-      "default": "finch-paper-reader-v1",
+      "default": "finch-paper-reader-v2",
       "enum": [
         "paper-reader-v1",
-        "finch-paper-reader-v1"
+        "finch-paper-reader-v1",
+        "finch-paper-reader-v2"
       ],
       "title": "Prompt Version",
       "type": "string"

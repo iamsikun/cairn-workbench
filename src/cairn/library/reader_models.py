@@ -89,7 +89,9 @@ class ReaderJob(Model):
     title: str
     model_hash: Digest
     projection_hash: Digest
-    prompt_version: Literal["paper-reader-v1", "finch-paper-reader-v1"] = "finch-paper-reader-v1"
+    prompt_version: Literal["paper-reader-v1", "finch-paper-reader-v1", "finch-paper-reader-v2"] = (
+        "finch-paper-reader-v2"
+    )
     guidance_hash: Digest | None = None
     reading_revision: int = Field(default=1, ge=1, le=10000)
     page_limit: int = Field(default=500, ge=1, le=2000)

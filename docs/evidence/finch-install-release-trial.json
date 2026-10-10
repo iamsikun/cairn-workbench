@@ -1,0 +1,22 @@
+{
+    "activation_without_live_engine_rejected": true,
+    "code_revision": "b43ae00b895b42ecb03ecb8f13d5f85342106084",
+    "distributions": 15,
+    "editable_installation_rejected": true,
+    "import_origin": "/runtime/owner/lib/python3.13/site-packages/cairn/__init__.py",
+    "installed_finch_install_capture_proposal_validate_retry_restore": "passed",
+    "installed_html_render_retry_restore": "passed",
+    "installed_library_scan_mark_feed_streaming_restore": "passed",
+    "installed_markdown_source_review": "passed",
+    "manifest_sha256": "b7ec109f5f48a3384f483292864b40cf478babb0d9905507d680262748559402",
+    "model": "fake-v1",
+    "modified_finch_resource_rejected": true,
+    "modified_package_rejected": true,
+    "modified_renderer_rejected": true,
+    "offline_installed_trial": "passed",
+    "private_activation": "blocked_without_engine; no workspace created",
+    "synthetic_capture_approval_apply_query_restore": "passed",
+    "synthetic_schema_migration_with_backup": "passed",
+    "unreviewed_pth_rejected": true,
+    "verified_files": 936
+}

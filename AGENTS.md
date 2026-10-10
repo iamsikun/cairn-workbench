@@ -21,9 +21,12 @@ provider results prove semantic quality or production readiness.
 ## Paper reading and notes
 
 Use Finch automatically for paper reading, explanation, critique, and co-reading,
-including focused follow-ups. The installed runtime bundles Finch 0.2.0; an owner can
-install the host skill with `cairn finch install --skills-dir /srv/agent-skills` if absent.
-Follow its `references/cairn-workflow.md` on every invocation. With an owner-prepared
+including focused follow-ups. When no Finch is available, `cairn init` for a private
+workspace runs Finch's own installer, which links it into detected agents and keeps it
+updated; owners can retry with `cairn finch install` and check `cairn finch status`.
+Never edit an installed Finch, and never run the installer against a real home directory
+from contributor code; tests use a synthetic home and a local synthetic remote.
+Inside a Cairn knowledge base, follow Finch's `references/cairn.md`. With an owner-prepared
 packet, complete the automatic response capture, concept proposal and validation
 handoff before returning; no separate save request is needed. Report source/proposal IDs
 or an explicit pending/blocked handoff. Approval/apply and personal read status remain
