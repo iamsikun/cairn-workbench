@@ -23,8 +23,8 @@ For editing/formatting, an explicit mount of only the public checkout is accepta
 The physical large-library trial runs `python scripts/library_backup_trial.py` with
 `--memory=1g` and a 768MiB container-local `/tmp`; it preserves and restores 260MiB of
 synthetic blobs. This larger test scratch space is not an inference-worker permission.
-PDF rendering tests require the development image's locked `reader` extra. No GPU or
-subscription account is required by contributor tests; simulated outputs are labeled.
+No GPU, model or agent account is required by contributor tests; the MCP server is
+driven by a synthetic stdio client and simulated agent outputs are labeled.
 
 `scripts/export_schemas.py` generates schemas from the typed models. The schema parity
 test detects drift. Run it with only the public checkout writable.
@@ -93,7 +93,7 @@ Compare the two ZIPs. Extract one under synthetic scratch and run
 `node scripts/html_smoke.mjs EXTRACTED/cairn-html` in the renderer development image.
 This exercises the packaged renderer on all three Node versions with ordinary and
 space/non-ASCII install paths and without agent environment variables. The skill's
-runtime/Quill directories are assembled in the portable ZIP; the repository keeps
+runtime directory is assembled in the portable ZIP; the repository keeps
 one canonical resource copy under `src/cairn/presentation/resources`.
 
 The separate `html_packet_trial.py prepare --output DIRECTORY` exports an entirely
@@ -103,13 +103,13 @@ same isolated profile. It verifies import and unchanged canonical files; a manua
 review of claims, numbers and uncertainty is still required. It cannot establish a
 local execution attestation or broad semantic quality.
 
-## Maintaining the renderer and Quill snapshot
+## Maintaining the renderer snapshot
 
 The licensed renderer source snapshot is pinned to upstream 0.5.0 commit
 `19b2b5b07676d3e65c83ca9a7b6621f300b54c92`, plus the maintained portable changes and
 application profile. `resources/provenance.json` records the maintained commit,
-every source hash, lockfile, generated runtime and Quill files. Quill is pinned to
-`d6bc7de15d1779c58286cbdec1a54eec52bdef22` (0.3.0, MIT).
+every source hash, lockfile and generated runtime. Cairn vendors no agent skills; packets
+carry Cairn's own contracts.
 
 For updates, acquire public source/dependencies separately; compare upstream changes;
 retain offline defaults, explicit request routing and local modifications; synchronize

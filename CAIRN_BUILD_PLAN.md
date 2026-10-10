@@ -11,54 +11,41 @@ directory is named `cairn`. These names do not change the Python package or CLI.
 
 ## 1. Intended result and scope
 
-### Authorized Finch reading follow-on
+### Authorized host-agent follow-on (supersedes the Finch follow-on)
 
-The owner requested automatic Finch use for paper reading, installation when missing,
-and a Cairn workflow on every Finch invocation. The installed runtime bundles the
-licensed skill; library workers automatically use digest-bound guidance. The owner later
-asked that a first private setup install Finch for every agent when missing and keep it
-updated: `cairn init` runs Finch's own checksummed installer at setup (never during
-processing), and Finch ships the Cairn lifecycle (`references/cairn.md`) for bounded
-reading packets and automatic conversation capture, concept proposal and validation, so
-installed copies are never edited and stay updatable. No new canonical
-record types, automatic approvals or private activation are authorized. Configuration,
-processing grants and visible pending handoffs are documented in `docs/finch-reading.md`.
+The owner always works from inside an agent (Claude Code, Codex, Cursor), so Cairn is a
+tool that agent calls, not something that launches or manages agents. Cairn exposes a
+local stdio MCP server (`cairn mcp`) with scoped reads and packet begin/finish for
+reading, writing and drafting. This realizes the brief's M4 stdio adapter: no approval,
+apply, policy, export-control or shell tools. Every tool result reaches the agent's
+provider, so each call needs the owner's cloud grant for that provider/destination.
+
+Packets carry Cairn-owned contracts. Cairn no longer vendors, installs, edits or updates
+Finch or Quill; skills supply method only. The earlier Finch follow-on (bundled snapshot,
+installer at `init`, Finch-owned `references/cairn.md`) and managed Quill copies are
+retired. Drafting from a source uses the same packet route (`cairn draft`), replacing the
+docker client packet route. No new canonical record types, automatic approvals or
+private activation are authorized. See `docs/agent-integration.md`.
 
 ### Authorized HTML follow-on
 
 The HTML follow-on adds auxiliary versioned presentation bundles, seven offline views,
-Quill-guided agent packets and feedback proposals. It does not add a canonical record
+agent writing packets and feedback proposals. It does not add a canonical record
 type or change owner approval/apply authority. Rendering runs as a bounded JSON operation
 in the reviewed offline worker. External writing packets require generation and client
 export grants for the complete request. See `docs/html-views.md` and `docs/acceptance.md`.
 The user explicitly authorized the `codex/cairn-html` branch and a push to the existing
 origin after required validation; no main merge, PR or private activation is included.
 
-### Authorized journal-library follow-on
+### Journal-library follow-on
 
 The follow-on adds an owner-maintained journal/paper catalog, public publication
-discovery, bounded inference on an enrolled owner workstation, subscription-based
-sample verification, and a weekly saved feed. The canonical writer stays on the owner
-Mac. Development uses synthetic inputs only. The local reader targets Qwen3.5-9B with
-a pinned CUDA/WSL2 runtime; live hardware, quality, transport, and isolation are separate
-activation gates. Public metadata fetchers and subscription-verifier transports are
-trusted, separately scoped components; extraction/inference workers remain offline.
-Model checks never confer owner approval or mark personal reading as complete.
-
-All older papers are cataloged; reading is selective. Weekly updates cover new
-publications and archive additions. Initial calibration checks ten readings with both
-verifiers; ongoing sampling is 10% plus flagged results. Digest scheduling defaults to
-Monday 09:00 America/Chicago, using a thread heartbeat after reviewed activation.
-Detailed operational behavior and actual evidence are recorded in `docs/library.md`
-and `docs/acceptance.md`; this authorization is not a claim of deployment readiness.
-
-Implementation now includes all three software stages. The separate
-`docs/library-deployment.md` records pinned artifacts, bounded export consent, deterministic
-sampling cohorts, saved feeds, and the hardware/quality/installation gates. The owner
-transport process needs a compatible reviewed installation with access to the official
-host SSH and subscription clients. The reference Linux release does not by itself
-provide a native macOS installation or inherit host credentials. Preserve this distinction
-during deployment; do not widen an inference container to make a transport work.
+discovery and a weekly saved feed. The canonical writer stays on the owner's machine.
+Development uses synthetic inputs only. Public metadata fetchers are trusted, separately
+scoped components. The bounded owner-workstation reader, its devices and the
+subscription-based sample verifiers were later retired in favour of reading papers from
+the owner's agent through packets (see the host-agent follow-on). Operational behavior
+and evidence are recorded in `docs/library.md` and `docs/acceptance.md`.
 
 Cairn will be a local knowledge compiler with a review queue. It will preserve evidence and human thinking, propose bounded improvements to a Markdown wiki, and supply scoped, source-aware context to existing agent clients.
 
@@ -129,7 +116,7 @@ cairn-workbench/               # public software checkout
     transactions/              # approval, writer lock, journal, recovery
     retrieval/                 # evidence chunks, scoped indexes, ranking
     context/                   # project packs and session receipts
-    adapters/                  # fake provider, client packets, bibliography
+    adapters/                  # fake provider, worker protocol, isolation
   schemas/                     # generated and checked against Python models
   templates/
   examples/synthetic-vault/
@@ -210,7 +197,7 @@ Define a small provider protocol: an immutable structured job containing only ap
 Implement two provider paths:
 
 1. `FakeProvider`, deterministic and offline, for the complete test/demo workflow, including malformed and adversarial responses.
-2. `ClientPacketProvider`, which prepares a bounded job for an existing agent client and accepts its structured response. Bind responses to job ID, input digest, route, and provider metadata. Pending external work has a resumable status. This is a file protocol, not a new chat client.
+2. Draft packets (`cairn draft begin`/`finish`, or the MCP `draft_*` tools), which seal a bounded job for the owner's existing agent client and accept its structured response. Bind responses to job ID, input digest, route, and provider metadata. Pending external work has a resumable status. This is a file protocol, not a new chat client. (It replaced the earlier `ClientPacketProvider` docker client route.)
 
 Real client execution requires a demonstrated processing route and isolation profile. A local client that is not installed or cannot prove its configured route yields a blocked status. Do not label the fake provider or a packet-export scaffold as a working local model. A concrete automated local-client adapter can be added after a synthetic capability trial; it is not necessary to test the application without a paid API.
 
@@ -257,7 +244,8 @@ Preserve the brief's commands with the `cairn` prefix. Add a few commands needed
 | --- | --- |
 | Setup and diagnostics | `init`, `doctor` |
 | Evidence and synthesis | `capture` (or `capture -` from stdin), `ingest`, `proposal show`, `validate` |
-| Writing | `note` (owner notes, searchable at once), `write begin`/`write finish` (Quill), `inbox` |
+| Writing | `note` (owner notes, searchable at once), `write begin`/`write finish`, `inbox` |
+| Agent interface | `mcp` (stdio MCP server), `finch begin`/`finish`, `draft begin`/`finish` |
 | Owner control | `accept` (validate, approve and apply in one confirmed step, batchable), `approve`, `apply`, `edit`, `recover` |
 | Reading | `search` (includes owner notes), `query`, `context`, `lint` |
 | Maintenance/integration | `rebuild-index`, `receipt import`, `backup`, `restore` |

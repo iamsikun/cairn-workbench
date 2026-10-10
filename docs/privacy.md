@@ -7,20 +7,23 @@ Do not attach home directories, private credentials, or private workspaces to CI
 
 Default labels are private and local-only. A public document does not make a private
 question exportable. Policy contains separate scope and destination/operation/time-bound
-cloud grants; credentials do not constitute consent. The existing runtime uses local
-extraction and local client packets and has no remote fallback or telemetry.
+cloud grants; credentials do not constitute consent. Extraction is local. The only
+route to a model is the owner's own agent (Claude Code, Codex, Cursor), reached through
+packets and the stdio MCP server, and every one of those calls is cloud processing under
+an explicit grant. There is no remote fallback or telemetry.
 
 Workers receive bounded authorized inputs. Search databases contain only the authorized
 corpus, including ranking statistics. Titles, counts, references, backlinks, snippets,
 and cached payloads do not come from a global model-visible index. Policy and corpus
 changes alter cache identities; cache deletion loses no durable knowledge.
 
-The journal extension adds an explicitly enrolled `owner_device` route and bounded,
-owner-configured subscription verification; see [deployment boundaries](library-deployment.md).
-An owner device is not described as same-machine local execution. Only selected job bytes
-and read-only pinned model artifacts enter its offline GPU container. The separate public
-metadata fetcher receives owner-approved public URLs and no private workspace, library or
-credentials. Document URLs cannot authorize additional destinations or PDF downloads.
+Anything an MCP tool returns, including search hits, evidence and context, goes to the
+agent's provider. Read tools therefore need `query`/`context` grants for the session's
+provider and destination; local-only records are withheld from search and refused
+elsewhere. The earlier owner-device reader and subscription verifiers are retired. The
+public metadata fetcher receives owner-approved public URLs and no private workspace,
+library or credentials. Document URLs cannot authorize additional destinations or PDF
+downloads.
 
 The owner can always copy data manually, and already exported information cannot be
 retracted by revoking a scope. The application must not label an unverifiable client
@@ -33,8 +36,9 @@ data to a cloud model.
 `policy set-scope SCOPE.json` or `policy set-grant GRANT.json` with that exact
 `--base-hash` and an explicit `--statement`. The versioned public schemas describe
 these files. Grant consent must exactly match the statement, with a future timezone-aware
-expiry, scope, operation set, provider, and destination. Grant creation does not activate
-a cloud adapter. `policy revoke-grant ID` uses the same owner statement/hash checks.
+expiry, scope, operation set, provider, and destination. A grant lets packets and MCP
+tool results for that route reach the owner's agent; Cairn itself opens no network
+connection. `policy revoke-grant ID` uses the same owner statement/hash checks.
 
 Every change increments the policy revision and writes an immutable before/after audit
 under `receipts/policy/` before atomically replacing the policy. `policy history` verifies
@@ -50,8 +54,9 @@ derived metadata, output handling, and trace content. Missing labels remain rest
 and local-only. Cited source labels are included even when only synthesis was selected.
 Grants must match every route dimension and all labels. An otherwise eligible cloud
 request returns `blocked: cloud_adapter_unavailable`; it transmits nothing. An audit's
-`allowed` decision is only a policy decision, never evidence that a model ran. No command
-exports packets to an unverified external client or grants authority to source text.
+`allowed` decision is only a policy decision, never evidence that a model ran. Packets
+reach the agent only through `begin` commands or MCP tools that check the grant and
+record an `ExportReceipt`; nothing grants authority to source text.
 
 Extraction, generation, and explicit client-packet preparation save route decisions bound
 to the complete input packet hash. Receipts contain hashes and policy metadata, without
@@ -60,7 +65,8 @@ do not append durable route receipts; query reports its local extractive process
 context includes its policy hash and inherited labels. An explicit `check-route` provides
 a durable audit when needed. Disposable query caches remain local and scoped.
 
-These owner commands are deliberately absent from the worker protocol. Owning filesystem
+These owner commands are deliberately absent from the worker protocol and the MCP
+server. Owning filesystem
 access to the policy/approval store is the authority boundary; a user-selected CLI scope
 does not confine a coding agent that independently has owner shell access.
 

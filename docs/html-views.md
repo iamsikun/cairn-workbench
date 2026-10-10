@@ -73,11 +73,11 @@ Publication links are navigation, not fetches. The CSP permits only the bundled
 script hash, inline styles and embedded raster images; native disclosures and print
 styles preserve readability without JavaScript.
 
-## Writing with Quill
+## Writing with your agent
 
-Quill 0.3.0 core and references are packaged from MIT-licensed revision
-`d6bc7de15d1779c58286cbdec1a54eec52bdef22`. Quill writes; Cairn says what to write and
-where, then formats the result. See [Writing](writing.md) for the full owner path.
+Your agent writes (with Quill, if installed); Cairn says what to write and where, then
+formats the result. Packets carry Cairn's writing contract, not a Quill copy. See
+[Writing](writing.md) for the full owner path.
 
 ```text
 cairn write begin --view VIEW_ID --instructions "Explain the result" --provider chosen-agent --destination approved-client --output /srv/reports/packet.json --workspace /srv/cairn
@@ -85,7 +85,7 @@ cairn write finish /srv/reports/response.json --output /srv/reports/explanation.
 ```
 
 `--view` explains a saved view. The packet binds the entire request, labels, view,
-evidence, Quill guidance and response schema. Instructions default to restricted
+evidence, writing contract and response schema. Instructions default to restricted
 labels unless the owner passes `--shareable` or `--request-labels`. Export requires
 current `generation` and `client_export` grants for the provider, destination and
 complete request. Neither step calls a model or activates a subscription.
@@ -111,7 +111,7 @@ cairn accept PROPOSAL_ID --workspace /srv/cairn
 
 Import preserves feedback as immutable attributed source evidence. Authorship and
 approval are explicitly unverified, and repeated imports are idempotent. The packet
-passes the comments and any suggested text to Quill as instructions that carry no
+passes the comments and any suggested text to the agent as instructions that carry no
 authority. Its target must be one the feedback concerns. Source records, human notes
 and owner catalog metadata cannot be targets. Cairn formats the returned page itself:
 status, labels and existing assertions are kept, new claims stay unreviewed, and
@@ -122,11 +122,10 @@ because a comment suggests it; the owner accepts the exact proposal.
 
 `skills/cairn-html` follows the [Agent Skills format](https://agentskills.io/specification).
 Build `dist/cairn-html.zip` with `python scripts/package_html.py` in the development
-container. The ZIP includes the Node renderer, licenses, hashes and pinned Quill
-resources. Its core works with any agent that can read packets, write files and run
+container. The ZIP includes the Node renderer, licenses and hashes. Its core works with any agent that can read packets, write files and run
 Node 20+. The owner-exported packet includes a presentation document for portable
 rendering; writing responses return to the owner import boundary. Receiving a packet
-never grants workspace access. Existing HTML and Quill installations stay unchanged.
+never grants workspace access. Existing HTML installations stay unchanged.
 
 Only the actually exercised runtime/agent cases in `acceptance.md` are compatibility
 evidence. The package does not claim live validation in every agent product.

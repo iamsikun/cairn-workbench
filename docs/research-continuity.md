@@ -1,9 +1,9 @@
 # Research continuity
 
-Paper reading now defaults to Finch. In a configured agent session, its lifecycle
-automatically preserves the supplied discussion and stages a validated concept-note
-proposal before returning, without a separate save request. The [Finch workflow](finch-reading.md)
-explains the owner packet boundary, project links and explicit pending status. Owner
+Paper reading happens in the owner's agent. With Cairn connected over MCP, a reading
+preserves the supplied discussion and stages a validated concept-note proposal before
+returning, without a separate save request. [Agent integration](agent-integration.md)
+explains the packet boundary, project links and explicit pending status. Owner
 approval/apply and adoption of suggestions remain separate operations.
 
 All examples here are synthetic. The owner selects a scope for every research operation.
@@ -15,9 +15,10 @@ The worker never receives workspace paths, the global index, or approval/apply a
    captures an exact export plus independently hashed items. Import is read-only against
    the selected file. Use a stable library alias and stable export IDs. Reimporting an
    unchanged item keeps its source ID even when another item in the export changes.
-3. `cairn ingest SOURCE_ID --scope research --related PROJECT_ID` proposes an extractive
-   note and bounded related updates. The bundled provider is a deterministic fake; a
-   configured client still must satisfy the installed-worker protocol and isolation rules.
+3. `cairn draft begin SOURCE_ID --scope research --related PROJECT_ID ...` seals a
+   drafting packet for the owner's agent; `cairn draft finish` stages its note and
+   bounded related updates (the MCP `draft_*` tools do the same). On a synthetic
+   workspace, `cairn ingest SOURCE_ID --inline-synthetic` uses the deterministic fake.
 4. `cairn receipt import session.json --scope research` preserves the structured session
    receipt and stages project observations plus draft decisions. Its schema is
    `schemas/sessionreceipt-v1.json`. Reported failures are attributed observations, not
@@ -35,7 +36,8 @@ The worker never receives workspace paths, the global index, or approval/apply a
 Every command above also needs `--workspace /path/to/selected-workspace`, or the
 owner-controlled `CAIRN_WORKSPACE` variable. `--inline-synthetic` on project creation,
 receipt import, and ingestion is only valid for a synthetic workspace; installed private
-processing requires the pinned worker. Cloud exports are not implemented by this workflow.
+extraction requires the pinned worker. Drafting with the owner's agent is cloud
+processing and needs an explicit grant.
 
 The bibliography adapter reads the `id`, `citation-key`, `author`, `issued`, `abstract`,
 and `version` fields of [CSL-JSON input data](https://github.com/citation-style-language/schema/blob/master/schemas/input/csl-data.json).

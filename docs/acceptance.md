@@ -1,5 +1,79 @@
 # Acceptance evidence
 
+## Host-agent model: MCP server, draft packets, no managed skills (2026-10-10; software checks passed; no real agent exercised)
+
+The owner always uses Cairn from inside an agent (Claude Code, Codex, Cursor) and did
+not want Cairn launching Claude Code. The owner chose: the agent calls Cairn through a
+hand-written local stdio MCP server; packets carry Cairn-owned contracts instead of
+vendored Finch/Quill; Cairn stops installing, editing or updating skills; the docker
+client route and the offline library reader are retired; ingest becomes a begin/finish
+draft packet. No version bump, release, tag or push was made, and Finch and Quill were
+not touched.
+
+- **Retired reader** (`a0dd3d4`). Library reader, device runner, subscription
+  verifiers, their CLI commands, schemas and tests are removed. Feed entries, catalog
+  items and view bundles keep their fields so stored data still parses; legacy reader
+  receipts are ignored by backup validation; views carrying reader state must be
+  regenerated (`load_view` raises a conflict).
+- **Contracts, not skills** (`48d5eb3`). `reading/contract.md` and
+  `presentation/contract.md` are the packet guidance, hash-bound as before. Vendored
+  Finch (snapshot and installer) and Quill are deleted; `finch install|status`,
+  `quill install`, init/restore skill setup and updater skill refresh are removed.
+  `init` still accepts hidden `--no-quill/--no-finch` because a 0.1.x updater
+  smoke-tests a new runtime with them.
+- **Draft packets** (`1d79beb`). `cairn draft begin|finish` (`proposals/draft.py`)
+  seals a cloud-route ingest job, records an `ExportReceipt`, and stages the agent's
+  `Result` through `stage_result`/`validate`; drafts cannot adopt decisions or mark
+  evidence reviewed. `ClientPacketProvider`, `cairn client run` and the worker's
+  `fake-v1` branch are removed; `check.sh`'s lifecycle step now uses an extraction
+  request.
+- **MCP server** (`d3bcddd`). `cairn mcp` (`src/cairn/mcp.py`): JSON-RPC 2.0 over
+  stdio, no new dependency. Launch arguments fix workspace, scope, provider,
+  destination and packets directory. Read tools are authorized against the cloud
+  grant (`query`/`context`) and withhold local-only records. File capture only under
+  an owner-chosen root with owner-chosen labels. `--print-config` prints `claude mcp
+  add`/`codex mcp add` commands (syntax checked against the installed CLIs' `--help`),
+  a Cursor entry and deny rules; Cairn writes no agent configuration.
+
+| Area | Tests |
+|---|---|
+| Draft round trip, idempotent retry, conflicting retry, inbox, backup validation, owner approve/apply | `test_draft_roundtrip_is_idempotent_reviewable_and_owner_applied` |
+| Missing/partial grant, local-only input | `test_draft_begin_requires_a_grant_and_cloud_eligible_inputs` |
+| Revoked grant blocks finish | `test_revoked_grant_blocks_finish` |
+| Forged provider/hash, owner decision, reviewed verification, active decision, source record | `test_untrusted_draft_cannot_claim_owner_authority` |
+| Malformed draft, plain `ingest` blocked, `client run` gone | `test_malformed_draft_is_rejected_without_side_effects`, `test_cli_draft_begin_finish_and_blocked_plain_ingest` |
+| Protocol (initialize, notifications, ping, -32700/-32600/-32601/-32602), tool surface excludes owner operations | `test_protocol_and_tool_surface_exclude_owner_operations` |
+| Reading, writing and drafting over stdio; pending; proposal review; search; evidence | `test_reading_writing_and_drafting_round_trips` |
+| Grants bound every tool; local-only withheld | `test_grants_bound_every_tool` |
+| Untrusted responses rejected | `test_untrusted_responses_are_rejected_without_side_effects` |
+| Capture root and labels | `test_file_capture_needs_owner_root_and_labels` |
+| Launch validation, print-config | `test_launch_validation_and_print_config` |
+| Setup/restore never touch skills; retired commands gone | `test_setup_and_restore_never_install_or_edit_skills` |
+| Packets carry the contract | `test_finch.py` CLI round trip, `test_quill_write.py` |
+
+`bash scripts/check.sh` passed in the development container: **333 tests**, Ruff,
+strict mypy (101 files), all 13 isolation checks in both images, the worker probe,
+extraction (text, bibliography, receipt, finance, life) and HTML round trips, gold set
+129/129, and the real-engine create/start/remove lifecycle using an extraction request.
+
+A manual smoke run on a synthetic scratch workspace drove the installed `cairn mcp`
+CLI with a JSON-RPC script: grant, file capture under the capture root,
+`reading_begin`, a hand-written `FinchResponse` to `reading_finish` (proposal staged),
+a forged `approved` field rejected, `pending` listing the proposal, then owner `cairn
+inbox` and `cairn accept --yes` applying it. The synthetic `HOME` stayed empty.
+
+Not established: no real agent (Claude Code, Codex, Cursor) or model was connected;
+all agent responses are hand-written or produced by the deterministic fake. The MCP
+server was tested with a synthetic client against the protocol subset Cairn
+implements, not against every host's behavior. `scripts/release_check.sh` and
+`scripts/release_trial.py` were not rerun; the release trial was edited (Finch install
+lifecycle removed, contract tamper check added) without being executed.
+
+Superseded evidence: `docs/evidence/finch-install-release-trial.json`,
+`finch-release-trial.json` (Finch snapshot and installer) and the library reader,
+device and subscription-verification entries in the sections below describe retired
+components. They are kept as history.
+
 ## Automatic updates and managed skills (2026-10-10; software checks passed, live update pending)
 
 The owner asked that a knowledge base update automatically whenever the workbench is

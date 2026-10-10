@@ -37,12 +37,14 @@ Interrupted transactions block readers until `cairn recover`. No model actor lab
 authority to run this writer. Scope-filtered SQLite catalog indexes are disposable.
 The HTML export escapes imported text and has no active scripts or network resources.
 
-The remaining interfaces are `library discover`, `library read`, `library jobs`,
-`library retry`, `library cancel`, `library worker enroll/probe/revoke`, `library verify`,
-`library update`, and `feed latest/history/export/acknowledge`. Reading results enter the
-normal proposal/validate/approve/apply workflow. Filenames never supply personal reading
-status. See [deployment, consent and pilot requirements](library-deployment.md).
+The remaining interfaces are `library discover`, `library capture`, `library update`, and
+`feed latest/history/export/acknowledge`. `library update` scans, checks configured
+journals for new publications, records feed events and saves a digest. Filenames never
+supply personal reading status.
 
-All library reading jobs automatically use the packaged Finch skill. Guidance digests
-are bound to the jobs and checked by both launcher and worker; upgrading guidance
-requires a new reading revision. See [Finch reading and agent capture](finch-reading.md).
+Cairn no longer reads papers itself. The offline GPU reader, owner-device enrollment
+and subscription verifiers were retired: to read a paper, capture it with
+`library capture PAPER` and read it from your agent through a reading packet (see
+[agent integration](agent-integration.md)). The result enters the normal proposal
+queue. Receipts left by the retired reader stay in the knowledge base but are no longer
+interpreted, and saved views that showed reader state must be regenerated.

@@ -1,65 +1,122 @@
 # Agent integration
 
-Paper reading defaults to Finch. Finch's Cairn handoff guide automatically
-hands each supplied reading exchange back for capture, a concept proposal and validation;
-it never grants approval/apply authority. The [Finch handoff](finch-reading.md) documents
-the exact packet/response schemas, configured launcher and pending status. Agent hosts
-without that configured lifecycle are not silently monitored or logged.
+You use Cairn from inside an agent you already run: Claude Code, Codex, Cursor or
+another MCP host. The agent calls Cairn; Cairn never launches an agent. Cairn hands the
+agent sealed packets with a Cairn-owned contract, takes back structured responses,
+validates them as untrusted input and stages proposals. Approval and apply stay with
+you.
 
-`Job` and `Result` schemas define the initial client packet protocol. Jobs bind source
-and extraction versions, the scope, policy hash, related pages, provider, route, and a
-small change budget. Responses bind `job_id` and the canonical input hash and contain
-typed candidate records, bodies, and rationale. Unknown fields (including self-approval
-or execution instructions) are rejected.
+Cairn does not install, edit, vendor or update agent skills. If your agent has Finch or
+Quill, it uses them for *how* to read or write; each packet carries Cairn's own short
+contract for *what* to return and what the agent may not do. The contracts live in
+`src/cairn/reading/contract.md`, `src/cairn/presentation/contract.md` and
+`src/cairn/proposals/contract.md`, and each packet binds the contract it carried.
 
-`ClientPacketProvider` invokes a reviewed image using JSON on stdin/stdout in the same
-network-disabled, no-mount profile used by the fake provider. A client image must implement
-that protocol at its entry point. Existing frontend-specific automation is an adapter
-responsibility; no model CLI or model weights are bundled or downloaded during a run.
-The included image implements deterministic extraction and `fake-v1` only.
+## Connecting an agent
 
-The owner launcher verifies a local Unix-socket Docker endpoint and rejects remote
-SSH/TCP contexts and image-declared persistent volumes before sending a packet. It uses
-Docker's separate [create](https://docs.docker.com/reference/cli/docker/container/create/)
-and [start](https://docs.docker.com/reference/cli/docker/container/start/) operations so it
-knows the owned container ID before streaming input. Processing disables network,
-health checks, restarts, and Docker logging. Stdout is limited to 32 MiB, stderr to 64 KiB,
-and processing to 90 seconds; diagnostics are not copied into application errors.
-The launcher checks the container's exit state and forcibly removes that exact container
-and its anonymous volumes on success or failure. Unverified cleanup blocks the result
-and reports the container ID for owner inspection. Docker control calls have separate
-bounded time/output limits. An engine outage can require manual cleanup; no result is
-reported successful while cleanup is unverified.
+1. **Grant the agent route.** Everything a Cairn tool returns goes to the agent's model
+   provider, so it is cloud processing. Grant it once per scope with an explicit
+   provider/destination and operations:
 
-Lifecycle tests combine real child-process stream/deadline tests with a synthetic engine
-process in the development container. The host acceptance script separately verifies
-create/start/remove on the real Docker engine, including removal of a running worker and
-its child. It does not expose the daemon socket to contributor Python or any worker.
+   ```sh
+   cairn policy show --workspace ~/cairn            # note the current policy hash
+   cairn policy set-grant grant.json --workspace ~/cairn \
+     --base-hash POLICY_HASH --statement "I consent to ..."
+   ```
 
-The owner prepares/seals jobs and stages returned results. Clients do not receive the
-owner's vault, policy files, approvals, journal, global index, or arbitrary file/shell
-tools. Running a host client under the owner's login against the vault is not equivalent
-to using this protocol. Manual external results have an unverifiable processing route
-and must not be accepted as proof of local execution.
+   `grant.json` is a `RouteGrant`: `id`, `scope`, `provider`, `destination`,
+   `operations`, `valid_until` and `owner_consent` (equal to the statement).
 
-Schema inspection/migration commands are owner maintenance operations, outside the model
-packet protocol. A migration advances policy revision, so queued client jobs and pending
-proposals must be regenerated; clients cannot reuse earlier approvals. Previously applied
-decisions remain available through their original adoption receipts and scoped context.
+   `generation` and `client_export` cover packets; `query` and `context` cover read
+   tools. Only records labelled `cloud_eligible` can leave; local-only material is
+   withheld from search and refused by every other tool.
 
-Cloud transport is not implemented. It must not be enabled by changing a provider string
-or supplying credentials. Separately configured owner grants are required before any
-future export of a complete request, including the question and derived context.
+2. **Print the registration.** Cairn prints commands; it never edits agent settings.
 
-M2 adds bounded project context packs and session receipts. The protocol's deterministic
-tests establish mechanical correctness only; a separate synthetic agent trial is needed
-to evaluate whether a later session actually uses approved decisions and failed approaches.
+   ```sh
+   cairn mcp --print-config --workspace ~/cairn --scope research \
+     --provider claude-code --destination https://api.anthropic.com \
+     --packets-dir ~/cairn-packets
+   ```
 
-## HTML and Quill packets
+   The output contains a `claude mcp add cairn -- ...` command, a `codex mcp add cairn
+   -- ...` command, a Cursor `mcp.json` entry and suggested Claude Code deny rules for
+   `cairn approve`, `cairn accept` and `cairn apply`.
 
-The [Cairn HTML workflow](html-views.md) adds a bounded writing packet route. Agents
-receive approved evidence and a response schema, never vault mounts or owner apply
-authority. `skills/cairn-html` is agent-neutral and explicit about HTML intent. Manual
-packets cannot prove local execution; local-only data remains blocked without a reviewed
-local adapter. The owner rechecks grants and input hashes on import, and feedback
-revisions still enter the existing proposal queue.
+3. **Optional file capture.** `--capture-root DIR --capture-labels labels.json` lets the
+   agent pass a file path under `DIR` instead of a source ID. Those sources get the
+   labels you chose; files elsewhere are refused.
+
+The launch arguments fix the workspace, scope, provider, destination and packets
+directory for the session. Tools cannot change or widen them. The packets directory
+must be outside the knowledge base and public code.
+
+## Tools
+
+| Tool | What it does |
+| --- | --- |
+| `search`, `evidence`, `context` | Scoped, read-only retrieval; needs `query`/`context` grants |
+| `pending` | IDs of unanswered packets and unaccepted proposals in this scope |
+| `proposal_show` | A proposal's diffs, provenance and required owner review |
+| `reading_begin` / `reading_finish` | Read a paper; stage a concept note from the `FinchResponse` |
+| `writing_begin` / `writing_finish` | Write or revise a page; stage it from the `QuillResponse` |
+| `draft_begin` / `draft_finish` | Draft knowledge pages from a source; stage the `Result` |
+
+There is no tool for approval, accept, apply, recovery, policy, backup, restore,
+schema, update or editing human notes. The server instructions tell the agent that
+acceptance is your step. If your agent also has a shell, add the printed deny rules:
+MCP alone cannot stop a shell-capable agent from typing an owner command. See the
+[threat model](threat-model.md).
+
+The same flows exist on the CLI for scripts and for agents without MCP:
+`cairn finch begin|finish`, `cairn write begin|finish` and `cairn draft begin|finish`.
+
+## Packets and responses
+
+Each `*_begin` call checks the grant for the complete request (source, related pages,
+question), records an `ExportReceipt` before any bytes leave, writes the full packet to
+the packets directory and returns it inline (without raw source bytes). Re-running
+`begin` on unchanged inputs returns the same packet ID.
+
+- **Reading** packets hold the paper version and extraction locators, scoped related
+  pages, the request, the reading contract and the `FinchResponse` schema. The response
+  preserves the exchange's messages, typed claims (reported result, inference or
+  hypothesis) with exact evidence references, limitations and unresolved questions.
+  `finish` preserves the response as a conversation source, stages a research
+  concept-note proposal and validates it.
+- **Writing** packets hold instructions, one target page or new-record slot, keyed
+  evidence, context pages and the writing contract. The `QuillResponse` returns a body,
+  an optional title, claims with evidence keys and exact quotes, and limitations. Cairn
+  formats the record itself; status, labels and existing assertions are kept and new
+  claims stay unreviewed.
+- **Draft** packets hold one sealed ingest `Job` (source extraction, scoped related
+  pages, change budget) and the `Result` schema. Drafts cannot adopt decisions or mark
+  evidence reviewed, and every change passes the ordinary proposal checks.
+
+Every `finish` treats the response as untrusted: it must bind the packet ID and input
+hash; unknown fields, foreign or fabricated citations, approval, actor and status fields
+are rejected. Identical retries return the same receipt; different bytes for a finished
+packet conflict. Changed evidence, human notes, contract or policy, and revoked or
+expired grants block the handoff and later acceptance. Backup and restore validate the
+packet, export, response and receipt bindings; a restore does not restore permission
+to export.
+
+## Failure reporting
+
+Tool errors come back as `isError` results with a stable code: `denied` (no grant,
+out of scope, local-only, owner-only field), `conflict` (inputs or policy changed,
+different retry), `blocked`, or `invalid` (malformed arguments or response). The agent
+should report the handoff as pending or blocked with that reason, never claim it was
+saved.
+
+## What this does not establish
+
+An `ExportReceipt` records intent and route; it does not prove where or how a model
+processed the packet. Mechanical checks confirm locators, quotes and bindings, not that
+a claim follows from its evidence. The test suite drives the MCP server with a
+synthetic stdio client and deterministic fake responses; it does not exercise a real
+agent or model.
+
+The pinned worker container is unrelated to agents: it extracts text, renders HTML
+views, inspects PDF metadata and runs isolation probes, with no network or mounts.
+Plain `cairn ingest --inline-synthetic` remains a deterministic test shortcut.

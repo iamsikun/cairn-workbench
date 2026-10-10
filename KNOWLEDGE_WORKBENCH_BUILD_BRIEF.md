@@ -172,6 +172,8 @@ kw doctor
 
 Later, expose read/search/context/propose through a local stdio MCP adapter. Do not expose owner approval/apply, public export, policy mutation, or arbitrary file/shell access through that adapter. A remote server is a separate feature requiring authentication and per-request authorization.
 
+Implemented as `cairn mcp` (see `docs/agent-integration.md`). Its tools return scoped material to the owner's agent, so each call requires an explicit cloud grant for that agent's provider and destination; packet tools export only the sealed, granted request and record an export receipt.
+
 ## 7. Domain templates
 
 Research project: research question, claimed contribution, closest literature, assumptions and identification, conjectures versus proven results, data/experiment manifests, negative results, decisions, unresolved issues, and next test.

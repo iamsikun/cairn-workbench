@@ -1,8 +1,7 @@
 # Automatic updates
 
-Cairn keeps itself and its knowledge-base skills current the same way Finch and Quill
-do: a release is the `stable` branch of the repository, identified by its version
-number. The owner authorizes automatic updates once. After that, a new release is
+Cairn keeps itself current: a release is the `stable` branch of the repository,
+identified by its version number. The owner authorizes automatic updates once. After that, a new release is
 adopted without a per-release review, and every knowledge base keeps an exact,
 recorded binding to the release it runs.
 
@@ -11,8 +10,12 @@ recorded binding to the release it runs.
 | Component | Source | Check | What changes |
 |---|---|---|---|
 | Cairn runtime | `stable` branch, when its version increases | hourly job and each `cairn` start, at most every 24 h | a new verified runtime; each registered knowledge base is rebound to it |
-| Knowledge-base Quill | Quill's `stable` branch | same run | the Cairn-managed copy in `<kb>/.claude/skills/quill` |
-| Finch | Finch's own installer | Finch's daily job; also invoked by each run | Finch's machine-wide clone |
+
+Cairn does not install or update agent skills. Finch, Quill or any other skill your
+agent uses keeps its own update mechanism; packets carry Cairn's own contracts, so they
+work with whatever version is installed. Copies that earlier releases installed at
+`<kb>/.claude/skills/quill` are left as they are; delete them if you no longer want
+them.
 
 The schedule and the launch-time check only start `cairn update run --if-due`. No
 model, worker or packet takes part in updating, and paper processing never installs
@@ -99,7 +102,6 @@ each release). The paths below are synthetic examples.
    regenerated from preserved sources.
 6. Switches `CAIRN_HOME/current`, keeps the previous runtime and any runtime a knowledge
    base is still bound to, and removes older ones.
-7. Fast-forwards the managed skill clones and refreshes the managed copies.
 
 The next `cairn` command prints a one-line notice such as `Cairn updated to v0.3.0
 (was v0.2.0).` A rebind failure is reported in `cairn update status`. That knowledge
@@ -113,7 +115,7 @@ authorization of this workspace and lead back to an owner-acknowledged `init` or
 ## Commands
 
 ```text
-cairn update status                         channel, current/running runtime, knowledge bases, skills
+cairn update status                         channel, current/running runtime, knowledge bases
 cairn update run [--if-due] [--quiet]       check now
 cairn update enable  --workspace PATH       opt a knowledge base in (records an authorization)
 cairn update disable --workspace PATH       opt out (records a revocation; binding stays valid)
@@ -122,19 +124,6 @@ cairn update setup                          install or reconfigure the managed r
 ```
 
 Set `CAIRN_NO_AUTO_UPDATE=1` to suppress the launch-time check for one shell.
-
-## Managed Quill
-
-On a private `init`/`restore`, Quill (unless already machine-wide) is installed into the
-knowledge base as a Cairn-managed copy. It is generated from a pristine clone of Quill's
-`stable` branch (`CAIRN_HOME/skills/quill`), plus Cairn's writing handoff
-(`references/cairn-workflow.md` and a short section in `SKILL.md`). The clone is never
-edited, so it always fast-forwards. A copy is replaced only while it still matches the
-bytes Cairn recorded in its `.cairn-managed.json`. Owner edits are reported as
-`locally_modified` and kept. A Quill directory Cairn did not create is left alone and
-only receives the handoff, as before. If Quill cannot be fetched at setup, the bundled
-snapshot is installed and the next successful run moves it to the channel. Synthetic
-setups install the bundled snapshot and are not registered.
 
 ## Restore and rollback
 
@@ -154,9 +143,5 @@ updates, use `cairn update disable` and `cairn update schedule --off`.
   manifest is bound to that tree's source hash, and the build's dependencies come from
   its locked hashes. This does not detect a compromised repository, host, Docker
   engine, uv or Python.
-- Skill updates follow each skill's upstream `stable` branch over HTTPS, like Finch's
-  and Quill's own updaters. They change agent guidance, not Cairn's runtime or
-  canonical records; every handoff is still validated and staged as a proposal for
-  the owner.
 - Development and tests use a synthetic `CAIRN_HOME` and local synthetic remotes.
   Contributor code never runs `setup`, `run` or the scheduler against a real home.

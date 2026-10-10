@@ -27,29 +27,27 @@ base's own `UpdateAuthorization`, verifies itself, takes a backup and records an
 `upgrade` approval chained to an owner-acknowledged activation. Never weaken the
 channel, fast-forward, source-hash or downgrade checks, and never run `setup`, `run` or the scheduler
 against a real home from contributor code. Tests use a synthetic `CAIRN_HOME`, local
-synthetic remotes and throwaway keys. Managed skill copies must never overwrite owner edits.
+synthetic remotes and throwaway keys.
 
-## Paper reading and notes
+## Agents, reading and writing
 
-Use Finch automatically for paper reading, explanation, critique, and co-reading,
-including focused follow-ups. When no Finch is available, `cairn init` for a private
-workspace runs Finch's own installer, which links it into detected agents and keeps it
-updated; owners can retry with `cairn finch install` and check `cairn finch status`.
-Never edit an installed Finch, and never run the installer against a real home directory
-from contributor code; tests use a synthetic home and a local synthetic remote.
-Inside a Cairn knowledge base, follow Finch's `references/cairn.md`. With an owner-prepared
-packet, complete the automatic response capture, concept proposal and validation
-handoff before returning; no separate save request is needed. Report source/proposal IDs
-or an explicit pending/blocked handoff. Approval/apply and personal read status remain
-owner operations. Do not inspect private configuration or use contributor code against
-a private workspace. Missing owner configuration does not authorize a guessed route.
+The owner uses Cairn from inside their own agent (Claude Code, Codex, Cursor); Cairn
+never launches an agent. The interface is sealed packets and the local stdio MCP server
+(`cairn mcp`, `src/cairn/mcp.py`). Keep its tool set to scoped reads and packet
+begin/finish; never expose approval, accept, apply, recovery, policy, backup, restore,
+schema or update. Launch arguments fix the scope and granted route; tools must not widen
+them. Anything a tool returns reaches the agent's provider, so it needs a cloud grant.
 
-## Writing
+Cairn does not vendor, install, edit or update Finch, Quill or any other skill. Packets
+carry Cairn's own contracts (`reading/contract.md`, `presentation/contract.md`,
+`proposals/contract.md`); skills only supply method. Every response is untrusted and
+goes through `finish` validation; a model-supplied approval, actor or status field is
+not authority.
 
-Use Quill for writing pages from Cairn material. Setup (`cairn init`/`restore`) installs it
-for the knowledge base unless it is available machine-wide; a private knowledge base gets
-a managed copy that `cairn update` keeps on Quill's stable release. Otherwise use
-`cairn quill install --skills-dir DIR`. Follow its `references/cairn-workflow.md`: write only from an owner-prepared
-`cairn write begin` packet, return a `QuillResponse`, and let the launcher run
-`cairn write finish`. Report the proposal ID or an explicit pending handoff. Never run
-`cairn accept`, `approve` or `apply`; acceptance is the owner's step.
+When you read a paper or write a page for the owner inside a Cairn knowledge base, use
+the Cairn tools (or an owner-prepared packet), follow the packet's contract, and report
+the source/proposal IDs or an explicit pending/blocked reason. Never run `cairn accept`,
+`approve` or `apply`; acceptance is the owner's step. Do not inspect private
+configuration or use contributor code against a private workspace; missing owner
+configuration does not authorize a guessed route. Tests use synthetic workspaces, a
+synthetic home and a subprocess MCP client, never a real agent or home directory.

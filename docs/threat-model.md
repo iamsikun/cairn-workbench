@@ -10,6 +10,13 @@ mounts, a host home, Docker socket, forwarded credentials, capabilities, or exte
 network. Their root filesystem is read-only and scratch, memory, CPU, and process counts
 are bounded. The selected image must be pinned by its local digest.
 
+The owner's agent (Claude Code, Codex, Cursor) is a model client. Through the stdio MCP
+server it gets only scoped read tools and packet begin/finish tools fixed to one scope
+and granted route; its responses are untrusted and validated like any model output.
+MCP does not confine the rest of the agent: if it also has a shell, it can type
+`cairn approve` or edit files as the owner. `cairn mcp --print-config` prints deny rules
+for those commands; they reduce, but do not remove, that risk.
+
 A coding client with ordinary host shell access to owner files or the Docker daemon is
 outside that boundary. An actor flag, prompt, virtual environment, or `.gitignore` cannot
 make it safe. Do not hand such a client the private workspace. A compromised host or

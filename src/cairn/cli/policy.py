@@ -59,7 +59,7 @@ def register(app: typer.Typer) -> None:
         statement: Annotated[str, typer.Option()],
         json_output: JsonOption = False,
     ) -> None:
-        """Record explicit consent; this release still cannot transmit cloud requests."""
+        """Record explicit consent for a scope, agent provider/destination and operations."""
         grant = RouteGrant.model_validate(read_json(read_source_file(file)))
         emit(
             set_grant(Workspace(workspace), grant, base_hash=base_hash, statement=statement),

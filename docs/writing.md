@@ -1,6 +1,6 @@
 # Writing
 
-Owner notes, Quill drafts and acceptance take a few commands. The invariants still
+Owner notes, agent drafts and acceptance take a few commands. The invariants still
 hold: sources and notes are immutable to models, every canonical change is a
 proposal, and only the owner accepts it through the recoverable writer.
 
@@ -26,13 +26,17 @@ evidence, capture it: `cairn capture vault/inbox/NOTE.md --domain research`.
 Editing an existing note still marks pending proposals stale, because notes are
 protected inputs. Adding a new note does not.
 
-## Asking Quill to write
+## Asking your agent to write
+
+In your agent, ask for the page; with Cairn connected over MCP it calls
+`writing_begin` and `writing_finish` itself (see [agent integration](agent-integration.md)).
+The CLI equivalent, for scripts or agents without MCP:
 
 ```text
 cairn write begin --new concept --title "Result C" --from SOURCE_ID \
   --instructions "Write a short concept page on the main result" \
   --provider chosen-agent --destination approved-client --shareable --output packet.json
-# Quill, using the packet, returns response.json
+# the agent, using the packet, returns response.json
 cairn write finish response.json
 ```
 
@@ -41,43 +45,19 @@ imported view comments into instructions for their target. `--view VIEW_ID` writ
 unreviewed explanation of a saved view.
 
 - **Packet contents.** The packet holds the instructions, the target or new-record
-  slot, keyed evidence from `--from` sources, context pages and the Quill guidance.
+  slot, keyed evidence from `--from` sources, context pages and Cairn's writing
+  contract. The agent writes with its own method (Quill, if installed).
 - **Instruction labels.** Instructions default to restricted. `--shareable` marks them
   private and cloud-eligible. Export needs the usual `generation` and `client_export`
   grants for the provider and destination.
-- **What Quill returns.** Quill sends back a body, an optional title, claims with
+- **What the agent returns.** A `QuillResponse`: a body, an optional title, claims with
   evidence keys and exact quotes, and limitations.
 - **What `finish` does.** It checks the response and preserves it as a source. Cairn
   then formats the record itself: status, labels and existing assertions are kept,
   and new claims stay unreviewed. Finally it stages a validated proposal.
-- **Installing Quill.** Setup installs Quill for you. See "Quill at setup" below.
 
-## Quill at setup
-
-`cairn init` and `cairn restore` make sure the knowledge base has Quill:
-
-- **Already installed machine-wide.** If Quill is already available machine-wide
-  (`quill/SKILL.md` under `~/.claude/skills`), setup uses it. It only checks that the
-  file exists and never reads or changes it. The output names the command that
-  attaches the Cairn writing handoff to that copy:
-  `cairn quill install --skills-dir ~/.claude/skills`.
-- **Not installed.** Otherwise setup installs Quill and its Cairn workflow for this
-  knowledge base at `<workspace>/.claude/skills/quill`. That is where agents started in
-  the workspace find project skills. It sits beside the vault and is not a record or
-  backup member; a restore reinstalls it. For a private knowledge base this is a
-  Cairn-managed copy of Quill's `stable` release. Each [update run](updates.md)
-  refreshes it while it still matches what Cairn wrote, and keeps your local edits.
-  Synthetic setups, or setups where the fetch fails, start from the bundled snapshot.
-- **Choosing a location or skipping.** `--quill-skills-dir DIR` installs elsewhere.
-  `--no-quill` skips the step.
-- **Checking more locations.** Set `CAIRN_MACHINE_SKILLS_DIRS` (path-separated) to
-  check other machine-wide skill directories.
-- **When the install is blocked.** If the install is blocked, for example by a
-  differing Cairn hook at the chosen location, setup still succeeds. It reports
-  `"status": "blocked"` and changes nothing at that location.
-
-`cairn quill install --skills-dir DIR` installs or updates Quill anywhere else, and
-preserves an existing Quill skill.
+Cairn does not install or configure Quill. Earlier releases set it up during `init`
+and `restore`; those copies are left in place and no longer updated.
 
 ## Triage and acceptance
 
