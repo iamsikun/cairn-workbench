@@ -116,32 +116,6 @@
       "title": "Assertion",
       "type": "object"
     },
-    "Candidate": {
-      "additionalProperties": false,
-      "properties": {
-        "body": {
-          "maxLength": 200000,
-          "title": "Body",
-          "type": "string"
-        },
-        "rationale": {
-          "maxLength": 10000,
-          "minLength": 1,
-          "title": "Rationale",
-          "type": "string"
-        },
-        "record": {
-          "$ref": "#/$defs/Record"
-        }
-      },
-      "required": [
-        "record",
-        "body",
-        "rationale"
-      ],
-      "title": "Candidate",
-      "type": "object"
-    },
     "EvidenceRef": {
       "additionalProperties": false,
       "properties": {
@@ -236,6 +210,54 @@
       "type": "object"
     },
     "JsonValue": {},
+    "Labels": {
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "default": "private",
+          "enum": [
+            "public",
+            "private",
+            "restricted"
+          ],
+          "title": "Classification",
+          "type": "string"
+        },
+        "compartments": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{2,95}$",
+            "type": "string"
+          },
+          "title": "Compartments",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "domain": {
+          "enum": [
+            "research",
+            "finance",
+            "life",
+            "shared"
+          ],
+          "title": "Domain",
+          "type": "string"
+        },
+        "processing": {
+          "default": "local_only",
+          "enum": [
+            "local_only",
+            "cloud_eligible"
+          ],
+          "title": "Processing",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "title": "Labels",
+      "type": "object"
+    },
     "Money": {
       "additionalProperties": false,
       "properties": {
@@ -317,6 +339,64 @@
         "sources"
       ],
       "title": "Money",
+      "type": "object"
+    },
+    "NewTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "enum": [
+            "research",
+            "finance",
+            "life",
+            "shared"
+          ],
+          "title": "Domain",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "concept",
+            "project",
+            "entity",
+            "playbook",
+            "decision"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "title"
+      ],
+      "title": "NewTarget",
+      "type": "object"
+    },
+    "Page": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "maxLength": 200000,
+          "title": "Body",
+          "type": "string"
+        },
+        "record": {
+          "$ref": "#/$defs/Record"
+        }
+      },
+      "required": [
+        "record",
+        "body"
+      ],
+      "title": "Page",
       "type": "object"
     },
     "Period": {
@@ -427,6 +507,31 @@
         }
       },
       "title": "Period",
+      "type": "object"
+    },
+    "QuillEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "reference": {
+          "$ref": "#/$defs/EvidenceRef"
+        },
+        "text": {
+          "maxLength": 200000,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "reference",
+        "text"
+      ],
+      "title": "QuillEvidence",
       "type": "object"
     },
     "Record": {
@@ -834,24 +939,102 @@
     }
   },
   "additionalProperties": false,
+  "description": "What to write, where it goes, and the only material Quill may use.",
   "properties": {
-    "candidates": {
+    "context": {
       "items": {
-        "$ref": "#/$defs/Candidate"
+        "$ref": "#/$defs/Page"
       },
       "maxItems": 20,
-      "minItems": 1,
-      "title": "Candidates",
+      "title": "Context",
       "type": "array"
     },
-    "input_hash": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Input Hash",
+    "destination": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Destination",
       "type": "string"
     },
-    "job_id": {
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/QuillEvidence"
+      },
+      "maxItems": 400,
+      "title": "Evidence",
+      "type": "array"
+    },
+    "feedback_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Feedback Id"
+    },
+    "guidance_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Guidance Hash",
+      "type": "string"
+    },
+    "id": {
       "pattern": "^[a-z][a-z0-9_]{2,95}$",
-      "title": "Job Id",
+      "title": "Id",
+      "type": "string"
+    },
+    "input_hashes": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Input Hashes",
+      "type": "object"
+    },
+    "instructions": {
+      "maxLength": 20000,
+      "minLength": 1,
+      "title": "Instructions",
+      "type": "string"
+    },
+    "new": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/NewTarget"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "policy_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Policy Hash",
+      "type": "string"
+    },
+    "provider": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Provider",
+      "type": "string"
+    },
+    "quill_revision": {
+      "const": "d6bc7de15d1779c58286cbdec1a54eec52bdef22",
+      "default": "d6bc7de15d1779c58286cbdec1a54eec52bdef22",
+      "title": "Quill Revision",
+      "type": "string"
+    },
+    "request_labels": {
+      "$ref": "#/$defs/Labels"
+    },
+    "route": {
+      "const": "cloud",
+      "default": "cloud",
+      "title": "Route",
       "type": "string"
     },
     "schema_version": {
@@ -859,13 +1042,43 @@
       "default": 1,
       "title": "Schema Version",
       "type": "integer"
+    },
+    "scope": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/Record"
+      },
+      "maxItems": 20,
+      "title": "Sources",
+      "type": "array"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Page"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
   "required": [
-    "job_id",
-    "input_hash",
-    "candidates"
+    "id",
+    "instructions",
+    "request_labels",
+    "scope",
+    "policy_hash",
+    "input_hashes",
+    "provider",
+    "destination",
+    "guidance_hash"
   ],
-  "title": "RevisionResponse",
+  "title": "QuillPacket",
   "type": "object"
 }

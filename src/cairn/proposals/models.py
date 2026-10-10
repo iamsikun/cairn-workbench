@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from cairn.adapters.protocol import Job
 from cairn.policies.models import Scope
@@ -48,3 +48,10 @@ class Approval(Model):
     acknowledgements: set[str]
     owner_statement: str = Field(min_length=1, max_length=4000)
     at: datetime
+
+    @field_validator("owner_statement")
+    @classmethod
+    def nonblank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("owner review statement is required")
+        return value

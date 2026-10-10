@@ -163,6 +163,10 @@ def _check_inputs(ws: Workspace, envelope: JobEnvelope) -> None:
         from cairn.reading.workflow import check_proposal_binding
 
         check_proposal_binding(ws, envelope.job)
+    if envelope.job.id.startswith("job_quill_"):
+        from cairn.presentation.quill import check_proposal_binding as check_quill
+
+        check_quill(ws, envelope.job)
     if envelope.job.route == "owner_device":
         from cairn.library.reader import check_binding, state_path
         from cairn.library.reader_models import ReadState

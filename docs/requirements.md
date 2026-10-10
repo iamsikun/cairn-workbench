@@ -94,9 +94,9 @@ which committed revisions and installed bundles were executed.
 | --- | --- |
 | H1. Root overlap, traversal, unauthorized symlinks | B1 tests and restore namespace/special-file tests |
 | H2. Dev/CI cannot read private workspace | Actual dev/worker profiles denied an unmounted synthetic host canary; B2 profile inspection |
-| H3. Source/human hashes unchanged after compilation | Capture/apply preservation test and all gold proposal `protected_bytes` checks |
-| H4. Stale proposal cannot overwrite owner edit | `test_stale_wiki_update_cannot_overwrite_owner_edit`, staged editor test |
-| H5. Half-apply recovers without appearing complete | Real termination at prepared, both file writes, receipt, commit, history; pending read refusal and exact recovery hashes |
+| H3. Source/human hashes unchanged after compilation | Capture/apply preservation test, all gold proposal `protected_bytes` checks, `test_quick_note_is_new_file_and_survives_workflow`, Quill new-page test note checks |
+| H4. Stale proposal cannot overwrite owner edit | `test_stale_wiki_update_cannot_overwrite_owner_edit`, staged editor test, `test_owner_edit_after_preview_is_not_overwritten`, `test_revision_keeps_owner_state_and_rejects_stale_targets` |
+| H5. Half-apply recovers without appearing complete | `test_crash_during_batch_recovers_and_resumes`; Real termination at prepared, both file writes, receipt, commit, history; pending read refusal and exact recovery hashes |
 | H6. Idempotent re-ingest; revised lineage | Capture/version/bibliography/receipt dedup tests |
 | H7. Reject fabricated quotes, missing refs, invalid schemas and denied reads | Quote/scope test, missing-conflict-reference test, financial fabrication tests, schema/YAML tests |
 | H8. Injected source cannot mutate policy/approve/read another domain/execute tools | Strict worker result/job schema, injection test, gold policy/adoption checks, no-mount no-network hostile-process probes |
@@ -104,7 +104,7 @@ which committed revisions and installed bundles were executed.
 | H10. No remote requests/fallback/telemetry for local-only | Exact manifest worker image probes and local profile checks, five-operation route tests, inspection of networking code (build acquisition and explicit probes only) |
 | H11. Cache deletion/rebuild preserves knowledge | `test_bilingual_short_query_and_cache_rebuild` verifies durable bytes and identical results |
 | H12. Backup restore reconstructs text and evidence blobs | Text/blob/evidence round trip, >32 MiB archive, namespace/hash attacks, copy failure and interrupted transaction restore; fresh installed CLI trials |
-| H13. Assistant suggestion is not an owner decision | Conversation/receipt/adoption chain tests; gold roles and pre-adoption empty decision section |
+| H13. Assistant suggestion is not an owner decision | Conversation/receipt/adoption chain tests; gold roles and pre-adoption empty decision section; `test_fabrication_and_authority_fields_are_rejected`, `test_model_supplied_approval_grants_nothing`, batch acceptance excludes adoption flags |
 
 | Evaluation requirement | Retained measurement |
 | --- | --- |

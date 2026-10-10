@@ -21,11 +21,16 @@ class Scope(Model):
     record_ids: set[ID] | None = None
     project_ids: set[ID] | None = None
 
+    def allows_labels(self, labels: Labels) -> bool:
+        return (
+            labels.domain in self.domains
+            and LEVEL[labels.classification] <= LEVEL[self.max_classification]
+            and labels.compartments <= self.compartments
+        )
+
     def allows(self, record: Record) -> bool:
         return (
-            record.domain in self.domains
-            and LEVEL[record.classification] <= LEVEL[self.max_classification]
-            and record.compartments <= self.compartments
+            self.allows_labels(record)
             and (self.record_ids is None or record.id in self.record_ids)
             and (
                 self.project_ids is None

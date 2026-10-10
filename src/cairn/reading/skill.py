@@ -43,35 +43,33 @@ def guidance_hash() -> str:
     return digest(guidance().encode())
 
 
-def install(skills_dir: Path) -> dict[str, str]:
-    """Owner-selected skill directory only; preserve an existing Finch skill."""
+def install_skill(
+    skills_dir: Path, name: str, resources: dict[str, bytes], *, marker: str, hook_section: str
+) -> Path:
+    """Owner-selected skill directory only; preserve an existing skill and its guidance."""
     from cairn.storage.files import RootFS
 
-    resources = files()
     root = skills_dir.absolute()
     if any(p.is_symlink() for p in (root, *root.parents)):
         raise Conflict("skill destination must not contain symlinks")
     fs = RootFS(Path(root.anchor))
-    prefix = root.relative_to(root.anchor).as_posix() + "/finch"
+    prefix = root.relative_to(root.anchor).as_posix() + f"/{name}"
     path = f"{prefix}/SKILL.md"
     original = fs.read(path) if fs.exists(path) else None
     installed = original if original is not None else resources["SKILL.md"]
-    if MARKER.encode() not in installed:
-        installed += (
-            f"\n\n{MARKER}\n## Automatic Cairn handoff\n\n"
-            f"Whenever Finch is used, follow [{HOOK}]({HOOK}) before reading and "
-            "before returning the answer. Owner configuration authorizes automatic "
-            "capture and proposal staging; approval and apply remain owner operations.\n"
-        ).encode()
-    # Preflight collisions before creating any files. Preserve existing Finch guidance.
+    if marker.encode() not in installed:
+        installed += f"\n\n{marker}\n{hook_section}".encode()
+    # Preflight collisions before creating any files. Preserve existing skill guidance.
     missing = {}
-    for name, raw in resources.items():
-        if name == "SKILL.md":
+    for relative, raw in resources.items():
+        if relative == "SKILL.md":
             continue
-        destination = f"{prefix}/{name}"
+        destination = f"{prefix}/{relative}"
         if fs.exists(destination):
-            if name == HOOK and fs.read(destination) != raw:
-                raise Conflict("existing Cairn Finch hook differs; review before replacing it")
+            if relative == HOOK and fs.read(destination) != raw:
+                raise Conflict(
+                    f"existing Cairn {name.title()} hook differs; review before replacing it"
+                )
             continue
         missing[destination] = raw
     # Install support before the entrypoint so an interrupted install remains retryable.
@@ -79,9 +77,26 @@ def install(skills_dir: Path) -> dict[str, str]:
         fs.write(destination, raw, exclusive=True)
     if installed != original:
         fs.write(path, installed)
+    return root / name
+
+
+def install(skills_dir: Path) -> dict[str, str]:
+    """Owner-selected skill directory only; preserve an existing Finch skill."""
+    path = install_skill(
+        skills_dir,
+        "finch",
+        files(),
+        marker=MARKER,
+        hook_section=(
+            f"## Automatic Cairn handoff\n\n"
+            f"Whenever Finch is used, follow [{HOOK}]({HOOK}) before reading and "
+            "before returning the answer. Owner configuration authorizes automatic "
+            "capture and proposal staging; approval and apply remain owner operations.\n"
+        ),
+    )
     return {
         "skill": "finch",
         "version": VERSION,
-        "path": str(root / "finch"),
+        "path": str(path),
         "workflow": "automatic_capture_and_proposals; owner_review_required",
     }
