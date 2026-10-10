@@ -2,10 +2,10 @@
 
 Cairn uses Finch for paper summaries, explanations, critique, focused questions and
 co-reading without requiring the reader to name the skill. The installed package carries
-a checksummed MIT-licensed Finch 0.2.0 snapshot and its four contribution guides. It
-uses this offline guidance directly; processing does not download or install software.
-The snapshot was supplied by the owner. Its provenance manifest records file hashes
-and the added Cairn lifecycle reference; no unverified upstream commit is asserted.
+a checksummed MIT-licensed Finch 0.3.0 snapshot, its four contribution guides, its Cairn
+handoff guide and Finch's installer. The offline reader uses this snapshot directly;
+processing does not download or install software. The provenance manifest records file
+hashes and the upstream commit. Cairn makes no changes to the snapshot.
 
 ## Library reader
 
@@ -23,19 +23,33 @@ neither approves/applies a proposal nor changes personal reading status.
 
 ## Agent skill lifecycle
 
-Use the reviewed installed owner runtime to install Finch into the explicitly selected
-agent skill directory:
+Initializing a private workspace installs Finch for the owner's agents when it is missing:
 
 ```sh
-cairn finch install --skills-dir /srv/agent-skills
+cairn init --workspace /srv/cairn --code-root /srv/cairn-runtime ...  # --no-finch to skip
+cairn finch status                     # agent-facing Finch and bundled reader version
+cairn finch install                    # retry; --no-auto-update skips the daily update
 ```
 
-This installs the bundled skill if missing. If Finch already exists, its entrypoint
-and support files are preserved and a lifecycle link is appended. The lifecycle reference
-is installed before the entrypoint changes. Repeating installation makes no changes;
-a conflicting existing Cairn hook or a symlink destination is rejected. Skill hosts may
-need to reload their catalog after installation. The lifecycle applies to every Finch
-use, including follow-up questions, before reading and before returning the answer.
+Finch is available if its installer clone (`$FINCH_HOME`, default
+`~/.local/share/finch`) or a `finch/SKILL.md` exists in a known agent skill directory
+(`~/.claude/skills`, `~/.agents/skills`, `~/.copilot/skills`,
+`~/.config/opencode/skills`). An available Finch is never reinstalled or edited. Otherwise
+Cairn runs Finch's own installer from the checksummed packaged copy. It clones the
+`stable` release, links it into each detected agent, adds the `finch` command and, unless
+disabled, schedules Finch's daily fast-forward update (launchd or cron). This setup step
+uses the network; offline or failed installation leaves the workspace usable and reports
+`pending` with the retry command. Synthetic workspaces skip installation unless `--finch`
+is given. A Finch installed as a Claude Code plugin is not detected; use `--no-finch` to
+avoid a second copy. Skill hosts may need to reload their catalog after installation.
+
+Finch ships the Cairn lifecycle as `references/cairn.md`. It applies only when a Cairn
+packet is supplied or the reader asks to read inside the knowledge base, before reading
+and before returning the answer, including follow-up questions. Because Cairn no longer
+edits Finch, the installed clone stays clean and Finch's own update keeps working. Each
+packet also carries the bundled handoff guide, so an older installed Finch still receives
+it. The agent-facing Finch can be newer than the bundled offline-reader snapshot;
+`cairn finch status` reports both versions.
 
 Configure a trusted owner launcher with the workspace, research scope, selected sources
 and context, provider/destination, and complete-request processing labels. The agent
@@ -92,15 +106,16 @@ bindings; restoration does not restore permission to export or accept a stale jo
 ## Activation and visible status
 
 This is an instruction-based integration with a configured owner launcher, not a
-background watcher of arbitrary chats or globally loaded skills. A Finch invocation
+background watcher of arbitrary chats. A Finch invocation inside the knowledge base
 without a prepared packet or available launcher reports `cairn_handoff_pending` and the
-missing configuration. It may still read otherwise authorized public evidence, but
+missing configuration; Finch used outside Cairn is unaffected. It may still read otherwise authorized public evidence, but
 must not claim that the discussion was saved. A failed handoff reports pending/blocked;
 it never reports a fabricated receipt or silently approves a proposal.
 
 Development uses synthetic fixtures and the documented offline container. Private
-activation requires a reviewed non-editable runtime and worker deployment, owner skill
-directory and launcher configuration, and the existing installation/consent gates. No
-private runtime or skill directory is automatically discovered, inspected or modified
-by development tests. Software boundary checks do not establish live reading quality or
+activation requires a reviewed non-editable runtime and worker deployment, launcher
+configuration, and the existing installation/consent gates. Only the owner's private
+`cairn init` or `cairn finch install` looks for agent skill directories under the
+owner's home; development tests use a synthetic home and a local synthetic remote, and
+never discover, inspect or modify a real home, runtime or skill directory. Software boundary checks do not establish live reading quality or
 private deployment readiness.

@@ -49,6 +49,16 @@ def init(
     release_sha256: Annotated[str | None, typer.Option()] = None,
     statement: Annotated[str | None, typer.Option()] = None,
     acknowledge: Annotated[list[ReviewAcknowledgement] | None, typer.Option()] = None,
+    finch: Annotated[
+        bool | None,
+        typer.Option(
+            "--finch/--no-finch",
+            help="Install Finch for detected agents if missing (default for private workspaces).",
+        ),
+    ] = None,
+    finch_auto_update: Annotated[
+        bool, typer.Option(help="Let Finch schedule its own daily update.")
+    ] = True,
 ) -> None:
     """Initialize an empty, separate workspace (synthetic during development)."""
     try:
@@ -72,7 +82,19 @@ def init(
             container_command(worker_image)
             ws.config.worker_image = worker_image
             ws.fs.write("workspace.json", canonical(ws.config))
-        typer.echo(json.dumps({"workspace_id": ws.config.id, "synthetic": ws.config.synthetic}))
+        result: dict[str, object] = {
+            "workspace_id": ws.config.id,
+            "synthetic": ws.config.synthetic,
+        }
+        if (not synthetic) if finch is None else finch:
+            from cairn.reading.skill import install
+
+            # A missing or offline Finch install never blocks the workspace; it stays pending.
+            try:
+                result["finch"] = install(auto_update=finch_auto_update)
+            except CairnError as exc:
+                result["finch"] = {"skill": "finch", "state": "pending", "reason": exc.code}
+        typer.echo(json.dumps(result))
     except CairnError as exc:
         typer.echo(json.dumps({"error": exc.code, "message": str(exc)}), err=True)
         raise typer.Exit(exc.exit_status) from exc

@@ -1,6 +1,6 @@
 # Agent integration
 
-Paper reading defaults to Finch. The owner-installed skill lifecycle automatically
+Paper reading defaults to Finch. Finch's Cairn handoff guide automatically
 hands each supplied reading exchange back for capture, a concept proposal and validation;
 it never grants approval/apply authority. The [Finch handoff](finch-reading.md) documents
 the exact packet/response schemas, configured launcher and pending status. Agent hosts

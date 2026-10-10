@@ -75,10 +75,14 @@ exports; it grants no workspace access and does not generate unsolicited pages.
 
 ## Automatic Finch paper reading
 
-Paper reading uses the bundled Finch skill automatically. Library readings already
-capture evidence and stage reading proposals; they now bind Finch guidance to each job.
-The host-skill installer preserves an existing Finch skill and attaches the Cairn
-lifecycle. In a configured agent session, every Finch invocation captures its supplied
+Paper reading uses Finch automatically. Library readings already capture evidence and
+stage reading proposals; they bind the bundled Finch guidance to each job. When a private
+workspace is initialized and no Finch is available, `cairn init` runs Finch's own
+installer, which links Finch into every detected agent (Claude Code, Codex, Gemini CLI,
+Cursor, Copilot, OpenCode) and schedules Finch's daily update. Pass `--no-finch` to skip it
+or `--no-finch-auto-update` to install without the scheduled update. An existing Finch is
+left untouched. Finch carries its own Cairn handoff guide, so in a configured agent
+session, every Finch invocation inside the knowledge base captures its supplied
 discussion and stages a validated concept-note proposal before returning the answer.
 Approval and canonical apply remain owner operations. See
 [Finch setup and handoff](docs/finch-reading.md) for installation, packets, retries,

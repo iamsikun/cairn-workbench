@@ -15,9 +15,12 @@ directory is named `cairn`. These names do not change the Python package or CLI.
 
 The owner requested automatic Finch use for paper reading, installation when missing,
 and a Cairn workflow on every Finch invocation. The installed runtime bundles the
-licensed skill; library workers automatically use digest-bound guidance. An owner-selected
-host installer adds an instruction-based lifecycle for bounded reading packets and
-automatic conversation capture, concept proposal and validation. No new canonical
+licensed skill; library workers automatically use digest-bound guidance. The owner later
+asked that a first private setup install Finch for every agent when missing and keep it
+updated: `cairn init` runs Finch's own checksummed installer at setup (never during
+processing), and Finch ships the Cairn lifecycle (`references/cairn.md`) for bounded
+reading packets and automatic conversation capture, concept proposal and validation, so
+installed copies are never edited and stay updatable. No new canonical
 record types, automatic approvals or private activation are authorized. Configuration,
 processing grants and visible pending handoffs are documented in `docs/finch-reading.md`.
 

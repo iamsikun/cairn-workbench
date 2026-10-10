@@ -4,7 +4,7 @@ description: Read, explain, and situate academic papers. Use this skill whenever
 license: MIT
 metadata:
   author: Sikun Xu
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # Finch: reading an academic paper
@@ -59,6 +59,11 @@ literature. Write for that person: skip textbook definitions, but explain field-
 jargon and conventions.
 Adjust to the reader's stated background; introduce prerequisites when needed rather
 than assuming that technical fluency transfers across fields.
+
+**Reading inside a Cairn knowledge base.** If the request supplies a Cairn Finch packet,
+or the reader asks to read inside their Cairn knowledge base, read
+`references/cairn.md` before reading and follow it again before answering. The packet's
+evidence and limits take precedence over the defaults in this skill.
 
 **Pin down the source.** Record title, authors, year, and *which version* you are reading
 (arXiv vN, working paper date, conference, or journal). Versions can differ in results,

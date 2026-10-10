@@ -65,11 +65,11 @@ def trial(bundle: Path) -> None:
         env=env,
     )
 
-    def cli(*args: str, status: int = 0) -> dict:
+    def cli(*args: str, status: int = 0, overrides: dict[str, str] | None = None) -> dict:
         completed = subprocess.run(
             [str(python), "-I", "-B", "-m", "cairn", *args],
             capture_output=True,
-            env=env,
+            env={**env, **(overrides or {})},
             check=False,
         )
         if completed.returncode != status:
@@ -241,13 +241,25 @@ def trial(bundle: Path) -> None:
     assert len(list(html_output.parent.iterdir())) == 1
     # Finch resources and lifecycle are exercised through the fresh installed CLI.
     finch_options = ("--workspace", str(workspace))
-    skill_dir = root / "synthetic-agent-skills"
-    cli("finch", "install", "--skills-dir", str(skill_dir))
-    installed_skill = skill_dir / "finch/SKILL.md"
-    installed_bytes = installed_skill.read_bytes()
-    cli("finch", "install", "--skills-dir", str(skill_dir))
+    # The packaged upstream installer runs offline here, so it must report pending without
+    # links; an existing Finch is then preserved byte-for-byte and never reinstalled.
+    agent_home = root / "synthetic-agent-home"
+    (agent_home / ".claude").mkdir(parents=True)
+    agent_env = {
+        "HOME": str(agent_home),
+        "FINCH_REPO": str(root / "synthetic-missing-finch.git"),
+        "XDG_STATE_HOME": str(agent_home / ".local/state"),
+    }
+    pending = cli("finch", "install", "--no-auto-update", overrides=agent_env)
+    assert pending["state"] == "pending" and not pending["available"], pending
+    installed_skill = agent_home / ".claude/skills/finch/SKILL.md"
+    assert not installed_skill.exists()
+    installed_skill.parent.mkdir(parents=True)
+    installed_bytes = b'---\nname: finch\nmetadata:\n  version: "0.3.0"\n---\nSynthetic\n'
+    installed_skill.write_bytes(installed_bytes)
+    existing = cli("finch", "install", overrides=agent_env)
+    assert existing["state"] == "available" and existing["version"] == "0.3.0", existing
     assert installed_skill.read_bytes() == installed_bytes
-    assert b"cairn-finch-workflow-v1" in installed_bytes
     labels_file = root / "synthetic-finch-labels.json"
     labels_file.write_bytes(
         canonical(

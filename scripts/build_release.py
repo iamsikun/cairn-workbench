@@ -143,7 +143,7 @@ def build(output: Path, revision: str, worker_image: str) -> None:
             "weekly_feed": "1",
             "html_views": "cairn-view-v1",
             "quill_writing": "d6bc7de15d1779c58286cbdec1a54eec52bdef22",
-            "finch_reading": "0.2.0",
+            "finch_reading": "0.3.0",
             "html_renderer": digest(
                 Path("src/cairn/presentation/resources/application.mjs").read_bytes()
             ),
