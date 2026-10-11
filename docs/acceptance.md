@@ -1,6 +1,6 @@
 # Acceptance evidence
 
-## Direct-save restructuring (2026-10-11; in progress)
+## Direct-save restructuring (2026-10-11; automated gates passed, not released)
 
 Historical evidence below applies to the previous requirements. It is not a passing
 gate for the direct-save release. Only synthetic data is used in this implementation.
@@ -8,15 +8,55 @@ gate for the direct-save release. Only synthetic data is used in this implementa
 | Gate | Evidence | Status |
 | --- | --- | --- |
 | R1 requirements and legacy fixtures | Revised baseline; 3 fixture-reader tests passed in offline development container | Passed |
-| R2 saves, recovery, undo | 13 direct-save tests: retries, no-op, external/stale edits, two concurrent processes, four crash points, recovery conflict, index failure, selective undo | Core passed; final suite pending |
-| R3 notebooks, graph, scope | Paper follow-up identity, aliases/questions, retained observations, explained backlinks, rejected-link memory, scoped reads and located quotes in the same suite | Core passed; integration pending |
+| R2 saves, recovery, undo | 14 direct-save tests: retries, no-op, external/stale edits, two concurrent processes, four crash points, recovery conflict, index failure, selective undo | Passed |
+| R3 notebooks, graph, scope | Paper follow-up identity and duplicate rejection, aliases/questions, retained observations, explained backlinks, rejected-link memory, scoped reads and located quotes | Passed with synthetic inputs |
 | R4 CLI/MCP/connections/extraction | Six synthetic integration tests: CLI init, six-tool stdio, retry/resumption, two client settings formats, interrupted registration, unavailable/actual PDF parsing | Adapter checks passed; actual clients unverified |
-| R5 HTML and scenarios | Three lifecycle tests plus mandatory Chromium: desktop/narrow, themes, print, reduced motion, offline requests, deterministic temporary controls | Passed in synthetic container; final package gate pending |
-| R6 migration/install transition | Nine migration/backup tests, four retirement adapter tests; verified inventories, real interrupted conversion, proposal retention, updater lock/process races | Implementation checks passed; package gate pending |
+| R5 HTML and scenarios | Four presentation tests plus mandatory Chromium: desktop/narrow, themes, print, reduced motion, offline requests, deterministic temporary controls | Passed, including installed package |
+| R6 migration/install transition | Eleven migration/backup tests, five retirement adapter tests; verified inventories, real interrupted conversion, proposal/library retention, updater lock/process races, orphaned loaded jobs | Passed, including installed package; real owner-machine transition unverified |
 | Actual Claude Code/Codex behavior | Separate real-client synthetic trial | Unverified |
 | Semantic quality | Human assessment of real model explanations | Unverified |
 
 No private workspace, home, credentials, real client settings, or schedules were used.
+
+Final implementation and package revision: `a67a0993d1ccc0842279fffa1de727cc0bb5d39d`,
+on local branch `codex/direct-save-workbench`, version **0.4.0**. The following evidence
+commit changes documentation only. All R1–R6 implementation milestones are complete;
+the actual-client and semantic-quality gates remain open.
+
+- `bash scripts/check.sh` passed: **421 tests**, schema export parity, Ruff and strict
+  mypy across **124 source files**; both development/worker **13-check isolation**
+  probes, extraction and HTML round trips, **129/129 gold-set checks**, and real-engine
+  worker/hostile-child cleanup. No required isolation check was skipped.
+- `bash scripts/check_html.sh` passed. The vendored renderer reported **787 passed,
+  2 skipped, 0 failed** out of 789 tests. The skips concern a foreign-user PID fixture
+  (PID 1 is signalable by the container user) and an optional prebuilt static-site
+  check; neither establishes a passing required gate. Required Chromium, container
+  isolation, reproducible bundle/portable builds and [Node 20/22/24 trials](evidence/direct-save-node-smoke.json)
+  passed. The native-renderer separation was followed by a successful rerun of the
+  [notebook/scenario browser checks](evidence/direct-save-browser.json).
+- `bash scripts/release_check.sh` passed sequentially after the final check run.
+  The [offline installed trial](evidence/direct-save-release.json) verified 15
+  distributions and 952 package files. Its new-format trial exercises installed
+  CLI initialization, documented legacy migration, synthetic Claude/Codex settings,
+  six-tool stdio saving/retry, search, native HTML, backup/restore and undo. The final
+  pinned-worker [13-check probe](evidence/direct-save-worker-profile.json) passed.
+  Retained legacy trial fields describe compatibility, not new save requirements.
+- The [scripted two-paper demonstration](evidence/direct-save-demo.json) retains an
+  observation, connects recommendation and decoder notebooks, refreshes requested
+  HTML, preserves a snapshot and undoes a change without removing an unrelated
+  question. It uses synthetic adapter requests, not actual clients or model calls.
+  Generated pages, screenshots and print PDFs are under `dist/notebook-demo/`.
+
+Earlier final-check attempts with overlapping Docker image tags and an outdated
+schema-1 package fixture failed and were not counted as passes. The fixture was
+corrected without weakening legacy validation; the complete checks above were
+rerun sequentially. The installed package and wheelhouse remain local under
+`dist/release-a67a0993d1ccc0842279fffa1de727cc0bb5d39d/`; nothing was published.
+
+No automated result establishes Finch/Quill explanation quality, actual Claude Code
+or Codex behavior, or a real managed-installation transition. Those trials remain
+unverified. The native extraction/rendering resource limits are not claimed to be
+equivalent to the contributor container's isolation boundary.
 
 R2/R3 checkpoint: 85 tests passed in the offline development container (direct-save,
 legacy fixtures and schema parity). Strict mypy passed for 13 new/changed source modules;

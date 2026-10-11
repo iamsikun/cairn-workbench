@@ -13,6 +13,12 @@ Use synthetic data and execute contributor code in the documented development co
 | R5 Presentation | Visual inputs, HTML, freshness, snapshots, feedback, scenarios | Failure recovery, offline rendering and visual QA |
 | R6 Transition | Legacy migration, backup/restore, launcher retirement, installed package | Inventory, crash, updater-race and package trials |
 
+Implementation status, 2026-10-11: R1–R6 are implemented and their automated synthetic
+gates passed at `a67a0993d1ccc0842279fffa1de727cc0bb5d39d`. See
+[acceptance evidence](docs/acceptance.md) for the requirements-to-test matrix, package
+trial and remaining actual-client, semantic-quality and real-machine transition gates.
+The package is local and unpublished; these results do not authorize private deployment.
+
 ## Contracts and implementation
 
 Extract reusable safe storage and transaction mechanics, not approval wrappers. Add
