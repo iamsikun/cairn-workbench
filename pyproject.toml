@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cairn-workbench"
-version = "0.3.0"
-description = "Local-first evidence, reviewable knowledge, and scoped agent context"
+version = "0.4.0"
+description = "Versioned readings, connected learning notebooks, and scoped agent context"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = ["pydantic>=2.11,<3", "typer>=0.16,<1", "PyYAML>=6.0.2,<7", "pypdf>=6,<7"]

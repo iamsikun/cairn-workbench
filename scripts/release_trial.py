@@ -69,7 +69,7 @@ def trial(bundle: Path) -> None:
 
     def cli(*args: str, status: int = 0, overrides: dict[str, str] | None = None) -> dict:
         completed = subprocess.run(
-            [str(python), "-I", "-B", "-m", "cairn", *args],
+            [str(python), "-I", "-B", "-m", "cairn", "legacy", *args],
             capture_output=True,
             env={**env, **(overrides or {})},
             check=False,
@@ -143,6 +143,7 @@ def trial(bundle: Path) -> None:
             "-B",
             "-m",
             "cairn",
+            "legacy",
             "proposal",
             "show",
             proposal["id"],
@@ -297,7 +298,7 @@ def trial(bundle: Path) -> None:
             for i, (n, a) in enumerate(calls, 1)
         ]
         completed = subprocess.run(
-            [str(python), "-I", "-B", "-m", "cairn", "mcp", "--workspace", str(target)]
+            [str(python), "-I", "-B", "-m", "cairn", "legacy", "mcp", "--workspace", str(target)]
             + ["--provider", "synthetic-agent", "--destination", "https://synthetic.invalid"]
             + ["--capture-root", str(papers), "--capture-labels", str(labels_file)]
             + ["--html-root", str(root / "installed-html")]
@@ -444,10 +445,14 @@ def trial(bundle: Path) -> None:
         direct.write_bytes(saved)
     assert cli(*check_args)["installation_verified"]
     assert digest((bundle / "release.json").read_bytes()) == reviewed_hash
+    from direct_trial import trial as direct_trial
+
+    direct = direct_trial(python, env, root)
     print(
         canonical(
             {
                 "offline_installed_trial": "passed",
+                "direct_save_installed_trial": direct,
                 "manifest_sha256": reviewed_hash,
                 "code_revision": manifest.code_revision,
                 "import_origin": imported,

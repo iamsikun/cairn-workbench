@@ -1,39 +1,21 @@
-# Threat model
+# Integrity and execution boundaries
 
-Untrusted inputs include documents, PDF structures, conversations, model output, and
-external client results. They cannot change policy, create owner approvals, run shell
-tools, widen a scope, or reach unrelated records through Cairn's worker protocol.
+Documents and agent content are untrusted data. Models cannot choose save paths, impersonate
+approval, adopt a decision or verify a claim merely by saving. The six tools fix collection
+scope, use strict request schemas and accept no executable resources. Evidence bytes and
+attributed observations are preserved separately from replaceable synthesis.
 
-The trusted computing base includes the owner, reviewed installed software/dependencies,
-the OS, the Docker engine, and the small host-side launcher. Workers run without owner
-mounts, a host home, Docker socket, forwarded credentials, capabilities, or external
-network. Their root filesystem is read-only and scratch, memory, CPU, and process counts
-are bounded. The selected image must be pinned by its local digest.
+Filesystem operations reject traversal, symlinks, hard links and ambiguous names through
+RootFS. Cooperating writers serialize; expected revisions detect stale clients and external
+edits. Journals retain before/after bytes and conflict rather than overwriting unexpected
+content during recovery. An independent editor need not honor the lock. A compromised owner
+account or agent with independent filesystem access is outside this tool boundary.
 
-The owner's agent (Claude Code, Codex, Cursor) is a model client. Through the stdio MCP
-server it gets only scoped read tools and `propose_*` tools fixed to one scope and
-granted route; its answers are untrusted and validated like any model output. MCP does
-not confine the rest of the agent: with a shell it runs as the owner. Two controls
-apply. The agent's own sandbox (settings printed by `cairn mcp --print-config`) denies
-its shell writes to the knowledge base and Cairn's data; MCP servers run outside that
-sandbox. Owner commands also require confirmation typed at the owner's terminal, which
-agent shells do not have. A same-user agent outside a sandbox can still defeat any
-software check (it could fake a terminal or edit files directly), so the sandbox is the
-boundary; signed approvals would not change that, because such an agent could replace
-the key.
+The installed runtime uses bounded local extraction and optional rendering. These resource
+bounds are not a claim that arbitrary native dependencies are an OS sandbox. Development
+processing remains in the no-network, non-root, read-only container with no home, credentials
+or Docker socket; required isolation probes must pass. No skipped gate is a readiness pass.
 
-A coding client with ordinary host shell access to owner files or the Docker daemon is
-outside that boundary. An actor flag, prompt, virtual environment, or `.gitignore` cannot
-make it safe. Do not hand such a client the private workspace. A compromised host or
-container escape is outside the guarantee; the isolation suite tests a defined set of
-hostile operations and cannot prove complete security.
-
-Path access uses directory descriptors and refuses traversal, symlinks, hard links,
-special files, and ambiguous case/Unicode names. YAML uses a safe loader, rejects duplicate
-keys and aliases, and has size limits. SQL queries are parameterized; FTS syntax is built
-from literal tokens. Model-provided filenames or shell patches are never executed.
-
-Bare Markdown directories do not provide atomic visibility to arbitrary external editors.
-Use the staged owner edit workflow for concurrent managed edits. Direct edits between
-operations invalidate proposals. During crash recovery, unknown bytes are preserved and
-require owner resolution rather than being silently overwritten.
+Migration and managed-installation transition are explicit operations with verified recovery
+material. Old validators are retained; no old executable is run against schema 4. Historical
+worker and approval boundaries are in [legacy/threat-model-v3.md](legacy/threat-model-v3.md).

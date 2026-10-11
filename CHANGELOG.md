@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 — local restructuring build; unpublished
+
+- Direct versioned saves, revision checks, recoverable transactions, checkpoints and undo.
+- Connected paper notes, topic learning notebooks, attributed observations and explained links.
+- Six scoped MCP tools, native optional extraction, and Claude Code/Codex registration.
+- Explicit HTML companions with dependency freshness, snapshots, feedback and scenarios.
+- Backed-up schema 1–3 migration to schema 4 and managed-installation retirement.
+- Ordinary saves no longer require proposals, grants, activation or release rebinding.
+  Historical validators and provenance remain available for legacy data.
+
 Cairn uses semantic versioning. The version lives in `pyproject.toml` and
 `src/cairn/__init__.py`, which must agree; managed installs adopt `stable` only when it
 increases.

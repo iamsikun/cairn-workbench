@@ -41,9 +41,9 @@ inside a worker. This boundary does not defend against a compromised host/engine
 
 `examples/workspace.example.json` documents the machine-local configuration shape using
 fictional paths and synthetic mode. It is not a complete workspace or private approval.
-Use `cairn init --synthetic` to create development fixtures; use the separately reviewed
-installation/activation procedure for private operation. No actual owner paths or runtime
-approvals belong in the public checkout.
+Use `cairn init /synthetic/workspace --synthetic` to create development fixtures. Direct-save
+installation needs no activation. Legacy fixtures use the historical APIs and validators.
+No actual owner paths, settings, runtime approvals or credentials belong in the checkout.
 
 ## Presentation resources and portable package
 

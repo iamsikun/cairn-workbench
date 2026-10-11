@@ -1,3 +1,3 @@
-"""Cairn: preserved evidence and owner-reviewed knowledge."""
+"""Cairn: preserved evidence, versioned readings and connected learning notebooks."""
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"

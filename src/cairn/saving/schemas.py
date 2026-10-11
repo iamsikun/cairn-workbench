@@ -1,5 +1,6 @@
 """Public direct-save schema registry, shared by export and parity checks."""
 
+from cairn.saving.backup import ArchiveManifest
 from cairn.saving.models import (
     Capture,
     KnowledgeRecord,
@@ -12,6 +13,7 @@ from cairn.saving.models import (
 from cairn.saving.views import NotebookFeedback, Scenario
 
 SCHEMAS = {
+    "archivemanifest-v2": ArchiveManifest,
     "workspaceconfig-v4": WorkspaceConfigV4,
     "knowledgerecord-v2": KnowledgeRecord,
     "savenote-v1": SaveNote,

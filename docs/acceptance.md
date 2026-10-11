@@ -12,7 +12,7 @@ gate for the direct-save release. Only synthetic data is used in this implementa
 | R3 notebooks, graph, scope | Paper follow-up identity, aliases/questions, retained observations, explained backlinks, rejected-link memory, scoped reads and located quotes in the same suite | Core passed; integration pending |
 | R4 CLI/MCP/connections/extraction | Six synthetic integration tests: CLI init, six-tool stdio, retry/resumption, two client settings formats, interrupted registration, unavailable/actual PDF parsing | Adapter checks passed; actual clients unverified |
 | R5 HTML and scenarios | Three lifecycle tests plus mandatory Chromium: desktop/narrow, themes, print, reduced motion, offline requests, deterministic temporary controls | Passed in synthetic container; final package gate pending |
-| R6 migration/install transition | Backup, migration, updater races, package trial | Pending |
+| R6 migration/install transition | Nine migration/backup tests, four retirement adapter tests; verified inventories, real interrupted conversion, proposal retention, updater lock/process races | Implementation checks passed; package gate pending |
 | Actual Claude Code/Codex behavior | Separate real-client synthetic trial | Unverified |
 | Semantic quality | Human assessment of real model explanations | Unverified |
 
@@ -22,6 +22,15 @@ R2/R3 checkpoint: 85 tests passed in the offline development container (direct-s
 legacy fixtures and schema parity). Strict mypy passed for 13 new/changed source modules;
 the persistence modules pass Ruff. Source and record storage use schema 4 / record schema 2.
 These checks do not establish semantic correctness of generated links or learning prose.
+
+Integration checkpoint: 35 direct-save/integration/presentation/transition tests passed.
+The scripted two-paper demo preserves an observation, connects recommendation and decoder
+notebooks, refreshes HTML, preserves a snapshot, and undoes a change while retaining an
+unrelated question. It uses synthetic adapter requests, not actual Claude Code/Codex or
+Finch/Quill model execution. The browser gate used required Chromium, two widths (1440/390),
+two themes, print output, reduced motion, offline requests and deterministic temporary
+scenario controls. Desktop notebook and narrow scenario screenshots were visually inspected;
+evidence placement and scenario-control placement were corrected and rechecked.
 
 ## Repository code source and workspace schema 3 (2026-10-11; software checks passed, not released)
 

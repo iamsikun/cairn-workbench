@@ -9,11 +9,11 @@ original evidence and your observations, with scoped retrieval, recovery and und
 
 ## Restructuring status
 
-The approved direct-save restructuring is in progress. See CAIRN_BUILD_PLAN.md and
-docs/acceptance.md for milestone evidence and limitations. Historical 0.3.0 behavior
+The direct-save implementation uses workspace schema 4. See CAIRN_BUILD_PLAN.md and
+docs/acceptance.md for milestone evidence and remaining real-client trials. Historical 0.3.0 behavior
 and tests are retained for compatibility; they do not prove the new workflow.
 
-The target workflow is init -> connect -> read/discuss -> save -> connect knowledge.
+The workflow is init -> connect -> read/discuss -> save -> connect knowledge.
 Ordinary saves require no grants, approval commands or Docker. Research is the default
 collection; finance/life require separate selection. The collection is a tool boundary,
 not a sandbox for the agent's independent filesystem access.
@@ -21,6 +21,16 @@ not a sandbox for the agent's independent filesystem access.
 Requested HTML companions show visual overviews, architectures, comparisons and scenarios.
 They track their Markdown and asset inputs. An interrupted render never loses a note.
 Finch and Quill are independently installed and maintained; Cairn manages neither skill.
+
+```sh
+cairn init /synthetic/knowledge
+cairn connect codex --workspace /synthetic/knowledge
+```
+
+These are illustrative paths. See [installation and agent integration](docs/installation.md),
+[HTML companions](docs/notebook-html.md), [migration](docs/migration.md), and
+[recovery and undo](docs/recovery.md). Ordinary commands never run a startup updater;
+legacy maintenance commands require the explicit `cairn legacy` prefix.
 
 ## Development
 
