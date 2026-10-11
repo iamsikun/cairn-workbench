@@ -1,0 +1,519 @@
+{
+  "$defs": {
+    "Citation": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "locator": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Locator"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "maxLength": 10000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quote"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Citation",
+      "type": "object"
+    },
+    "Observation": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "default": "user",
+          "enum": [
+            "user",
+            "assistant"
+          ],
+          "title": "Author",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "title": "Observation",
+      "type": "object"
+    },
+    "Relationship": {
+      "additionalProperties": false,
+      "properties": {
+        "basis": {
+          "default": "inferred",
+          "enum": [
+            "source_stated",
+            "inferred"
+          ],
+          "title": "Basis",
+          "type": "string"
+        },
+        "explanation": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Explanation",
+          "type": "string"
+        },
+        "kind": {
+          "default": "related",
+          "enum": [
+            "broader_topic",
+            "studies",
+            "uses",
+            "extends",
+            "compares_with",
+            "supports",
+            "challenges",
+            "analogy",
+            "related",
+            "investigates"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/Citation"
+          },
+          "maxItems": 20,
+          "title": "Sources",
+          "type": "array"
+        },
+        "state": {
+          "default": "active",
+          "enum": [
+            "active",
+            "rejected"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target",
+        "explanation"
+      ],
+      "title": "Relationship",
+      "type": "object"
+    },
+    "Resource": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "maxLength": 1000000,
+          "title": "Content",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "diagram",
+            "table",
+            "figure",
+            "scenario"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "kind",
+        "title",
+        "content",
+        "description"
+      ],
+      "title": "Resource",
+      "type": "object"
+    },
+    "SourceInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "authors": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Authors",
+          "type": "array"
+        },
+        "blob": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Blob"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        },
+        "coverage": {
+          "default": "unknown",
+          "enum": [
+            "unknown",
+            "excerpt",
+            "abstract_only",
+            "full_text",
+            "failed"
+          ],
+          "title": "Coverage",
+          "type": "string"
+        },
+        "extraction_status": {
+          "default": "unavailable",
+          "enum": [
+            "unavailable",
+            "supplied",
+            "extracted",
+            "failed"
+          ],
+          "title": "Extraction Status",
+          "type": "string"
+        },
+        "identity": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Identity",
+          "type": "string"
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Origin"
+        },
+        "original_blob": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Original Blob"
+        },
+        "original_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Original Hash"
+        },
+        "pages": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Pages",
+          "type": "object"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "maxLength": 1000000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "identity",
+        "title"
+      ],
+      "title": "SourceInfo",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "aliases": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Aliases",
+      "type": "array"
+    },
+    "archived": {
+      "default": false,
+      "title": "Archived",
+      "type": "boolean"
+    },
+    "citations": {
+      "items": {
+        "$ref": "#/$defs/Citation"
+      },
+      "title": "Citations",
+      "type": "array"
+    },
+    "collection": {
+      "default": "research",
+      "enum": [
+        "research",
+        "finance",
+        "life",
+        "shared"
+      ],
+      "title": "Collection",
+      "type": "string"
+    },
+    "coverage": {
+      "default": "unknown",
+      "title": "Coverage",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "enrichment": {
+      "default": "pending",
+      "enum": [
+        "complete",
+        "pending"
+      ],
+      "title": "Enrichment",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "default": "note",
+      "enum": [
+        "note",
+        "paper",
+        "topic",
+        "question",
+        "source"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "observations": {
+      "items": {
+        "$ref": "#/$defs/Observation"
+      },
+      "title": "Observations",
+      "type": "array"
+    },
+    "paper_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Paper Identity"
+    },
+    "primary_source_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Primary Source Id"
+    },
+    "relationships": {
+      "items": {
+        "$ref": "#/$defs/Relationship"
+      },
+      "title": "Relationships",
+      "type": "array"
+    },
+    "resources": {
+      "items": {
+        "$ref": "#/$defs/Resource"
+      },
+      "title": "Resources",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 2,
+      "default": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "source": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SourceInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "title": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "type": {
+      "default": "concept",
+      "enum": [
+        "source",
+        "concept",
+        "project",
+        "decision",
+        "entity",
+        "playbook"
+      ],
+      "title": "Type",
+      "type": "string"
+    },
+    "unresolved": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Unresolved",
+      "type": "array"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    },
+    "verification": {
+      "const": "unreviewed",
+      "default": "unreviewed",
+      "title": "Verification",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title"
+  ],
+  "title": "KnowledgeRecord",
+  "type": "object"
+}

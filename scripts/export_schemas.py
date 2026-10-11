@@ -149,3 +149,9 @@ if __name__ == "__main__":
         (destination / f"{name}-v{number}.json").write_text(
             json.dumps(model.model_json_schema(), indent=2, sort_keys=True) + "\n"
         )
+    from cairn.saving.schemas import SCHEMAS
+
+    for name, model in SCHEMAS.items():
+        (destination / f"{name}.json").write_text(
+            json.dumps(model.model_json_schema(), indent=2, sort_keys=True) + "\n"
+        )

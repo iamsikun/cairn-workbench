@@ -1,0 +1,117 @@
+{
+  "$defs": {
+    "SourceInput": {
+      "additionalProperties": false,
+      "properties": {
+        "authors": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Authors",
+          "type": "array"
+        },
+        "coverage": {
+          "default": "unknown",
+          "enum": [
+            "unknown",
+            "excerpt",
+            "abstract_only",
+            "full_text",
+            "failed"
+          ],
+          "title": "Coverage",
+          "type": "string"
+        },
+        "identity": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Identity",
+          "type": "string"
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Origin"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "maxLength": 1000000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "identity",
+        "title"
+      ],
+      "title": "SourceInput",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "operation_key": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Operation Key",
+      "type": "string"
+    },
+    "pdf_base64": {
+      "anyOf": [
+        {
+          "maxLength": 22000000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pdf Base64"
+    },
+    "source": {
+      "$ref": "#/$defs/SourceInput"
+    }
+  },
+  "required": [
+    "operation_key",
+    "source"
+  ],
+  "title": "Capture",
+  "type": "object"
+}

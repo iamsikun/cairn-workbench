@@ -8,8 +8,8 @@ gate for the direct-save release. Only synthetic data is used in this implementa
 | Gate | Evidence | Status |
 | --- | --- | --- |
 | R1 requirements and legacy fixtures | Revised baseline; 3 fixture-reader tests passed in offline development container | Passed |
-| R2 saves, recovery, undo | New transaction and failure-mode suite | Pending |
-| R3 notebooks, graph, scope | Knowledge/scoped retrieval suite | Pending |
+| R2 saves, recovery, undo | 13 direct-save tests: retries, no-op, external/stale edits, two concurrent processes, four crash points, recovery conflict, index failure, selective undo | Core passed; final suite pending |
+| R3 notebooks, graph, scope | Paper follow-up identity, aliases/questions, retained observations, explained backlinks, rejected-link memory, scoped reads and located quotes in the same suite | Core passed; integration pending |
 | R4 CLI/MCP/connections/extraction | Synthetic settings and stdio suite | Pending |
 | R5 HTML and scenarios | Rendering, freshness, browser checks | Pending |
 | R6 migration/install transition | Backup, migration, updater races, package trial | Pending |
@@ -17,6 +17,11 @@ gate for the direct-save release. Only synthetic data is used in this implementa
 | Semantic quality | Human assessment of real model explanations | Unverified |
 
 No private workspace, home, credentials, real client settings, or schedules were used.
+
+R2/R3 checkpoint: 85 tests passed in the offline development container (direct-save,
+legacy fixtures and schema parity). Strict mypy passed for 13 new/changed source modules;
+the persistence modules pass Ruff. Source and record storage use schema 4 / record schema 2.
+These checks do not establish semantic correctness of generated links or learning prose.
 
 ## Repository code source and workspace schema 3 (2026-10-11; software checks passed, not released)
 

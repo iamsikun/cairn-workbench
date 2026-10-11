@@ -1,0 +1,401 @@
+{
+  "$defs": {
+    "Citation": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "locator": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Locator"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "maxLength": 10000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quote"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Citation",
+      "type": "object"
+    },
+    "NoteChange": {
+      "additionalProperties": false,
+      "properties": {
+        "aliases": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Aliases"
+        },
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/Citation"
+          },
+          "maxItems": 100,
+          "title": "Citations",
+          "type": "array"
+        },
+        "coverage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coverage"
+        },
+        "enrichment": {
+          "default": "pending",
+          "enum": [
+            "complete",
+            "pending"
+          ],
+          "title": "Enrichment",
+          "type": "string"
+        },
+        "expected_revision": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Revision"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{2,95}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "note",
+                "paper",
+                "topic",
+                "question"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kind"
+        },
+        "markdown": {
+          "maxLength": 1000000,
+          "minLength": 1,
+          "title": "Markdown",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "$ref": "#/$defs/Observation"
+          },
+          "maxItems": 1000,
+          "title": "Observations",
+          "type": "array"
+        },
+        "relationships": {
+          "items": {
+            "$ref": "#/$defs/Relationship"
+          },
+          "maxItems": 100,
+          "title": "Relationships",
+          "type": "array"
+        },
+        "resources": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Resource"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resources"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "default": "concept",
+          "enum": [
+            "source",
+            "concept",
+            "project",
+            "decision",
+            "entity",
+            "playbook"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "unresolved": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unresolved"
+        }
+      },
+      "required": [
+        "title",
+        "markdown"
+      ],
+      "title": "NoteChange",
+      "type": "object"
+    },
+    "Observation": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "default": "user",
+          "enum": [
+            "user",
+            "assistant"
+          ],
+          "title": "Author",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "title": "Observation",
+      "type": "object"
+    },
+    "Relationship": {
+      "additionalProperties": false,
+      "properties": {
+        "basis": {
+          "default": "inferred",
+          "enum": [
+            "source_stated",
+            "inferred"
+          ],
+          "title": "Basis",
+          "type": "string"
+        },
+        "explanation": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Explanation",
+          "type": "string"
+        },
+        "kind": {
+          "default": "related",
+          "enum": [
+            "broader_topic",
+            "studies",
+            "uses",
+            "extends",
+            "compares_with",
+            "supports",
+            "challenges",
+            "analogy",
+            "related",
+            "investigates"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/Citation"
+          },
+          "maxItems": 20,
+          "title": "Sources",
+          "type": "array"
+        },
+        "state": {
+          "default": "active",
+          "enum": [
+            "active",
+            "rejected"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target",
+        "explanation"
+      ],
+      "title": "Relationship",
+      "type": "object"
+    },
+    "Resource": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "maxLength": 1000000,
+          "title": "Content",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "diagram",
+            "table",
+            "figure",
+            "scenario"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "kind",
+        "title",
+        "content",
+        "description"
+      ],
+      "title": "Resource",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "client": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Client"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model"
+    },
+    "note": {
+      "$ref": "#/$defs/NoteChange"
+    },
+    "operation_key": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Operation Key",
+      "type": "string"
+    }
+  },
+  "required": [
+    "operation_key",
+    "note"
+  ],
+  "title": "SaveNote",
+  "type": "object"
+}

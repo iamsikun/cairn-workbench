@@ -1,0 +1,140 @@
+{
+  "$defs": {
+    "SavedNote": {
+      "additionalProperties": false,
+      "properties": {
+        "enrichment": {
+          "enum": [
+            "complete",
+            "pending"
+          ],
+          "title": "Enrichment",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Revision",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "path",
+        "revision",
+        "enrichment"
+      ],
+      "title": "SavedNote",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "at": {
+      "format": "date-time",
+      "title": "At",
+      "type": "string"
+    },
+    "client": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Client"
+    },
+    "collection": {
+      "enum": [
+        "research",
+        "finance",
+        "life",
+        "shared"
+      ],
+      "title": "Collection",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model"
+    },
+    "notes": {
+      "items": {
+        "$ref": "#/$defs/SavedNote"
+      },
+      "title": "Notes",
+      "type": "array"
+    },
+    "operation_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Operation Hash",
+      "type": "string"
+    },
+    "payload_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Payload Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "status": {
+      "default": "saved",
+      "enum": [
+        "saved",
+        "unchanged"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "undo_of": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Undo Of"
+    }
+  },
+  "required": [
+    "id",
+    "operation_hash",
+    "payload_hash",
+    "collection",
+    "notes"
+  ],
+  "title": "SaveReceipt",
+  "type": "object"
+}

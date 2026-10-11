@@ -141,3 +141,11 @@ def test_export_matches_model(model: type[Record]) -> None:
     )
     path = Path(__file__).parents[1] / "schemas" / f"{name}-v{number}.json"
     assert json.loads(path.read_text()) == model.model_json_schema()
+
+
+def test_direct_save_schema_parity() -> None:
+    from cairn.saving.schemas import SCHEMAS
+
+    root = Path(__file__).parents[1] / "schemas"
+    for name, model in SCHEMAS.items():
+        assert json.loads((root / f"{name}.json").read_text()) == model.model_json_schema()
