@@ -1,128 +1,97 @@
-# Synthetic development
+# Native synthetic development
 
-Build the development image using `docker build --target development -t cairn-dev:local .`.
-The build context is allowlisted in `.dockerignore`; dependency acquisition occurs before
-any data processing. The base and Python dependencies are pinned by digest and `uv.lock`.
+Use macOS or Linux, Python 3.12+, `uv`, Git, and Node 24. No Docker daemon, images,
+worker activation, model account, or private inputs are needed. Native execution is
+not a filesystem or network sandbox. Work only with this public checkout and synthetic
+scratch; never use a real knowledge base, credentials, client settings, or schedules.
 
-Run tests with the processing profile:
+## Acquire dependencies
+
+Acquisition may use networking. Keep it separate from acceptance runs:
 
 ```sh
-docker run --rm --pull=never --network=none --read-only --cap-drop=ALL \
-  --security-opt=no-new-privileges --pids-limit=64 --memory=512m --cpus=1 \
-  --log-driver=none --no-healthcheck --restart=no \
-  --user=65532:65532 --tmpfs=/tmp:rw,noexec,nosuid,size=128m,mode=1777 \
-  --tmpfs=/test:rw,noexec,nosuid,size=512m,mode=1777 -e TMPDIR=/test \
-  cairn-dev:local
+UV_NO_CONFIG=1 UV_CACHE_DIR="$PWD/.cache/uv" uv sync --locked
+cd vendor/answer-me-with-html
+npm ci --ignore-scripts --userconfig /dev/null
 ```
 
-Use the same profile for `ruff check src tests scripts` and `mypy`. Development containers
-contain only public files and create synthetic workspaces in container-local temporary
-storage. Never mount a host home, private workspace, credentials, or the Docker socket.
-For editing/formatting, an explicit mount of only the public checkout is acceptable.
+Use npm from the Node 24 installation. HTML acceptance additionally requires native
+Chrome/Chromium, `ffmpeg`/`ffprobe`, and system speech synthesis (`say` on macOS or
+`espeak-ng` on Linux) for the retained generic renderer regression suite. Linux CI
+installs Noto fonts. Keep Chromium's sandbox enabled: do not use `--no-sandbox` or the
+retired container wrapper. Browser profiles and downloads are temporary synthetic data.
+`AM_CHROME` may select the browser executable.
 
-The physical large-library trial runs `python scripts/library_backup_trial.py` with
-`--memory=1g` and a 768MiB container-local `/tmp`; it preserves and restores 260MiB of
-synthetic blobs. This larger test scratch space is not an inference-worker permission.
-No GPU, model or agent account is required by contributor tests; the MCP server is
-driven by a synthetic stdio client and simulated agent outputs are labeled.
+Acquire Node 20, 22, and 24 separately for portable-package trials. Set
+`CAIRN_NODE20`, `CAIRN_NODE22`, and `CAIRN_NODE24` to their absolute executable paths;
+Node 24 on PATH supplies the last default. Use official architecture-specific Node
+archives verified against their release's `SHASUMS256.txt`, or your CI tool setup.
+No check downloads missing tools. A missing mandatory tool is a failure, not a skip.
 
-`scripts/export_schemas.py` generates schemas from the typed models. The schema parity
-test detects drift. Run it with only the public checkout writable.
+## Run acceptance
 
-Run `scripts/isolation_probe.py` inside this profile with the absolute path of a synthetic
-host canary that is deliberately not mounted. It attempts canonical/policy/approval
-writes, network and DNS access, and launches a hostile subprocess. A skipped or failed
-probe is a failed isolation gate. Delete the synthetic canary using ordinary owner
-maintenance when no longer needed; never use real private data as a canary.
+From the repository root:
 
-The host Docker launcher is trusted. A client that can control that launcher or the Docker
-daemon is outside the worker boundary. The application never mounts its daemon socket
-inside a worker. This boundary does not defend against a compromised host/engine.
-
-`examples/workspace.example.json` documents the machine-local configuration shape using
-fictional paths and synthetic mode. It is not a complete workspace or private approval.
-Use `cairn init /synthetic/workspace --synthetic` to create development fixtures. Direct-save
-installation needs no activation. Legacy fixtures use the historical APIs and validators.
-No actual owner paths, settings, runtime approvals or credentials belong in the checkout.
-
-## Presentation resources and portable package
-
-The Docker build acquires the pinned Node 24 image and locked npm dependencies in
-separate stages, then runs the application build with `RUN --network=none`. The
-worker receives just the Node binary and generated application runtime alongside
-Cairn. A checkout builds without a sibling renderer project or an installed skill.
-`check.sh` includes a real no-mount JSON renderer roundtrip and required isolation
-probes; a skip cannot satisfy these gates.
-
-For renderer regression tests and Chromium, acquire the separate development image
-as documented in `vendor/answer-me-with-html/docs/development-portable.md`. It pins
-Node 20.19.0, 22.14.0 and 24.0.0 for compatibility trials. Run processing with that
-document's offline, non-root, read-only profile, public checkout only, and executable
-synthetic scratch. Copy the vendor tree into scratch and link the acquired
-`/opt/dependencies/node_modules`. From the vendor directory run:
-
-```text
-node scripts/build-application.mjs /work/src/cairn/presentation/resources/application.mjs
-node scripts/check-isolation.mjs
-node --test --test-concurrency=2 --test-timeout=180000 test/*.test.js
+```sh
+bash scripts/check.sh
+bash scripts/check_html.sh
+# Requires a clean, locally committed checkout; writes a new dist/release-REVISION:
+bash scripts/release_check.sh
 ```
 
-Set `AM_E2E=1` and point `AM_CHROME` at the supplied isolated Chromium wrapper.
-`AM_BROWSER_OUTPUT` can select a public synthetic screenshot directory. The Cairn
-application browser test fails when Chromium is unavailable. Its Chromium wrapper
-is for the outer isolated container only. Capture and inspect light/dark screenshots
-at desktop and narrow widths, feedback downloads, print output and request logs.
+The common runner strips inherited application/credential environment variables, selects
+synthetic state/cache directories, disables update checks, and places a rejecting Docker
+sentinel on PATH. It never changes the invoking shell's home or settings. These controls
+reduce accidental configuration use; they do not enforce a host security boundary.
+The Python suite also overrides home discovery with a synthetic directory.
 
-Build twice and compare the application runtime byte for byte with the committed
-resource. The application uses whitespace minification to remove machine-dependent
-dependency path comments. The unchanged generic CLI's historical bundle includes esbuild dependency
-path comments: reproduce its original one-level build directory (`/build`) and
-`/opt/dependencies/node_modules` layout when comparing its exact checksum. A different
-working-directory depth changes those comments, not behavior. Never hand-edit a
-bundle to force equality.
+`check.sh` runs pytest (including schema parity), Ruff, mypy, the continuity packet,
+129-check synthetic gold set, and a physical 260MiB backup/restore trial. Outputs go to
+`dist/`. Legacy authorization fixtures are constructed only in tests; worker launch,
+activation, rebinding and updater installation/enabling return retirement errors.
+Existing installation retirement, archive validation and explicit schema-1–3 migration
+remain covered. Tests never change actual launchd/cron jobs or agent settings.
 
-After rebuilding, use the Cairn development container with only the public checkout
-writable to run:
+`check_html.sh` copies renderer source into scratch, builds application and generic
+bundles twice and compares them with the committed resources, runs renderer/browser
+regressions, compares two portable ZIPs, and exercises Node 20/22/24 with ordinary and
+space/non-ASCII installation paths. It captures desktop/narrow, light/dark, print,
+feedback, reduced-motion and offline-page evidence under `dist/`. Inspect screenshots
+when changing visual behavior. Local browser protocol traffic is expected; the page
+request checks reject external resource requests, not all host network activity.
 
-```text
-python scripts/html_provenance.py
-python scripts/package_html.py
-python scripts/package_html.py --output dist/cairn-html-repeat.zip
+`release_check.sh` explicitly acquires locked wheels and builds a native version-2
+release manifest. Its separate trial installs only from the wheelhouse using
+`--offline --no-index --require-hashes` in a fresh temporary environment. It verifies
+installed CLI/MCP saving, migration, connections in synthetic settings, HTML, recovery,
+backup/restore, undo and rejection of altered installed files. It neither installs a
+real user launcher nor migrates owner data. Version-1 release manifests remain readable
+and strict for historical validation; version 2 contains no worker image or activation.
+
+## Resource and compatibility limits
+
+Native subprocesses enforce deadlines, stdout/stderr budgets and cleanup of their owned
+process group. They do not confine a child that deliberately creates another session.
+PDF extraction limits input, pages, text, CPU time and elapsed time. Linux additionally
+limits address space to 512MiB; macOS has no equivalent address-space limit here.
+Failed parsing retains immutable original bytes and reports extraction failure.
+Node is optional for ordinary installed saves and required for requested HTML.
+
+## Maintaining generated files
+
+Run `.venv/bin/python scripts/export_schemas.py` after model changes; parity tests
+compare every exported schema. For renderer changes, build from the locked vendor
+snapshot with Node 24, then regenerate provenance:
+
+```sh
+(cd vendor/answer-me-with-html && node scripts/build.mjs)
+(cd vendor/answer-me-with-html && node scripts/build-application.mjs ../../src/cairn/presentation/resources/application.mjs)
+.venv/bin/python scripts/html_provenance.py
 ```
 
-Compare the two ZIPs. Extract one under synthetic scratch and run
-`node scripts/html_smoke.mjs EXTRACTED/cairn-html` in the renderer development image.
-This exercises the packaged renderer on all three Node versions with ordinary and
-space/non-ASCII install paths and without agent environment variables. The skill's
-runtime directory is assembled in the portable ZIP; the repository keeps
-one canonical resource copy under `src/cairn/presentation/resources`.
-
-The separate `html_packet_trial.py prepare --output DIRECTORY` exports an entirely
-synthetic packet and a checksummed synthetic backup. Supply a real agent's response
-as `response.json`, then run `html_packet_trial.py import --output DIRECTORY` in the
-same isolated profile. It verifies import and unchanged canonical files; a manual
-review of claims, numbers and uncertainty is still required. It cannot establish a
-local execution attestation or broad semantic quality.
-
-## Maintaining the renderer snapshot
-
-The licensed renderer source snapshot is pinned to upstream 0.5.0 commit
-`19b2b5b07676d3e65c83ca9a7b6621f300b54c92`, plus the maintained portable changes and
-application profile. `resources/provenance.json` records the maintained commit,
-every source hash, lockfile and generated runtime. Cairn vendors no agent skills; packets
-carry Cairn's own contracts.
-
-For updates, acquire public source/dependencies separately; compare upstream changes;
-retain offline defaults, explicit request routing and local modifications; synchronize
-the standalone maintained renderer source; rebuild; regenerate provenance and schemas;
-run regression, browser, isolation, release and package checks; then make the new
-package reviewable. Existing installed skills are separate and remain unchanged by
-workbench maintenance. Keep prior release bundles as rollback artifacts. Never add
-remotes, update installations, export private inputs or publish packages as an
-implicit part of this process.
-
-`bash scripts/check_html.sh` combines the renderer, required browser/isolation,
-rebuild and portable-runtime checks above once the separate renderer image and
-`cairn-dev:local` have been acquired. It mounts only the public checkout read-only
-and its synthetic `dist` output directory writable, and selects immutable local image
-IDs. It fails if the required image/browser or any mandatory check is unavailable.
+Both builders remove machine-dependent path comments. Never hand-edit generated bundles.
+Keep third-party licenses and source hashes. Cairn never installs or edits Finch or Quill.
+Historical container evidence stays in `docs/acceptance.md` and `docs/legacy`; it does not
+establish native acceptance. Record native test results separately, distinguishing
+protocol checks from actual agent trials and semantic quality. No remote, push, publish,
+private deployment or actual installation changes are part of contributor work.

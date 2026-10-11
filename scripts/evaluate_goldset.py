@@ -1,4 +1,4 @@
-"""Execute the public synthetic baseline inside the development container.
+"""Execute the public synthetic baseline in the native synthetic environment.
 
 The report distinguishes exact mechanical checks from semantic model evaluation.
 No owner data, real model, external client, network access, or subagent is used.
@@ -395,7 +395,7 @@ def evaluate(corpus_path: Path) -> dict:
             "Dated Maple revisions stay visible together; applicability is not inferred.",
             "Human review time and edits are unmeasured; synthetic approval is not acceptance.",
             "Zero observed violations covers only these defined cases, not universal security.",
-            "Separate isolation probes establish the processing container's network boundary.",
+            "Native process budgets do not establish a network or filesystem sandbox.",
             "Manual usefulness and private evaluation remain separate; no model ran.",
         ],
     }

@@ -21,7 +21,6 @@ packages = ["src/cairn"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["isolation: requires a local Docker daemon and the built worker image"]
 
 [tool.ruff]
 line-length = 100

@@ -2,49 +2,20 @@
 set -euo pipefail
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_dir"
+if [[ ! -x .venv/bin/python ]]; then
+  printf '%s\n' 'Acquire native dependencies first: UV_NO_CONFIG=1 uv sync --locked' >&2
+  exit 1
+fi
 if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
   printf '%s\n' 'Release preparation requires a clean, locally committed checkout.' >&2
   exit 1
 fi
 revision="$(git rev-parse HEAD)"
-docker build --target base -t cairn-worker:local "$repo_dir"
-worker_id="$(docker image inspect cairn-worker:local --format '{{.Id}}')"
-docker build --target release --build-arg "CAIRN_REVISION=$revision" \
-  --build-arg "CAIRN_WORKER_IMAGE=$worker_id" -t cairn-release:local "$repo_dir"
-image_id="$(docker image inspect cairn-release:local --format '{{.Id}}')"
 destination="$repo_dir/dist/release-$revision"
 if [[ -e "$destination" ]]; then
-  printf '%s\n' 'This release output already exists; preserve it and choose a new revision.' >&2
+  printf '%s\n' 'Release output exists; preserve it and choose a new revision.' >&2
   exit 1
 fi
-mkdir -p "$destination"
-export_id="$(docker create --network=none --read-only --entrypoint /bin/true "$image_id")"
-probe_dir=""
-cleanup() {
-  docker rm --force --volumes "$export_id" >/dev/null
-  if [[ -n "$probe_dir" ]]; then
-    rm -f "$probe_dir/canary" "$probe_dir/probe.json" "$probe_dir/result.json"
-    rmdir "$probe_dir"
-  fi
-}
-trap cleanup EXIT
-docker cp "$export_id:/opt/release/." "$destination"
-profile=(--rm --pull=never --network=none --read-only --cap-drop=ALL
-  --log-driver=none --no-healthcheck --restart=no --security-opt=no-new-privileges
-  --pids-limit=64 --memory=512m --cpus=1 --user=65532:65532
-  --tmpfs=/tmp:rw,noexec,nosuid,size=128m,mode=1777
-  --tmpfs=/runtime:rw,exec,nosuid,size=256m,mode=1777)
-docker run "${profile[@]}" "$image_id" > "$destination/trial.json"
-cat "$destination/trial.json"
-probe_dir="$(mktemp -d /tmp/cairn-release-canary.XXXXXX)"
-printf '%s\n' 'SYNTHETIC-RELEASE-CANARY' > "$probe_dir/canary"
-docker run "${profile[@]}" "$image_id" python scripts/probe_roundtrip.py make "$probe_dir/canary" > "$probe_dir/probe.json"
-worker_profile=(--rm --pull=never --network=none --log-driver=none --no-healthcheck
-  --restart=no --read-only --cap-drop=ALL --security-opt=no-new-privileges
-  --pids-limit=64 --memory=512m --cpus=1 --user=65532:65532
-  --tmpfs=/tmp:rw,noexec,nosuid,size=64m,mode=1777 --interactive)
-docker run "${worker_profile[@]}" "$worker_id" < "$probe_dir/probe.json" > "$probe_dir/result.json"
-cat "$probe_dir/probe.json" "$probe_dir/result.json" |
-  docker run "${profile[@]}" --interactive "$image_id" python scripts/probe_roundtrip.py verify "$worker_id" > "$destination/worker-profile.json"
-test "$(cat "$probe_dir/canary")" = 'SYNTHETIC-RELEASE-CANARY'
-cat "$destination/worker-profile.json"
+# Acquisition is explicit; only the subsequent installation/trial is offline.
+.venv/bin/python scripts/native_checks.py acquire-release "$destination" "$revision"
+exec .venv/bin/python scripts/native_checks.py release "$destination"

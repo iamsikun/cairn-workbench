@@ -19,6 +19,9 @@ connected agent performs semantic enrichment. Native extraction/rendering have r
 limits, not a claimed host sandbox. HTML is requested, tracks inputs, and preserves
 snapshots. Client metadata does not grant permissions or verify claims.
 
-Legacy formats and validations remain only for compatibility/migration. Historical
+Legacy formats and validations remain only for compatibility/migration. Docker workers,
+activation and managed update execution are retired; their entrypoints fail before side
+effects. Native release manifests use version 2 without worker-image metadata; version 1
+remains strict for historical approvals. Historical
 architecture is in legacy/architecture-v3.md. Migration is explicit and backed up;
 software installation does not implicitly convert data.

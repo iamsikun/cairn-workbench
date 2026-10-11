@@ -1,6 +1,6 @@
 # Synthetic baseline evaluation
 
-The retained [gold-set report](evidence/goldset.json) executes the public
+The historical [gold-set report](evidence/goldset.json) executes the public
 [corpus](../examples/goldset/corpus.json) through Cairn's actual capture, extraction,
 proposal, approval, apply, query, receipt, adoption, and context APIs. It uses temporary
 synthetic workspaces in the network-disabled development container. It does not access a
@@ -29,8 +29,9 @@ The defined disclosure checks observed **zero violations**: adding a denied reco
 not change authorized rankings/counts; denied titles, backlinks, query text, and context
 were withheld. Write checks observed **zero violations**: each apply changed exactly the
 approved canonical pages and preserved source/human bytes; query left durable files
-unchanged. This corpus does not prove universal security. The separate installed-worker
-and isolation trials exercise process/network boundaries and hostile subprocesses.
+unchanged. This corpus does not prove universal security. Historical worker/isolation evidence
+applies to the retired container profile; native checks test resource limits and
+child cleanup without claiming network or filesystem isolation.
 
 The workload produced **12 reviewed fixture proposals and 13 page changes**, with required
 review flags and diff-line counts retained per proposal. Human edits and review duration
@@ -53,10 +54,9 @@ external execution not independently observed, and the original receipt format n
 reviewer normalization. This does not change the gold report's zero-model metrics or
 establish general model quality. The owner's real evaluation set stays private.
 
-Run `python scripts/evaluate_goldset.py --output /tmp/goldset.json` inside the documented
-development container. `scripts/check.sh` runs it against the installed development image
-as part of acceptance. To retain a public report, use a container mounting only this
-public checkout and select `docs/evidence/goldset.json` as output. The report binds the
-corpus, evaluator, and source tree by SHA256 and records Python, SQLite, and platform.
-Random durable IDs and timestamps are normalized to fixture aliases in the result; timing
-samples naturally vary. Any failed mechanical check returns a nonzero exit status.
+Run `.venv/bin/python scripts/evaluate_goldset.py --output dist/native-goldset.json`
+in the documented native environment. `scripts/check.sh` includes this trial and
+keeps the retained historical report unchanged. The report binds the corpus, evaluator,
+and source tree by SHA256 and records Python, SQLite and platform. Random durable IDs
+and timestamps are normalized to fixture aliases; timing samples naturally vary.
+Any failed mechanical check returns a nonzero exit status.

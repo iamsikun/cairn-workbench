@@ -1,4 +1,4 @@
-"""Create a deterministic portable skill ZIP; run inside the development container."""
+"""Create a deterministic portable skill ZIP; run in the native synthetic environment."""
 
 import argparse
 import json

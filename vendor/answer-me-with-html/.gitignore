@@ -21,7 +21,7 @@ docs/demo/*.gif
 # Website build output (npm run site); GitHub Pages builds it in CI.
 site/dist/
 
-# Container-only dependency link and local verification output.
+# Local dependency link and verification output.
 node_modules
 validation-output/
 dist/

@@ -1,4 +1,4 @@
-"""Synthetic >256MiB corpus trial; run only in the documented development container."""
+"""Synthetic >256MiB corpus trial; run only in the documented native environment."""
 
 import tempfile
 from pathlib import Path

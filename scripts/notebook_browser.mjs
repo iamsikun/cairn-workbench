@@ -1,4 +1,4 @@
-// Mandatory direct-save browser checks, only inside the isolated renderer container.
+// Mandatory native browser checks with a fresh synthetic profile and Chrome sandbox.
 import assert from 'node:assert/strict';
 import {mkdirSync, mkdtempSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';

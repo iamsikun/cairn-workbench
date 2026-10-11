@@ -65,7 +65,7 @@ recorded failed approach. `owner-evidence.json` and `verification.json` let the 
 inspect the provenance and verify the artifact hash; they are not additional agent context.
 For a new trial, generate a separate pack using
 `python scripts/prepare_continuity.py --output /tmp/new-manual-handoff` inside the
-documented development container. Do not overwrite the retained pack: the recorded
+documented native synthetic environment. Do not overwrite the retained pack: the recorded
 manual response and evaluation are bound to its exact IDs and hash.
 
 For the manual trial:

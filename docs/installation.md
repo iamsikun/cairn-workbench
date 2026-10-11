@@ -2,7 +2,7 @@
 
 Install the locally built wheel with Python 3.12 or later, for example `uv tool install
 /path/to/cairn_workbench-0.4.0-py3-none-any.whl`. Initialization and ordinary saves need
-neither Docker nor Node. Node 20 or later is optional and needed only for requested HTML.
+neither Docker nor Node. Development and package checks are also native. Node 20 or later is optional and needed only for requested HTML.
 Finch and Quill remain independently installed skills in the user's agent.
 
 ```sh
@@ -74,3 +74,9 @@ A save never makes a scientific claim verified or a decision adopted.
 See [recovery](recovery.md), [presentation](notebook-html.md), and
 [migration](migration.md). Older reviewed-runtime instructions remain in
 [the historical installation guide](legacy/installation-v3.md).
+
+Legacy worker execution, runtime activation/rebinding and automatic update setup/run/enable
+are retired. Their commands report an error before execution. Historical release, workspace
+and authorization records remain readable. Use explicit migration and the documented
+`retire-installation` transition for an existing managed installation; package installation
+never alters schedules or migrates data automatically.

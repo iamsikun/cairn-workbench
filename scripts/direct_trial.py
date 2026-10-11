@@ -1,6 +1,6 @@
 """Installed-package trial with synthetic homes and a real subprocess MCP client.
 
-Run inside the offline container after installing the wheel. No agent model is invoked.
+Run in native synthetic scratch after installing the wheel. No agent model is invoked.
 """
 
 import json

@@ -1,7 +1,8 @@
 # Privacy and processing
 
 Keep knowledge bases outside development checkouts. Contributor tests use synthetic data
-inside the documented offline container, never actual homes, workspaces or credentials.
+in the documented native environment, never actual homes, workspaces or credentials.
+Native tests do not establish filesystem or network isolation.
 Original sources, observations, revisions, archives and HTML exports can contain private
 material and belong with the user's knowledge base.
 
@@ -15,5 +16,5 @@ No semantic model runs in the background. Native parsing and rendering use bound
 HTML forbids remote resources and source-supplied scripts. HTML snapshots are portable copies:
 the knowledge base cannot revoke a file already exported to someone else.
 
-Legacy grant/worker policies remain relevant only to legacy execution and archives; see
+Legacy execution is retired. Grant/worker policies remain readable for archive validation; see
 [legacy/privacy-v3.md](legacy/privacy-v3.md).

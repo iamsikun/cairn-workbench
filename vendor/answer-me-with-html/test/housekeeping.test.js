@@ -1,6 +1,6 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync, existsSync, readFileSync, symlinkSync, lstatSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync, existsSync, readFileSync, symlinkSync, lstatSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable, Writable } from 'node:stream';
@@ -228,7 +228,7 @@ test('cli clean: symlinked root directories are not counted; dry run and real ru
   assert.match(skipped.out, /0 KB in total: 0 pages, 0 videos, 0 KB voice-over cache/);
 
   // Make pages a normal directory again to confirm the printed count comes from the files actually cleaned.
-  rmSync(join(home, 'pages'));
+  unlinkSync(join(home, 'pages'));
   const normal = file('pages/old.html', 2048, 45);
   const dry = await run(['clean', '--all', '--dry-run']);
   assert.equal(dry.code, 0, dry.err);

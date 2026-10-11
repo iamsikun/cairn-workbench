@@ -1,6 +1,6 @@
 """Build a synthetic, owner-approved context pack for a later manual agent session.
 
-Run inside the development container with only the public checkout mounted. This
+Run in the native synthetic environment with synthetic inputs only. This
 script demonstrates the protocol, not a real second agent or model capability.
 """
 

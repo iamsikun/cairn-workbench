@@ -34,8 +34,9 @@ legacy maintenance commands require the explicit `cairn legacy` prefix.
 
 ## Development
 
-Use synthetic data only in the documented development container. Never mount a real
-home, private knowledge base, credentials or Docker socket. See docs/development.md.
+Use the documented native Python/uv environment with synthetic data. Docker is not
+needed for development, CI or releases. Never use a real home, private knowledge base,
+credentials or client settings. See [development](docs/development.md).
 Run bash scripts/check.sh for required checks and bash scripts/release_check.sh for
 installed-package evidence. Missing mandatory checks are not passes.
 

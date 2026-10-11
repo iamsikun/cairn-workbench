@@ -1,4 +1,4 @@
-"""Prepare/import a real agent's synthetic Quill response in an offline container.
+"""Prepare/import a real agent's synthetic Quill response in native synthetic scratch.
 
 This script never creates the agent response. Read the exported packet and provide
 response.json separately, then run import. No private workspace is involved.
@@ -30,7 +30,9 @@ def run(mode: str, output: Path) -> None:
     with tempfile.TemporaryDirectory(prefix="cairn-quill-trial-") as scratch:
         root = Path(scratch) / "synthetic-workspace"
         if mode == "prepare":
-            ws = Workspace.init(root, code_roots=[Path("/opt/cairn")], synthetic=True)
+            ws = Workspace.init(
+                root, code_roots=[Path(__file__).resolve().parents[1]], synthetic=True
+            )
             set_grant(
                 ws,
                 RouteGrant(
@@ -94,7 +96,7 @@ def run(mode: str, output: Path) -> None:
             ws = restore(
                 output / "state.zip",
                 root,
-                code_roots=[Path("/opt/cairn")],
+                code_roots=[Path(__file__).resolve().parents[1]],
                 expected_sha256=(output / "state.sha256").read_text().strip(),
                 synthetic=True,
             )

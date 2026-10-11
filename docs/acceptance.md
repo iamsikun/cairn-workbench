@@ -21,7 +21,13 @@ Executed milestone checks on macOS arm64, Python 3.12.12:
 - Native Chromium's application acceptance test passed with its sandbox enabled and a
   temporary profile. The restricted-shell browser attempt did not pass.
 
-Full native acceptance and installed-package results will be recorded below after execution.
+The complete `bash scripts/check.sh` native gate then passed: **400 tests**, Ruff,
+strict mypy across **125 source files**, **129/129 gold-set checks**, synthetic
+continuity preparation, and a **272,631,034-byte / 65-blob** backup/restore trial.
+The rejecting Docker sentinel was never invoked. Outputs are retained locally in
+`dist/native-goldset.json` and `dist/native-library-backup.json`.
+
+Full renderer and installed-package results will be recorded below after execution.
 All inputs/settings are synthetic; no owner workspace, real schedule, installed skill,
 Docker installation/images, or client configuration was changed. Historical evidence below
 is retained unchanged and does not establish native acceptance.

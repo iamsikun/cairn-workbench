@@ -1,4 +1,4 @@
-// Run inside the renderer development image after extracting the portable ZIP.
+// Native portability checks; CAIRN_NODE20/22/24 select acquired executable paths.
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {cpSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync} from 'node:fs';
@@ -18,7 +18,7 @@ for (const version of [20,22,24]) for (const name of ['skill', 'Skill Folder 日
     const job={bundle:{id:doc.bundle_id}};doc.bundle_hash=checksum(job.bundle);
     const packet=()=>JSON.stringify({job,input_hash:checksum(job),document:doc,document_hash:checksum(doc)});
     writeFileSync(input,packet());
-    const node=`/opt/node${version}/bin/node`,cli=join(installed,'scripts/render.mjs');
+    const node=process.env[`CAIRN_NODE${version}`],cli=join(installed,'scripts/render.mjs');
     const run=()=>execFileSync(node,[cli,'--input',input,'--output',output],{env:{PATH:'/usr/bin:/bin'},encoding:'utf8'});
     run(); const first=readFileSync(output);run();assert.deepEqual(readFileSync(output),first);
     assert.equal(readdirSync(work).filter(p=>p.endsWith('.html')).length,1);

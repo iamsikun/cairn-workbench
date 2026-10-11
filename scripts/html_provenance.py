@@ -1,4 +1,4 @@
-"""Record checked-in renderer provenance after the isolated source build."""
+"""Record checked-in renderer provenance after the reproducible native source build."""
 
 import json
 from hashlib import sha256
@@ -31,8 +31,7 @@ value = {
         "generated_sha256": sha256((resources / "application.mjs").read_bytes()).hexdigest(),
         "build": "node scripts/build-application.mjs OUTPUT (in vendor directory)",
     },
-    "worker_node_image": "node:24-bookworm-slim@sha256:"
-    "d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20",
+    "build_runtime": "Node 24; locked npm dependencies; native build",
 }
 (resources / "provenance.json").write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
 (resources / "THIRD_PARTY_LICENSES").write_bytes(

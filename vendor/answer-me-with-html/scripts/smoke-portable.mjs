@@ -1,4 +1,4 @@
-// Run inside the documented isolated development container, after building the bundle.
+// Native portability checks; CAIRN_NODE20/22/24 select acquired executable paths.
 import assert from 'node:assert/strict';
 import { cpSync, mkdtempSync, readFileSync, writeFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -11,7 +11,7 @@ for (const version of [20, 22, 24]) for (const name of ['plain', 'Skill Folder æ
   const work = mkdtempSync(join(tmpdir(), 'portable-smoke-'));
   try {
     const installed = join(work, name); cpSync(join(root, 'skills/answer-me-with-html'), installed, { recursive: true });
-    const node = `/opt/node${version}/bin/node`, cli = join(installed, 'scripts/am.mjs');
+    const node = process.env[`CAIRN_NODE${version}`], cli = join(installed, 'scripts/am.mjs');
     const env = { PATH: '/usr/bin:/bin', TMPDIR: work, AM_HOME: join(work, 'synthetic-state') };
     const run = (...args) => execFileSync(node, [cli, ...args], { cwd: work, env, encoding: 'utf8' });
     writeFileSync(join(work, 'draft with spaces.md'), '---\nlang: en\n---\n## A Finding\n[Source](https://example.org/report)\n## B Diagram\n```flow\nReader -> Answer\n```');

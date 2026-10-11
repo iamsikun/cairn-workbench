@@ -1,7 +1,7 @@
 """Build acquisition phase only: public source/locked artifacts, never private inputs.
 
-Run in the development image with network only during this acquisition phase. The
-separate release trial installs and exercises the resulting bundle with no network.
+Run with locked native build tools. This acquisition phase may use networking.
+The separate release trial installs with offline/no-index flags and synthetic inputs.
 """
 
 import argparse
@@ -23,7 +23,7 @@ from packaging.tags import sys_tags
 from packaging.utils import parse_wheel_filename
 
 from cairn.records.models import canonical, digest
-from cairn.records.release import ReleaseManifest, WheelArtifact
+from cairn.records.release import NativeReleaseManifest, WheelArtifact
 from cairn.storage.release import current_platform, normalized_name
 
 
@@ -50,7 +50,7 @@ def describe_wheel(file: Path) -> WheelArtifact:
         )
 
 
-def build(output: Path, revision: str, worker_image: str) -> None:
+def build(output: Path, revision: str) -> None:
     if output.exists():
         raise ValueError("release output must be new")
     output.mkdir(parents=True)
@@ -120,7 +120,7 @@ def build(output: Path, revision: str, worker_image: str) -> None:
         Path("uv.lock"),
         *sorted(p for p in Path("src").rglob("*") if p.is_file() and "__pycache__" not in p.parts),
     ]
-    manifest = ReleaseManifest(
+    manifest = NativeReleaseManifest(
         code_revision=revision,
         source_hash=digest(
             canonical({str(path): digest(path.read_bytes()) for path in source_files})
@@ -130,15 +130,12 @@ def build(output: Path, revision: str, worker_image: str) -> None:
         python_implementation=platform.python_implementation(),
         python_executable_hash=digest(Path(sys.executable).resolve().read_bytes()),
         platform=current_platform(),
-        worker_image=worker_image,
         artifacts=artifacts,
         bootstrap_files=bootstrap_files,
         adapters={
             "extraction": "1",
-            "fake_provider": "fake-v1",
-            "draft_packet": "1",
-            "library_catalog": "1",
-            "weekly_feed": "1",
+            "direct_save": "4",
+            "mcp_tools": "6",
             "html_views": "cairn-view-v1",
             "writing_contract": "cairn-1",
             "reading_contract": "cairn-1",
@@ -167,6 +164,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--revision", required=True)
-    parser.add_argument("--worker-image", required=True)
     args = parser.parse_args()
-    build(args.output, args.revision, args.worker_image)
+    build(args.output, args.revision)
