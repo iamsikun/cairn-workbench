@@ -144,6 +144,18 @@ def retire(
                 ):
                     raise Conflict("could not verify that the scheduled updater is unloaded")
                 owner.remove(plist)
+            # A loaded launchd job can outlive a deleted plist. Absence of the file
+            # is not evidence that scheduling has stopped.
+            unloaded = run(
+                ["launchctl", "print", f"gui/{os.getuid()}/{LABEL}"],
+                capture_output=True,
+                check=False,
+                timeout=30,
+            )
+            if unloaded.returncode == 0 or b"Could not find service" not in unloaded.stderr:
+                raise Conflict(
+                    "scheduled updater is not verified absent; reconcile its launchd job"
+                )
         else:
             existing = run(["crontab", "-l"], capture_output=True, check=False, timeout=30)
             if existing.returncode and b"no crontab" not in existing.stderr.lower():

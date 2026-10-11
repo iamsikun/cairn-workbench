@@ -129,3 +129,18 @@ def test_unknown_launcher_and_scheduler_failure_preserve_recovery(tmp_path: Path
         ]
         == "retired"
     )
+
+
+def test_missing_plist_is_not_evidence_a_loaded_job_was_removed(tmp_path: Path):
+    home, config, owner, shim, run = setup(tmp_path)
+    with pytest.raises(Conflict, match="not verified absent"):
+        retire(home.root, owner, shim, Path("/synthetic/new/python"), platform="darwin", run=run)
+    assert not (home.root / "retired.json").exists()
+    assert not home.config().enabled
+    run.loaded = False
+    assert (
+        retire(home.root, owner, shim, Path("/synthetic/new/python"), platform="darwin", run=run)[
+            "status"
+        ]
+        == "retired"
+    )

@@ -127,6 +127,7 @@ def trial(bundle: Path) -> None:
     config_path = workspace / "workspace.json"
     legacy_config = json.loads(config_path.read_bytes())
     legacy_config.pop("record_schema_version")
+    legacy_config.pop("code_repository", None)
     legacy_config["schema_version"] = 1
     config_path.write_bytes(canonical(legacy_config))
     legacy_bytes = config_path.read_bytes()
