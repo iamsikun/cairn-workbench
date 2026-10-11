@@ -1,5 +1,56 @@
 # Acceptance evidence
 
+## Paper notes, connected notebooks and synchronized HTML — final verification (2026-10-10)
+
+Implementation and installed-release revision: `1847e686c4e0ae46a0b6304c5e710a9ec638901a`
+on local branch `codex/paper-notebooks`. No publication, private workspace activation,
+installed-skill changes or agent-configuration changes were performed.
+
+- `bash scripts/check.sh`: **364 passed**, schema parity, Ruff and strict mypy
+  (102 source files); all **13 isolation checks** in both development and worker
+  images; no-mount extraction and HTML/Markdown round trips; bibliography, receipt,
+  finance and life extraction; **129/129 gold-set checks**; real-engine lifecycle
+  and worker/child removal. No isolation check was skipped.
+- `bash scripts/check_html.sh`: **787 passed, 2 skipped, 0 failed** out of 789
+  renderer tests. The skips are the generic CLI's other-user PID case (PID 1 is
+  signalable in this container) and the generic website check (no prebuilt site).
+  Neither is the mandatory Cairn browser or isolation check. Repeated application
+  builds and portable ZIPs matched. The application checksum also matches the
+  independent Docker build. [Node trials](evidence/paper-notebooks-node-smoke.json)
+  passed on 20.19.0, 22.14.0 and 24.0.0 with ordinary and space/non-ASCII paths.
+- Mandatory Chromium checks passed for Markdown tables/code, escaped HTML, blocked
+  image loads/executable links, evidence, keyboard focus, themes, narrow/desktop
+  layout, feedback and print. [Browser evidence](evidence/paper-notebooks-browser.json)
+  records **zero external requests and zero script exceptions**. Application light
+  and dark screenshots were visually inspected; generated artifacts are under
+  `dist/browser-html/application/` in this checkout.
+- `bash scripts/release_check.sh`: [offline installed trial](evidence/paper-notebooks-release.json)
+  passed with 15 distributions and 929 verified files. It uses the installed MCP
+  server to capture, propose a paper and topic together, restore, accept, render,
+  revise the same note and verify the notebook HTML refresh. Tampered package,
+  renderer and contract checks passed, as did the final pinned-worker
+  [13-check isolation probe](evidence/paper-notebooks-worker-profile.json).
+  An earlier installed trial passed but its final probe lost an image reference
+  when build scripts shared Docker tags. It was not counted as a passing gate;
+  the complete release check was rerun sequentially and passed.
+- The repository HTML skill passed the skill-creator frontmatter validator inside
+  the isolated development container. Installed skills were not edited.
+
+Behavioral coverage is in `test_notebook_workflow.py`, `test_live_html.py` and the
+existing MCP/Finch/Quill suites: six original failures, current grants and narrowed
+scopes, source versions and identity collisions, project capture/revisions,
+two-paper integration, stale/ambiguous targets, immutable exchanges, fresh-session
+retrieval after rebuilding indexes, requested HTML only, accepted/editor updates,
+changed/unrelated dependencies, failed rendering, first and later interrupted
+replacement, output tampering, and inactive registrations after both restore paths.
+
+**Real-host workflow validation remains separate and unperformed.** No actual host
+agent or remote model was connected, no private corpus was read, and no semantic
+quality claim follows from deterministic answers. The trial exercised the installed
+software through a subprocess MCP client on synthetic data. Owner approval remains
+required; topic classification is the host agent's proposed choice, and Markdown
+remains canonical. There is no background agent, classifier service or watcher.
+
 ## Connected paper notes and opt-in HTML — implementation milestone (2026-10-10)
 
 The new synthetic notebook and HTML regressions passed **17 tests** in the documented
