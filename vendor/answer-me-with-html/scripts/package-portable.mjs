@@ -1,4 +1,4 @@
-// Run after rebuilding, inside the development container. No agent integration required.
+// Run after rebuilding, in native synthetic scratch. No agent integration required.
 import { readFileSync, writeFileSync, copyFileSync, readdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';

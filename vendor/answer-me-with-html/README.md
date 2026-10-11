@@ -16,6 +16,6 @@ Authoring, language, video, and maintenance references live beside the skill. Up
 
 ## Development
 
-Read [development and isolation](docs/development-portable.md). Acquire public dependencies separately; execute contributor code in an isolated container with synthetic data and no external network, credentials, private mounts, or Docker socket. Run the upstream suite plus portable regressions, Node 20/22/24 package smoke tests, browser checks, snapshot review, and rebuild consistency checks. Record failures and skips honestly.
+Read [native development](docs/development-portable.md). Acquire public dependencies separately; execute contributor code with native tools, synthetic data and temporary settings. No Docker is used; native execution is not a filesystem or network sandbox. The retained acceptance report describes the historical container profile. Run the upstream suite plus portable regressions, Node 20/22/24 package smoke tests, browser checks, snapshot review, and rebuild consistency checks. Record failures and skips honestly.
 
 The original source, license, examples, site, and tests are retained. The upstream history imported into this standalone local repository has no configured remote. Legacy marketing/reference documents are historical; the maintained skill references govern this edition.
