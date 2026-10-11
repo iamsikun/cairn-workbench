@@ -1,36 +1,65 @@
 # Acceptance evidence
 
-## Native Docker removal (2026-10-11; implementation in progress)
+## Native Docker removal (2026-10-11; macOS gates passed, not released)
 
-Docker execution, worker activation and managed updater installation/enabling are retired.
-Historical worker profiles remain data for approval validation. Native adapters enforce
-process deadlines and stream budgets and clean up their owned process groups; they do
-not establish network or filesystem isolation. Linux PDF extraction retains its address-
-space limit; macOS uses CPU/input/output/deadline budgets without that memory limit.
+Docker execution, worker activation/rebinding and managed updater installation/enabling
+are retired. Historical worker profiles remain data for strict approval validation;
+legacy readers, migration, backups, inspection and installation retirement remain supported.
+Native adapters enforce process deadlines and stream budgets and clean up their owned
+process groups. They do not establish network or filesystem isolation. Linux PDF
+extraction retains its address-space limit; macOS uses CPU/input/output/deadline budgets
+without that memory limit.
 
-Executed milestone checks on macOS arm64, Python 3.12.12:
+Executed on macOS arm64, Python **3.12.12**, with a rejecting Docker sentinel on PATH:
 
-- 90 release/schema/updater/upgrade-chain/installation-transition tests passed.
-- 30 activation/archive, discovery/catalog, presentation and release tests passed.
-- 12 legacy draft/cached-extraction tests passed after preserving the cached read path.
-- 9 native process/retired-worker tests passed, including descendant cleanup after the
-  leader exits. The restricted shell denied `ps`; the complete targeted rerun passed
-  outside that shell, inspecting only synthetic child PIDs.
-- 3 configured/missing-Node and failed-parser preservation tests passed.
-- Ruff and strict mypy passed (125 source files).
-- Native Chromium's application acceptance test passed with its sandbox enabled and a
-  temporary profile. The restricted-shell browser attempt did not pass.
+- `bash scripts/check.sh` passed: **400 tests**, schema parity, Ruff, strict mypy across
+  **125 source files**, synthetic continuity preparation, [129/129 gold-set checks](evidence/native-goldset.json),
+  and a [272,631,034-byte / 65-blob backup/restore trial](evidence/native-library-backup.json).
+  Failure-mode coverage includes subprocess timeout, stdout/stderr overflow, closed pipes,
+  diagnostic redaction, descendant cleanup after the leader exits, configured/missing Node,
+  and failed PDF parsing with original bytes retained. Retirement tests assert no network,
+  worker launch, settings write or schedule creation. Save/retry/recovery/undo, collection
+  boundaries, legacy validation, schemas 1–3 migration and installation retirement passed.
+- `bash scripts/check_html.sh` passed: **788 passed, 1 skipped, 0 failed** out of 789
+  renderer tests. The only skip is the optional prebuilt upstream marketing site
+  (`site/dist` absent); no mandatory browser or portability gate was skipped.
+  Native Chromium **155.0.8059.39** ran with its sandbox enabled and temporary profiles.
+  [Notebook/scenario checks](evidence/native-browser.json) and [application feedback checks](evidence/native-application-browser.json)
+  passed: desktop/narrow, light/dark, print, reduced motion, deterministic temporary
+  controls and no external page-resource requests. Narrow notebook and desktop scenario
+  screenshots were visually inspected. Application and generic bundles rebuilt twice
+  identically and matched the committed resources. Two portable ZIPs matched with SHA256
+  `f7b590e41566c78c426b712a1cc229632e922bde84055fe622402d1f01f2ba70`.
+  [Cairn](evidence/native-node-smoke.json) and [generic renderer](evidence/native-generic-node-smoke.json)
+  portability passed on Node **20.19.0**, **22.14.0**, and **24.12.0**, including paths
+  containing spaces and non-ASCII characters.
+- `bash scripts/release_check.sh` passed again after final provenance regeneration.
+  The [fresh offline installed trial](evidence/native-release.json) verified **15
+  distributions / 954 package files** against a version-2 manifest. Installed CLI,
+  six-tool stdio, synthetic connection settings, saving/retry, legacy migration,
+  native HTML, backup/restore and undo passed. Altered package files, renderer and
+  reading contract, editable installation, and an unreviewed `.pth` were rejected.
+  Legacy activation failed before creating the requested workspace. Installation used
+  offline/no-index/hash-checking flags; no network-isolation claim is made.
+- All three entrypoints completed with **zero Docker invocations**. Separate
+  [missing-tool checks](evidence/native-missing-tools.json) confirmed actionable failures
+  for an absent native environment in each entrypoint and absent Node in HTML checks.
 
-The complete `bash scripts/check.sh` native gate then passed: **400 tests**, Ruff,
-strict mypy across **125 source files**, **129/129 gold-set checks**, synthetic
-continuity preparation, and a **272,631,034-byte / 65-blob** backup/restore trial.
-The rejecting Docker sentinel was never invoked. Outputs are retained locally in
-`dist/native-goldset.json` and `dist/native-library-backup.json`.
+Final implementation/package revision: `ebfa8e4aa00598e5866d12a0be5c42fabe81017a`,
+on local branch `codex/remove-docker`. The following evidence commit changes documentation
+only. The bundle is retained locally under `dist/release-ebfa8e4aa00598e5866d12a0be5c42fabe81017a/`.
+[Native acceptance metadata](evidence/native-acceptance.json) records log hashes and limits.
+Linux/macOS CI is configured; **Linux was not executed in this session**. Actual
+Claude Code/Codex trials, semantic quality and real managed-installation transitions
+remain unverified.
 
-Full renderer and installed-package results will be recorded below after execution.
-All inputs/settings are synthetic; no owner workspace, real schedule, installed skill,
-Docker installation/images, or client configuration was changed. Historical evidence below
-is retained unchanged and does not establish native acceptance.
+Earlier restricted-shell attempts could not inspect owned child PIDs or run browser
+processes and were not counted as passes. The complete gates passed after running those
+synthetic checks outside that shell. An initial macOS renderer fixture used directory
+removal on a symlink; it was corrected to unlink the symlink, then the full gate passed.
+All inputs/settings are synthetic; no owner workspace, real schedule, Finch/Quill skill,
+Docker installation/images or client configuration was changed, and nothing was published.
+Historical evidence below is retained unchanged and does not establish native acceptance.
 
 
 ## Direct-save restructuring (2026-10-11; automated gates passed, not released)
