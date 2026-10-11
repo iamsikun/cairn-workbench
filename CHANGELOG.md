@@ -9,6 +9,32 @@ increases.
 - **Minor** releases add commands, workflows or guidance.
 - **Patch** releases fix defects without changing behavior otherwise.
 
+## 0.3.0 — 2026-10-10
+
+- **Evolving paper notes and connected topics.** Follow-up readings revise the same
+  paper note, with each exchange preserved as immutable provenance. Topic notes
+  (notebooks) are ordinary Markdown concept pages. Agents can propose a paper note
+  and related topic updates together, with stale-update checks and one owner
+  acceptance. Evidence and page tools expose authorized existing notes and links.
+- **Requested HTML stays synchronized.** Markdown is the source of truth. Explicit
+  chat requests use an owner-configured `--html-root`; owners can also run
+  `cairn view page RECORD_ID --format html --output PATH`. Views include directly
+  linked paper notes and refresh after accepted Markdown changes. `cairn view sync`
+  incorporates editor changes and retries failures. Output conflicts preserve the
+  existing file; restored registrations stay inactive until rebound by the owner.
+- **Reliable capture and writing.** Large papers support bounded citation selections
+  without truncating evidence. Content-based capture identity deduplicates renamed
+  files while separating filename collisions; explicit identity/version supports
+  revisions. Context includes project Markdown and attached concept content, and
+  project membership carries through capture, new notes and revisions.
+- **Current authorization at retrieval.** Search filters the corpus before ranking.
+  Pending proposals and review recheck current scope and route grants, including
+  linked records, and record export receipts without exposing inaccessible counts.
+- Existing records, proposals, receipts and snapshot views remain readable. The
+  six record types and owner approval boundary are unchanged. HTML remains optional;
+  there is no background agent, classifier service or filesystem watcher. Validation
+  used synthetic data only; see [acceptance evidence](docs/acceptance.md).
+
 ## 0.2.0 — 2026-10-10
 
 This release removes commands and changes the agent boundary; read it before

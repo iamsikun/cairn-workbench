@@ -13,7 +13,7 @@ and is never committed. The Python package and the command are both named `cairn
 
 ## Status
 
-The current release is 0.2.0 on the `stable` channel. Reference acceptance for
+The current release is 0.3.0 on the `stable` channel. Reference acceptance for
 milestones M0–M3 is complete and recorded in [acceptance tracking](docs/acceptance.md),
 measured against the [build plan](CAIRN_BUILD_PLAN.md). All of that evidence comes from
 synthetic data; see also the [evaluation report](docs/evaluation.md) and
@@ -65,9 +65,10 @@ rebuilt from the canonical records. The [architecture](docs/architecture.md) and
   you have it), writes pages (with Quill, if you have it) and drafts pages from sources;
   each result is staged as a proposal for your review. Cairn never edits or installs
   those skills. See [agent integration](docs/agent-integration.md).
-- **Connect papers to notebooks.** Follow-up readings revise one paper note while
-  preserving each exchange separately. Topic notebooks are ordinary concept pages;
-  the agent proposes note and notebook updates together for one owner acceptance.
+- **Connect paper notes and topic notes.** Follow-up readings revise one paper note
+  while preserving each exchange separately. A topic note (or notebook) is an ordinary
+  Markdown concept page connecting papers and broader topics. The agent proposes
+  related updates together for one owner acceptance.
 - **Review and accept.** `cairn note` makes your own notes searchable at once,
   `cairn inbox` lists what awaits you, and `cairn accept` validates, approves and
   applies proposals in one step you confirm at your terminal. See [Writing](docs/writing.md).
