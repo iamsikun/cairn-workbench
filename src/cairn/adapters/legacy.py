@@ -39,5 +39,3 @@ def historical_worker_profile(image: str, *, entrypoint: str | None = None) -> l
     if entrypoint:
         args += ["--entrypoint", entrypoint]
     return [*args, image]
-
-
