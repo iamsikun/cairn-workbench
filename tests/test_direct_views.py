@@ -145,3 +145,18 @@ def test_feedback_is_attributed_and_retry_safe(tmp_path: Path):
         len(current["observations"]) == 1 and "architecture" in current["observations"][0]["text"]
     )
     assert current["markdown"].startswith("# Intuition")
+
+
+def test_native_document_path_has_no_proposal_or_policy_execution_imports(tmp_path: Path):
+    import subprocess
+    import sys
+
+    program = """
+import sys
+from cairn.saving.mcp import TOOLS
+from cairn.saving.views import render
+assert len(TOOLS) == 6
+assert 'cairn.proposals.service' not in sys.modules
+assert 'cairn.storage.activation' not in sys.modules
+"""
+    subprocess.run([sys.executable, "-c", program], check=True, timeout=15)

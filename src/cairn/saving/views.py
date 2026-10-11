@@ -11,9 +11,14 @@ from typing import Any, Literal
 from pydantic import Field
 
 from cairn.errors import CairnError, Conflict, Denied
-from cairn.presentation.models import EvidenceItem, ViewAsset, ViewBlock, ViewDocument, ViewSection
-from cairn.presentation.render import run_renderer, validate_html
-from cairn.presentation.service import RESOURCE
+from cairn.presentation.document import (
+    EvidenceItem,
+    ViewAsset,
+    ViewBlock,
+    ViewDocument,
+    ViewSection,
+)
+from cairn.presentation.native import RESOURCE, run_renderer, validate_html
 from cairn.records.models import ID, Digest, Domain, EvidenceRef, Model, canonical, digest, new_id
 from cairn.saving.models import NoteChange, Observation, SaveNote, SaveReceipt
 from cairn.saving.workspace import Book

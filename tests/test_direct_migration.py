@@ -149,3 +149,22 @@ def test_sources_pending_proposals_and_history_remain_recoverable(ws, tmp_path):
     assert book.fs.read(source_note.source.original_blob) == document.read_bytes()
     assert not any(r.type != "source" for _, r, _ in book.records("research").values())
     assert all_refs(source) == []
+
+
+def test_library_inventory_and_reading_marks_preserved(ws, tmp_path):
+    from test_library_catalog import library, pdf
+
+    from cairn.library.catalog import mark, scan
+
+    root = library(ws, tmp_path)
+    (root / "Example Journal" / "paper.pdf").write_bytes(pdf("Synthetic library paper"))
+    identity = scan(ws).added[0]
+    mark(ws, identity, "read", scope="research")
+    before = inventory(ws.fs)
+    migrate(ws.root, tmp_path / "library-migration.zip")
+    book = Book(ws.root)
+    for path, original in before.items():
+        if path != "workspace.json":
+            assert book.fs.read(path) == original
+    record = book.record(identity, "research")[1]
+    assert record.legacy_path and book.fs.read(record.legacy_path) == before[record.legacy_path]

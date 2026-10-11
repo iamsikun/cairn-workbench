@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from urllib.parse import quote
 
-from cairn.adapters.isolation import bounded_process, invoke_worker
-from cairn.errors import Blocked, CairnError, Conflict, Denied
+from cairn.adapters.isolation import invoke_worker
+from cairn.errors import Blocked, Conflict, Denied
 from cairn.presentation.models import (
     CatalogItem,
     CatalogPayload,
@@ -22,7 +22,9 @@ from cairn.presentation.models import (
     ViewDocument,
     ViewSection,
 )
-from cairn.presentation.service import RESOURCE, renderer_identity
+from cairn.presentation.native import run_renderer as run_renderer
+from cairn.presentation.native import validate_html as validate_html
+from cairn.presentation.service import renderer_identity
 from cairn.records.models import EvidenceRef, canonical, digest
 from cairn.storage.workspace import Workspace
 
@@ -353,50 +355,6 @@ def _paper(row: CatalogItem) -> ViewBlock:
         ],
         url="https://doi.org/" + quote(row.doi, safe="/") if row.doi else None,
     )
-
-
-def run_renderer(doc: ViewDocument) -> bytes:
-    status, html = bounded_process(
-        ["node", str(RESOURCE / "application.mjs")],
-        canonical(doc),
-        timeout=60,
-        stdout_limit=32 * 1024 * 1024,
-        env={"PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin", "LANG": "C.UTF-8"},
-    )
-    if status:
-        raise CairnError("application renderer rejected document")
-    validate_html(html, doc)
-    return html
-
-
-def validate_html(html: bytes, doc: ViewDocument) -> None:
-    # Output is bound to a pinned executable and then checked again by the owner.
-    # Browser/DOM policy tests exercise the complete generated document.
-    from html.parser import HTMLParser
-
-    class Check(HTMLParser):
-        csp = False
-
-        def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-            values = dict(attrs)
-            if tag in {"iframe", "object", "embed", "base"}:
-                raise Denied("renderer returned an embedded document")
-            if any(k.startswith("on") or k in {"srcdoc", "action", "formaction"} for k in values):
-                raise Denied("renderer returned active attributes")
-            if tag == "meta" and values.get("http-equiv") == "Content-Security-Policy":
-                content = values.get("content") or ""
-                self.csp = "connect-src 'none'" in content and "default-src 'none'" in content
-            if values.get("src") and not str(values["src"]).startswith("data:image/"):
-                raise Denied("renderer returned a resource dependency")
-
-    check = Check()
-    check.feed(html.decode())
-    if (
-        not check.csp
-        or doc.bundle_hash.encode() not in html
-        or not html.startswith(b"<!doctype html>")
-    ):
-        raise Denied("invalid renderer envelope")
 
 
 def render_bundle(

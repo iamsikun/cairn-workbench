@@ -13,6 +13,11 @@ profile=(--rm --pull=never --network=none --read-only --cap-drop=ALL
   --mount "type=bind,source=$repo_dir/dist,target=/work/dist")
 docker run "${profile[@]}" --workdir /work -e PYTHONPATH=/work/src "$development_image" \
   sh -c 'python scripts/package_html.py && python scripts/package_html.py --output dist/cairn-html-repeat.zip && cmp dist/cairn-html.zip dist/cairn-html-repeat.zip'
+docker run "${profile[@]}" --workdir /work -e PYTHONPATH=/work/src "$development_image" \
+  python scripts/notebook_demo.py --output /work/dist/notebook-demo
+docker run "${profile[@]}" --workdir /work \
+  -e AM_CHROME=/work/vendor/answer-me-with-html/scripts/chromium-isolated.sh "$renderer_image" \
+  node scripts/notebook_browser.mjs /work/dist/notebook-demo
 docker run "${profile[@]}" --tmpfs=/build:rw,exec,nosuid,size=1g,mode=1777 \
   -e AM_E2E=1 -e AM_BROWSER_OUTPUT=/work/dist/browser-html \
   -e AM_CHROME=/build/scripts/chromium-isolated.sh "$renderer_image" sh -c '
