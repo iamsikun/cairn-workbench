@@ -9,6 +9,7 @@ import typer
 
 from cairn import __version__
 from cairn.cli.agent import register as register_agent
+from cairn.cli.code_source import register as register_code_source
 from cairn.cli.commands import guarded, register
 from cairn.cli.domains import register as register_domains
 from cairn.cli.library import register as register_library
@@ -33,6 +34,7 @@ register_library(app)
 register_presentation(app)
 register_update(app)
 register_agent(app)
+register_code_source(app)
 
 
 @app.command()
@@ -45,7 +47,13 @@ def version() -> None:
 @guarded
 def init(
     workspace: Annotated[Path, typer.Option()],
-    code_root: Annotated[Path, typer.Option()],
+    code_root: Annotated[
+        Path | None, typer.Option(help="A local Cairn checkout to keep disjoint (optional).")
+    ] = None,
+    repository: Annotated[
+        str | None,
+        typer.Option(help="Cairn's code repository; managed installs default to the updater's."),
+    ] = None,
     synthetic: Annotated[bool, typer.Option()] = False,
     worker_image: Annotated[str | None, typer.Option()] = None,
     release: Annotated[Path | None, typer.Option()] = None,
@@ -78,9 +86,13 @@ def init(
             from cairn.errors import Denied
 
             raise Denied("automatic updates need a private workspace and `cairn update setup`")
+        updater = home.config()
+        if repository is None and updater is not None:
+            repository = updater.repository
         ws = Workspace.init(
             workspace,
-            code_roots=[code_root],
+            code_roots=[code_root] if code_root else [],
+            code_repository=repository,
             synthetic=synthetic,
             release=release,
             release_sha256=release_sha256,

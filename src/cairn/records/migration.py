@@ -10,7 +10,7 @@ from cairn.records.models import ID, Digest, Model
 
 class MigrationPlan(Model):
     schema_version: Literal[1] = 1
-    operation: Literal["workspace_v1_to_v2"] = "workspace_v1_to_v2"
+    operation: Literal["workspace_v1_to_v2", "workspace_v2_to_v3"] = "workspace_v1_to_v2"
     id: ID
     workspace_id: ID
     input_hashes: dict[str, Digest] = Field(max_length=10000)

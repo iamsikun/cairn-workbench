@@ -19,7 +19,7 @@ from cairn.records.runtime import ReviewAcknowledgement
 from cairn.storage.activation import prepare_activation
 from cairn.storage.backup import DURABLE_DIRS, BackupManifest, _paths, validate_payloads
 from cairn.storage.files import MAX_FILE_BYTES, RootFS, disjoint, sync
-from cairn.storage.workspace import Workspace, check_roots
+from cairn.storage.workspace import Workspace, check_roots, with_code_source
 
 MAX_TOTAL = 1024**4
 MAX_MEMBERS = 1_000_000
@@ -175,7 +175,8 @@ def restore(
     archive_path: Path,
     destination: Path,
     *,
-    code_roots: list[Path],
+    code_roots: list[Path] | None = None,
+    code_repository: str | None = None,
     expected_sha256: str | None = None,
     synthetic: bool = False,
     release: Path | None = None,
@@ -183,7 +184,7 @@ def restore(
     statement: str | None = None,
     acknowledgements: set[ReviewAcknowledgement] | None = None,
 ) -> Workspace:
-    destination = check_roots(destination, code_roots)
+    destination = check_roots(destination, code_roots or [])
     if destination.exists() and any(destination.iterdir()):
         raise Conflict("restore requires an empty destination")
     if synthetic and any((release, release_sha256, statement, acknowledgements)):
@@ -245,7 +246,8 @@ def restore(
                     approval = activation.approval(config.id, "restore", archive_hash=checksum)
                     config.runtime_approval_id = approval.id
                     additions[f"receipts/runtime/{approval.id}.json"] = canonical(approval)
-                config.code_roots = [str(root.resolve()) for root in code_roots]
+                config = with_code_source(config, code_roots, code_repository)
+                check_roots(destination, [Path(root) for root in config.code_roots])
                 additions["workspace.json"] = canonical(config)
                 with tempfile.TemporaryDirectory(
                     prefix=".cairn-restore-", dir=destination.parent

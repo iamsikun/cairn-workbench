@@ -305,7 +305,9 @@ def test_upgrade_migrates_legacy_format_automatically_with_backup(private: dict)
     assert private["ws"].config.schema_version == 1
     release, sha = release_for(private, "v0.2.0")
     result = rebind(private, "v0.2.0", release, sha)
-    assert isinstance(result["migrations"], list) and len(result["migrations"]) == 1
+    # Schema 1 -> 2 -> 3, one step at a time, each with its own backup.
+    assert isinstance(result["migrations"], list) and len(result["migrations"]) == 2
     ws = Workspace(private["ws"].root)
-    assert ws.config.schema_version == 2 and ws.config.runtime_release_hash == sha
-    assert len(list((private["tmp"] / "update-backups" / ws.config.id).glob("*.zip"))) == 2
+    assert ws.config.schema_version == 3 and ws.config.runtime_release_hash == sha
+    assert ws.config.code_roots == private["ws"].config.code_roots
+    assert len(list((private["tmp"] / "update-backups" / ws.config.id).glob("*.zip"))) == 3

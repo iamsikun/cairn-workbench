@@ -30,6 +30,7 @@ from cairn.transactions.apply import apply as apply_proposal
 def legacy(ws: Workspace, *, omit_optional: bool = False) -> Workspace:
     data = ws.config.model_dump(mode="json")
     data.pop("record_schema_version")
+    data.pop("code_repository")
     data["schema_version"] = 1
     if omit_optional:
         for key in ("worker_image", "runtime_release_hash", "runtime_approval_id"):
@@ -49,7 +50,7 @@ def migrate(ws: Workspace, tmp_path: Path):
 
 
 def test_inspection_and_legacy_reads_do_not_rewrite(ws: Workspace) -> None:
-    assert inspect(ws)["workspace_schema"] == 2
+    assert inspect(ws)["workspace_schema"] == 3
     initial = ws.fs.read("workspace.json")
     missing_contract = json.loads(initial)
     missing_contract.pop("record_schema_version")
@@ -64,7 +65,7 @@ def test_inspection_and_legacy_reads_do_not_rewrite(ws: Workspace) -> None:
     assert inspect(ws)["migration_available"] is True
     assert preview(ws) == preview(Workspace(ws.root))
     assert durable_contents(ws) == before
-    for version in (0, 3, 999, True, "1"):
+    for version in (0, 4, 999, True, "1"):
         data = json.loads(before["workspace.json"])
         data["schema_version"] = version
         raw = canonical(data)
@@ -211,7 +212,7 @@ def test_migration_process_crashes_and_recovery(
     assert Workspace(ws.root).config.schema_version == 2
     assert ws.fs.read("vault/notes/owner.md") == before["vault/notes/owner.md"]
     assert recover(Workspace(ws.root)) == []
-    assert inspect(Workspace(ws.root))["migration_available"] is False
+    assert inspect(Workspace(ws.root))["workspace_schema"] == 2
     receipt = next(p for p in ws.fs.files("migrations") if p.endswith("receipt.json"))
     migration_id = receipt.split("/")[1]
     maintenance = json.loads(ws.fs.read(f"receipts/maintenance/{migration_id}.json"))

@@ -9,6 +9,28 @@ increases.
 - **Minor** releases add commands, workflows or guidance.
 - **Patch** releases fix defects without changing behavior otherwise.
 
+## Unreleased
+
+This changes the workspace format, which the versioning policy above treats as a
+major change. The version number is not yet advanced.
+
+- **A knowledge base can name Cairn's code by repository.** Workspace schema 3 adds
+  an optional `code_repository` and makes the local `code_roots` optional; at least
+  one is required. `cairn init` accepts `--repository URL`, and `--code-root` is
+  optional. A managed install defaults the repository to `updater.json`'s, so it
+  needs no checkout. Configured checkout paths stay guarded against the workspace,
+  backups, HTML outputs and the library root, and a workspace under any `.git`
+  ancestor is still rejected.
+- **Owner command `cairn code-source set`** changes the checkout paths or repository
+  of an existing knowledge base under the owner writer lock, with a receipt under
+  `receipts/code-source/`. It is not exposed to agents.
+- **Supported migration `workspace_v2_to_v3`.** Schema 1 and 2 workspaces stay valid
+  and are not rewritten when read. `cairn schema apply` (or an automatic update)
+  migrates them one version at a time, each with a backup. Existing code roots are
+  kept.
+- `cairn restore` keeps the archived code source unless `--code-root` or
+  `--repository` is given.
+
 ## 0.3.0 — 2026-10-10
 
 - **Evolving paper notes and connected topics.** Follow-up readings revise the same

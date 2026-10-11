@@ -1,9 +1,9 @@
 # Schema inspection and owner migration
 
-New workspaces use workspace schema 2, which explicitly declares record schema 1.
+New workspaces use workspace schema 3, which explicitly declares record schema 1.
 The six Markdown record types and their evidence format remain version 1. Existing
-workspace schema 1 files, including files without the optional runtime fields introduced
-during development, remain readable. Opening or querying them never migrates them.
+workspace schema 1 and 2 files, including files without the optional runtime fields
+introduced during development, remain readable. Opening or querying them never migrates them.
 Unknown workspace/record versions fail validation; missing private runtime approval is
 still denied, even for a valid legacy schema.
 
@@ -14,6 +14,17 @@ evidence, and historical approvals. Advancing the policy revision invalidates pe
 jobs, proposals, and approvals. Regenerate those from their preserved sources after
 migration. Previously applied decisions retain their exact adoption chain.
 
+The second supported migration is `workspace_v2_to_v3`. Schema 3 names Cairn's code by
+an optional `code_repository` URL and optional local `code_roots`; at least one must be
+present. Schema 1 and 2 require a local code root. The migration keeps the existing
+`code_roots`, so the disjointness guard continues unchanged, and sets no repository.
+Like the first migration, it changes only `workspace.json` and the policy
+revision/audit pointer. Afterwards the owner can name a repository or drop a checkout
+that no longer exists with `cairn code-source set` (see the
+[installation runbook](installation.md)). Each migration moves one version, so a
+schema 1 workspace needs two preview/apply rounds, each with its own backup. The
+automatic update path runs them in order.
+
 Run these owner commands from the approved installed runtime, with no concurrent plain
 editor writes. Example paths are synthetic:
 
@@ -21,7 +32,7 @@ editor writes. Example paths are synthetic:
 /srv/cairn-runtime/bin/python -I -B -m cairn schema inspect --workspace /srv/cairn
 /srv/cairn-runtime/bin/python -I -B -m cairn schema preview --workspace /srv/cairn
 /srv/cairn-runtime/bin/python -I -B -m cairn schema apply --workspace /srv/cairn \
-  --plan-sha256 REVIEWED_PREVIEW_DIGEST --backup /srv/backups/before-schema-v2.zip \
+  --plan-sha256 REVIEWED_PREVIEW_DIGEST --backup /srv/backups/before-schema-v3.zip \
   --statement "I reviewed this format change and the pending-approval invalidation."
 ```
 

@@ -71,14 +71,17 @@ each release). The paths below are synthetic examples.
 2. Create the knowledge base with the managed runtime and opt in:
 
    ```sh
-   cairn init --workspace /srv/cairn --code-root /srv/cairn-workbench \
+   cairn init --workspace /srv/cairn \
      --statement "I reviewed this release, continuity trial, and recovery procedure." \
      --acknowledge release_review --acknowledge manual_continuity \
      --acknowledge backup_restore --auto-update
    ```
 
    From a managed runtime, `--release`/`--release-sha256` default to the bundle it was
-   installed from. The first activation still requires the three owner
+   installed from, and the knowledge base's code repository defaults to the
+   `repository` in `updater.json`. No checkout is needed, so you can delete the one
+   used for `setup`. Pass `--code-root PATH` only if you keep a local checkout that the
+   knowledge base must stay outside. The first activation still requires the three owner
    acknowledgements and a fresh isolation probe. `--auto-update` (or later
    `cairn update enable --workspace PATH`) records an `UpdateAuthorization` in the
    knowledge base, naming the repository, the branch and the owner statement. It also

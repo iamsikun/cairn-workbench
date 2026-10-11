@@ -1,0 +1,94 @@
+{
+  "additionalProperties": false,
+  "description": "Cairn's code is named by a repository, local checkout paths, or both.\n\nEvery configured checkout path stays disjoint from the workspace and its outputs.",
+  "properties": {
+    "code_repository": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 1,
+          "pattern": "^[^\\r\\n\\x00]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Code Repository"
+    },
+    "code_roots": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 16,
+      "title": "Code Roots",
+      "type": "array"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9_]{2,95}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "record_schema_version": {
+      "const": 1,
+      "title": "Record Schema Version",
+      "type": "integer"
+    },
+    "runtime_approval_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Runtime Approval Id"
+    },
+    "runtime_release_hash": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Runtime Release Hash"
+    },
+    "schema_version": {
+      "const": 3,
+      "default": 3,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "synthetic": {
+      "title": "Synthetic",
+      "type": "boolean"
+    },
+    "worker_image": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Worker Image"
+    }
+  },
+  "required": [
+    "id",
+    "synthetic",
+    "record_schema_version"
+  ],
+  "title": "WorkspaceConfigV3",
+  "type": "object"
+}

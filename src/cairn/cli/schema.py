@@ -28,8 +28,9 @@ def register(app: typer.Typer) -> None:
         """Show exact before/after configuration and its hash; write nothing."""
         plan = preview(Workspace(workspace))
         checksum = digest(canonical(plan))
+        old, new = plan.operation.removeprefix("workspace_v").split("_to_v")
         lines = [
-            "Workspace schema 1 -> 2; record schema remains 1.",
+            f"Workspace schema {old} -> {new}; record schema remains 1.",
             "Sources, human notes, canonical records, and evidence remain unchanged.",
             "Policy revision advances; regenerate pending proposals and approvals.",
             f"Preview SHA256: {checksum}",

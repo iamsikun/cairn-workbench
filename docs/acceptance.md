@@ -1,5 +1,28 @@
 # Acceptance evidence
 
+## Repository code source and workspace schema 3 (2026-10-11; software checks passed, not released)
+
+A knowledge base can name Cairn's code by repository URL, by local checkout paths,
+or by both (workspace schema 3). Checkout paths keep the disjointness guard; the
+`.git`-ancestor rejection applies whatever the code source. `workspace_v2_to_v3` is a
+supported owner migration, and `cairn code-source set` is an owner-writer command.
+
+`bash scripts/check.sh` passed on the working tree: **377 tests**, including 11 new
+cases in `tests/test_code_source.py`, schema parity, Ruff, strict mypy across 104
+source files, all required isolation probes (13/13 checks), worker extraction and
+HTML round trips, **129/129 gold-set checks**, and real-engine worker/child cleanup.
+No isolation check was skipped. The new tests cover repository-only init, the
+managed `updater.json` default (synthetic `CAIRN_HOME`), the `.git` guard without a
+code root, schema 2 staying valid and migrating to 3, owner change with receipts and
+backup/restore round trip, rejection of a new checkout that overlaps the workspace or
+a configured library root, restore keeping or replacing the code source, and the
+owner-terminal requirement. The automatic-update test now migrates schema 1 to 3 in
+two backed-up steps. Schema 1 and 2 JSON exports are byte-identical.
+
+Not run: `scripts/release_check.sh` (it needs a clean commit and produces release
+artifacts) and the installed-release trial, so installed-wheel behavior of the new
+options is unverified. No real workspace, home directory or remote was used.
+
 ## 0.3.0 release verification (2026-10-10)
 
 After the owner requested publication, the package, module and lockfile versions

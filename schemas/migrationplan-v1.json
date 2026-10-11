@@ -32,8 +32,11 @@
       "type": "object"
     },
     "operation": {
-      "const": "workspace_v1_to_v2",
       "default": "workspace_v1_to_v2",
+      "enum": [
+        "workspace_v1_to_v2",
+        "workspace_v2_to_v3"
+      ],
       "title": "Operation",
       "type": "string"
     },

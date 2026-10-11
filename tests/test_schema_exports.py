@@ -54,7 +54,8 @@ from cairn.records.models import Event, Extraction, Record
 from cairn.records.release import ReleaseManifest
 from cairn.records.runtime import ProbeRequest, ProbeResult, RuntimeApproval, WorkerProfile
 from cairn.storage.backup import BackupManifest
-from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2
+from cairn.storage.code_source import CodeSourceChange
+from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2, WorkspaceConfigV3
 
 
 @pytest.mark.parametrize(
@@ -122,6 +123,8 @@ from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2
         RuntimeApproval,
         WorkspaceConfig,
         WorkspaceConfigV2,
+        WorkspaceConfigV3,
+        CodeSourceChange,
         MigrationAuthorization,
         MigrationPlan,
         MigrationReceipt,
@@ -131,6 +134,10 @@ from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2
 def test_export_matches_model(model: type[Record]) -> None:
     version = model.model_fields.get("schema_version")
     number = version.default if version else 1
-    name = "workspaceconfig" if model is WorkspaceConfigV2 else model.__name__.lower()
+    name = (
+        "workspaceconfig"
+        if model in (WorkspaceConfigV2, WorkspaceConfigV3)
+        else model.__name__.lower()
+    )
     path = Path(__file__).parents[1] / "schemas" / f"{name}-v{number}.json"
     assert json.loads(path.read_text()) == model.model_json_schema()

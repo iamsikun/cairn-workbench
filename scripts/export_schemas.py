@@ -61,7 +61,8 @@ from cairn.records.runtime import (
     WorkerProfile,
 )
 from cairn.storage.backup import BackupManifest
-from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2
+from cairn.storage.code_source import CodeSourceChange
+from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2, WorkspaceConfigV3
 
 if __name__ == "__main__":
     destination = Path("schemas")
@@ -131,6 +132,8 @@ if __name__ == "__main__":
         UpdateRevocation,
         WorkspaceConfig,
         WorkspaceConfigV2,
+        WorkspaceConfigV3,
+        CodeSourceChange,
         MigrationAuthorization,
         MigrationPlan,
         MigrationReceipt,
@@ -138,7 +141,11 @@ if __name__ == "__main__":
     ):
         version = model.model_fields.get("schema_version")
         number = version.default if version else 1
-        name = "workspaceconfig" if model is WorkspaceConfigV2 else model.__name__.lower()
+        name = (
+            "workspaceconfig"
+            if model in (WorkspaceConfigV2, WorkspaceConfigV3)
+            else model.__name__.lower()
+        )
         (destination / f"{name}-v{number}.json").write_text(
             json.dumps(model.model_json_schema(), indent=2, sort_keys=True) + "\n"
         )

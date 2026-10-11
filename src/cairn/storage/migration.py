@@ -16,26 +16,42 @@ from cairn.records.migration import (
     MigrationTransaction,
 )
 from cairn.records.models import canonical, digest, now
-from cairn.storage.workspace import Workspace, WorkspaceConfigV2, parse_config
+from cairn.storage.workspace import (
+    CURRENT_SCHEMA,
+    Workspace,
+    WorkspaceConfiguration,
+    WorkspaceConfigV2,
+    WorkspaceConfigV3,
+    parse_config,
+)
 from cairn.transactions.apply import _crash
+
+
+def _next(config: WorkspaceConfiguration) -> WorkspaceConfiguration:
+    """Each supported migration moves one workspace schema version forward."""
+    if config.schema_version == 1:
+        return WorkspaceConfigV2.model_validate(
+            {**config.model_dump(), "schema_version": 2, "record_schema_version": 1}
+        )
+    # Existing code roots stay configured and guarded; no repository is assumed.
+    return WorkspaceConfigV3.model_validate({**config.model_dump(), "schema_version": 3})
 
 
 def _plan(config_raw: bytes, policy_raw: bytes, inputs: dict[str, str]) -> MigrationPlan:
     config = parse_config(config_raw)
-    if config.schema_version != 1:
+    if config.schema_version == CURRENT_SCHEMA:
         raise Conflict("workspace is already current; there is no migration to apply")
     if inputs.get("workspace.json") != digest(config_raw) or inputs.get(
         "policy/workspace.json"
     ) != digest(policy_raw):
         raise Conflict("migration preview does not bind its original configuration")
     migration_id = "migration_" + digest(canonical(inputs))
-    updated = WorkspaceConfigV2.model_validate(
-        {**config.model_dump(), "schema_version": 2, "record_schema_version": 1}
-    )
+    updated = _next(config)
     policy = Policy.model_validate(read_json(policy_raw))
     policy.revision += 1
     policy.last_change = migration_id
     return MigrationPlan(
+        operation="workspace_v1_to_v2" if config.schema_version == 1 else "workspace_v2_to_v3",
         id=migration_id,
         workspace_id=config.id,
         input_hashes=inputs,
@@ -151,10 +167,10 @@ def inspect(ws: Workspace) -> dict[str, object]:
             "workspace_id": config.id,
             "workspace_schema": config.schema_version,
             "record_schema": 1,
-            "supported_workspace_schemas": [1, 2],
-            "current_workspace_schema": 2,
+            "supported_workspace_schemas": [1, 2, 3],
+            "current_workspace_schema": CURRENT_SCHEMA,
             "records_validated": len(ws.records()),
-            "migration_available": config.schema_version == 1,
+            "migration_available": config.schema_version < CURRENT_SCHEMA,
             "writes_performed": False,
         }
 

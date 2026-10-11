@@ -28,7 +28,13 @@ from cairn.storage.activation import check_runtime_metadata, prepare_activation
 from cairn.storage.files import MAX_FILE_BYTES, RootFS, components, disjoint, sync
 from cairn.storage.history_safety import check_history_config, check_history_paths
 from cairn.storage.markdown import decode
-from cairn.storage.workspace import Workspace, WorkspaceConfiguration, check_roots, parse_config
+from cairn.storage.workspace import (
+    Workspace,
+    WorkspaceConfiguration,
+    check_roots,
+    parse_config,
+    with_code_source,
+)
 from cairn.transactions.apply import ApplyReceipt, Transaction
 
 DURABLE_DIRS = (
@@ -170,6 +176,15 @@ def validate_payloads(payloads: Mapping[str, bytes]) -> WorkspaceConfiguration:
                     or authorization.workspace_id != config.id
                 ):
                     raise Conflict("backup update authorization identity mismatch")
+            elif path.startswith("receipts/code-source/"):
+                from cairn.storage.code_source import CodeSourceChange
+
+                code_change = CodeSourceChange.model_validate(read_json(raw))
+                if (
+                    path != f"receipts/code-source/{code_change.id}.json"
+                    or code_change.workspace_id != config.id
+                ):
+                    raise Conflict("backup code source receipt identity mismatch")
             elif path.startswith("receipts/applied/"):
                 receipt = ApplyReceipt.model_validate(read_json(raw))
                 if path != f"receipts/applied/{receipt.proposal_id}.json":
@@ -337,7 +352,8 @@ def restore(
     archive_path: Path,
     destination: Path,
     *,
-    code_roots: list[Path],
+    code_roots: list[Path] | None = None,
+    code_repository: str | None = None,
     expected_sha256: str | None = None,
     synthetic: bool = False,
     release: Path | None = None,
@@ -345,7 +361,7 @@ def restore(
     statement: str | None = None,
     acknowledgements: set[ReviewAcknowledgement] | None = None,
 ) -> Workspace:
-    destination = check_roots(destination, code_roots)
+    destination = check_roots(destination, code_roots or [])
     if destination.exists() and any(destination.iterdir()):
         raise Conflict("restore requires an empty destination")
     if synthetic and any((release, release_sha256, statement, acknowledgements)):
@@ -412,7 +428,8 @@ def restore(
         approval = activation.approval(config.id, "restore", archive_hash=digest(raw))
         config.runtime_approval_id = approval.id
         payloads[f"receipts/runtime/{approval.id}.json"] = canonical(approval)
-    config.code_roots = [str(root.resolve()) for root in code_roots]
+    config = with_code_source(config, code_roots, code_repository)
+    check_roots(destination, [Path(root) for root in config.code_roots])
     payloads["workspace.json"] = canonical(config)
     destination.parent.mkdir(parents=True, exist_ok=True)
     # A failed copy never publishes a partial workspace at the requested destination.

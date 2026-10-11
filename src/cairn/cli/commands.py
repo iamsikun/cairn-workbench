@@ -227,7 +227,8 @@ def register(app: typer.Typer) -> None:
     def restore_command(
         archive: Path,
         destination: Annotated[Path, typer.Option()],
-        code_root: Annotated[Path, typer.Option()],
+        code_root: Annotated[Path | None, typer.Option()] = None,
+        repository: str | None = None,
         expected_sha256: str | None = None,
         synthetic: bool = False,
         release: Path | None = None,
@@ -236,13 +237,14 @@ def register(app: typer.Typer) -> None:
         acknowledge: Annotated[list[ReviewAcknowledgement] | None, typer.Option()] = None,
         json_output: JsonOption = False,
     ) -> None:
-        """Restore a backup into a new workspace."""
+        """Restore a backup into a new workspace; the code source is kept unless given."""
         from cairn.storage.streaming_backup import restore
 
         ws = restore(
             archive,
             destination,
-            code_roots=[code_root],
+            code_roots=[code_root] if code_root else None,
+            code_repository=repository,
             expected_sha256=expected_sha256,
             synthetic=synthetic,
             release=release,

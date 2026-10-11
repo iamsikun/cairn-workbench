@@ -60,12 +60,18 @@ digest, an owner statement, and the review acknowledgements from the
 
 ```sh
 /srv/cairn-runtime/bin/python -I -B -m cairn restore /srv/backups/cairn.zip \
-  --destination /srv/cairn-restored --code-root /srv/cairn-workbench \
+  --destination /srv/cairn-restored \
   --expected-sha256 ARCHIVE_DIGEST \
   --release /srv/cairn-release/release.json --release-sha256 REVIEWED_DIGEST \
   --statement "I reviewed this release and restore of this exact archive." \
   --acknowledge release_review --acknowledge manual_continuity --acknowledge backup_restore
 ```
+
+Restore keeps the archived code source unless you replace it: `--code-root PATH` sets
+the local checkout and `--repository URL` sets the repository (schema 3 archives only).
+The destination must be outside every resulting checkout and outside any `.git`
+ancestor. To change the code source afterwards, use `cairn code-source set` (see the
+[installation runbook](installation.md)).
 
 Restore preserves canonical bytes, evidence, workspace identity, policy, approvals, and
 journals. It appends a new runtime approval binding the archive hash and current probe,

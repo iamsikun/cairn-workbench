@@ -8,9 +8,9 @@ import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from cairn.errors import Conflict, Denied, RecoveryRequired
 from cairn.policies.models import Policy, Scope
@@ -61,22 +61,74 @@ class WorkspaceConfigV2(_WorkspaceFields):
     record_schema_version: Literal[1]
 
 
-type WorkspaceConfiguration = WorkspaceConfig | WorkspaceConfigV2
+Repository = Annotated[str, Field(min_length=1, max_length=2048, pattern=r"^[^\r\n\x00]+$")]
+
+
+class WorkspaceConfigV3(Model):
+    """Cairn's code is named by a repository, local checkout paths, or both.
+
+    Every configured checkout path stays disjoint from the workspace and its outputs.
+    """
+
+    schema_version: Literal[3] = 3
+    id: ID
+    synthetic: bool
+    code_roots: list[str] = Field(default_factory=list, max_length=16)
+    code_repository: Repository | None = None
+    worker_image: str | None = None
+    runtime_release_hash: Digest | None = None
+    runtime_approval_id: ID | None = None
+    record_schema_version: Literal[1]
+
+    @model_validator(mode="after")
+    def names_code(self) -> WorkspaceConfigV3:
+        if not self.code_roots and self.code_repository is None:
+            raise ValueError("name Cairn's code repository or a local code root")
+        return self
+
+
+type WorkspaceConfiguration = WorkspaceConfig | WorkspaceConfigV2 | WorkspaceConfigV3
+CURRENT_SCHEMA = 3
 
 
 def parse_config(raw: bytes) -> WorkspaceConfiguration:
     data = read_json(raw)
     version = data.get("schema_version", 1) if isinstance(data, dict) else None
-    if type(version) is not int or version not in (1, 2):
+    if type(version) is not int or version not in (1, 2, 3):
         raise Denied("unsupported workspace schema version; no files were migrated")
     if version == 1:
         return WorkspaceConfig.model_validate(data)
-    return WorkspaceConfigV2.model_validate(data)
+    if version == 2:
+        return WorkspaceConfigV2.model_validate(data)
+    return WorkspaceConfigV3.model_validate(data)
+
+
+def with_code_source(
+    config: WorkspaceConfiguration, code_roots: list[Path] | None, repository: str | None
+) -> WorkspaceConfiguration:
+    """Return the configuration naming new code; unspecified parts are kept."""
+    data = config.model_dump()
+    if code_roots is not None:
+        data["code_roots"] = [str(path.resolve()) for path in code_roots]
+    if repository is not None:
+        if config.schema_version < CURRENT_SCHEMA:
+            raise Denied(
+                "a code repository needs workspace schema 3; "
+                "run `cairn schema preview` and `cairn schema apply` first"
+            )
+        data["code_repository"] = repository
+    if not data["code_roots"] and data.get("code_repository") is None:
+        raise Denied(
+            "name Cairn's code repository or a local code root"
+            if config.schema_version == CURRENT_SCHEMA
+            else "this workspace schema requires a local code root until it is migrated"
+        )
+    return type(config).model_validate(data)
 
 
 def check_roots(root: Path, code_roots: list[Path]) -> Path:
     resolved = root.resolve()
-    if not code_roots or any(not disjoint(resolved, code) for code in code_roots):
+    if any(not disjoint(resolved, code) for code in code_roots):
         raise Denied("code and workspace roots must be disjoint")
     for ancestor in (resolved, *resolved.parents):
         if (ancestor / ".git").exists():
@@ -113,13 +165,17 @@ class Workspace:
         cls,
         root: Path,
         *,
-        code_roots: list[Path],
+        code_roots: list[Path] | None = None,
+        code_repository: str | None = None,
         synthetic: bool = False,
         release: Path | None = None,
         release_sha256: str | None = None,
         statement: str | None = None,
         acknowledgements: set[ReviewAcknowledgement] | None = None,
     ) -> Workspace:
+        code_roots = code_roots or []
+        if not code_roots and code_repository is None:
+            raise Denied("name Cairn's code repository or a local code root")
         root = check_roots(root, code_roots)
         if root.exists() and any(root.iterdir()):
             raise Conflict("initialization requires an empty workspace")
@@ -139,10 +195,11 @@ class Workspace:
         )
         if not synthetic and not disjoint(root, Path(sys.prefix)):
             raise Denied("private workspace and installed runtime must be disjoint")
-        config = WorkspaceConfigV2(
+        config = WorkspaceConfigV3(
             id=new_id("workspace"),
             synthetic=synthetic,
             code_roots=[str(path.resolve()) for path in code_roots],
+            code_repository=code_repository,
             record_schema_version=1,
         )
         approval = activation.approval(config.id, "init") if activation else None

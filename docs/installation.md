@@ -100,11 +100,19 @@ independently reviewed release; each acknowledgement records a completed review.
 
 ```sh
 /srv/cairn-runtime/bin/python -I -B -m cairn init \
-  --workspace /srv/cairn --code-root /srv/cairn-workbench \
+  --workspace /srv/cairn --repository https://github.com/iamsikun/cairn-workbench.git \
   --release /srv/cairn-release/release.json --release-sha256 REVIEWED_DIGEST \
   --statement "I reviewed this release, continuity trial, and recovery procedure." \
   --acknowledge release_review --acknowledge manual_continuity --acknowledge backup_restore
 ```
+
+The workspace records where Cairn's code lives. `--repository` names it by URL;
+`--code-root PATH` names a local checkout. Give either or both. A managed install (see
+[updates](updates.md)) defaults `--repository` to the repository in
+`CAIRN_HOME/updater.json`, so it needs neither option. A configured local checkout is also
+a guard: the workspace, backups, HTML outputs and the library root must stay outside it.
+A repository URL is only a name and guards nothing. Whatever the code source, a
+workspace inside any directory that has a `.git` ancestor is rejected.
 
 The command verifies consent and installation before probing the manifest's pinned
 worker. The probe contains only a fresh nonce and a synthetic canary path; all 13 checks
@@ -122,6 +130,29 @@ the workspace's own update authorization, verified, backed up and recorded as an
 `upgrade` approval.
 `--inline-synthetic` never bypasses isolation in private mode. A custom client image must
 be part of the reviewed release, not a new command-line override.
+
+### Changing the code source
+
+To point an existing knowledge base at a different checkout or repository, for example
+after deleting a checkout, run this from your own terminal. Options you leave out keep
+their current value:
+
+```sh
+cairn code-source show --workspace /srv/cairn
+cairn code-source set --workspace /srv/cairn --no-code-root \
+  --repository https://github.com/iamsikun/cairn-workbench.git \
+  --statement "The local checkout was removed; the managed install updates from the repository."
+```
+
+`--code-root PATH` (repeatable) replaces the checkout paths and `--no-code-root` removes
+them; `--repository URL` replaces the repository and `--no-repository` removes it. At
+least one must remain. This is an owner command: it asks for confirmation at the
+terminal and is not available to agents. It holds the owner writer lock and rejects a
+new checkout that overlaps the workspace, the library root or a registered HTML output.
+It writes a receipt under `receipts/code-source/` before replacing `workspace.json`.
+Policy, approvals and the runtime binding are unchanged. It needs workspace schema 3;
+a knowledge base created by an earlier release migrates as described in
+[schema migrations](schema-migrations.md).
 
 `doctor --workspace PATH --probe-worker --json` reports installation, SQLite FTS5, and a
 fresh worker profile. Without the probe, readiness remains false because the current
