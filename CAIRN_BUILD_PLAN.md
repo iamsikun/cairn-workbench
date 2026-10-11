@@ -2,7 +2,7 @@
 
 Approved 2026-10-11. The direct-save brief is the baseline; the previous plan remains in
 docs/legacy/build-plan-v3.md. Historical test passes do not establish this release.
-Use synthetic data and execute contributor code in the documented development container.
+Use synthetic data and execute contributor code in the documented native environment.
 
 | Milestone | Deliverable | Exit evidence |
 | --- | --- | --- |
@@ -40,8 +40,8 @@ Research is the default collection; every interface enforces it before retrieval
 ## Verification and commits
 
 Make small local milestone commits and maintain docs/acceptance.md as work proceeds.
-Run tests, lint, typing, schema generation and package checks inside the container.
-Keep development isolation checks separate from native-runtime resource limits.
+Run tests, lint, typing, schema generation and package checks with locked native tools.
+Native resource limits and synthetic test environments do not establish OS isolation.
 Missing checks remain unverified. Preserve applicable legacy compatibility tests.
 
 Cover retries, concurrent/external edits, crash boundaries, undo, index recovery,

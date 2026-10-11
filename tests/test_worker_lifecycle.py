@@ -1,119 +1,93 @@
-import json
+"""Native process budgets and retired legacy entrypoints, using synthetic children."""
+
+import os
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
 
-from cairn.adapters import isolation
-from cairn.errors import Blocked, CairnError, Denied
-
-FAKE_DOCKER = r"""
-import json, os, pathlib, sys, time
-root = pathlib.Path(os.environ["SYNTHETIC_ENGINE"])
-args = sys.argv[1:]
-with (root / "calls.jsonl").open("a") as stream:
-    stream.write(json.dumps(args) + "\n")
-if args[:2] == ["context", "inspect"]:
-    print(json.dumps(os.environ.get("SYNTHETIC_ENDPOINT", "unix:///synthetic/docker.sock")))
-elif args[:2] == ["image", "inspect"]:
-    print(os.environ.get("SYNTHETIC_VOLUMES", "null"))
-elif args[0] == "create":
-    (root / "created").write_text("a" * 64)
-    print("a" * 64)
-elif args[0] == "start":
-    data = sys.stdin.buffer.read()
-    (root / "input").write_bytes(data)
-    mode = os.environ.get("SYNTHETIC_MODE", "echo")
-    if mode == "timeout":
-        time.sleep(300)
-    elif mode == "stdout":
-        while True:
-            os.write(1, b"SECRET-IN-DIAGNOSTICS" * 4096)
-    elif mode == "stderr":
-        while True:
-            os.write(2, b"SECRET-IN-DIAGNOSTICS" * 4096)
-    elif mode == "failure":
-        print("SECRET-IN-DIAGNOSTICS", file=sys.stderr)
-        sys.exit(2)
-    else:
-        sys.stdout.buffer.write(data)
-elif args[0] == "rm":
-    if os.environ.get("SYNTHETIC_CLEANUP_FAILURE"):
-        sys.exit(1)
-    (root / "removed").write_text(args[-1])
-elif args[0] == "inspect":
-    print("false 7" if os.environ.get("SYNTHETIC_MODE") == "state_failure" else "false 0")
-else:
-    sys.exit(2)
-"""
+from cairn.adapters.isolation import invoke_worker
+from cairn.adapters.process import bounded_process
+from cairn.errors import Blocked, CairnError
+from cairn.library.fetcher import fetch_isolated
+from cairn.storage.activation import check_worker, prepare_activation
 
 
-@pytest.fixture
-def engine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    script = tmp_path / "fake_docker.py"
-    script.write_text(FAKE_DOCKER)
-    monkeypatch.setattr(isolation, "DOCKER_PROGRAM", [sys.executable, str(script)])
-    monkeypatch.setenv("SYNTHETIC_ENGINE", str(tmp_path))
-    monkeypatch.delenv("DOCKER_HOST", raising=False)
-    monkeypatch.setattr(isolation, "WORKER_TIMEOUT", 0.3)
-    monkeypatch.setattr(isolation, "OUTPUT_LIMIT", 4096)
-    return tmp_path
-
-
-@pytest.mark.parametrize(
-    "mode", ["echo", "timeout", "stdout", "stderr", "failure", "state_failure"]
-)
-def test_owned_worker_cleanup_and_bounded_streams(
-    engine: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    mode: str,
-) -> None:
-    monkeypatch.setenv("SYNTHETIC_MODE", mode)
-    data = b"Synthetic selected private packet"
+@pytest.mark.parametrize("mode", ["echo", "timeout", "stdout", "stderr", "closed"])
+def test_native_bounded_streams_and_deadline(mode):
+    code = {
+        "echo": "import sys; sys.stdout.buffer.write(sys.stdin.buffer.read())",
+        "timeout": "import time; time.sleep(300)",
+        "stdout": "import os; os.write(1,b'PRIVATE-DIAGNOSTIC'*10000)",
+        "stderr": "import os; os.write(2,b'PRIVATE-DIAGNOSTIC'*10000)",
+        "closed": "import os,time; os.close(1); os.close(2); time.sleep(300)",
+    }[mode]
+    def run():
+        return bounded_process(
+            [sys.executable, "-c", code], b"synthetic input", timeout=0.5,
+            stdout_limit=1024, stderr_limit=1024,
+        )
     if mode == "echo":
-        assert isolation.invoke_worker("sha256:" + "0" * 64, data) == data
+        assert run() == (0, b"synthetic input")
     else:
         with pytest.raises(CairnError) as failure:
-            isolation.invoke_worker("sha256:" + "0" * 64, data)
-        assert "SECRET-IN-DIAGNOSTICS" not in str(failure.value)
-    assert (engine / "removed").read_text() == "a" * 64
-    calls = [json.loads(line) for line in (engine / "calls.jsonl").read_text().splitlines()]
-    creation = next(call for call in calls if call[0] == "create")
-    assert "--log-driver=none" in creation and "--network=none" in creation
-    assert "--read-only" in creation and "--no-healthcheck" in creation
-    assert calls[-1] == ["rm", "--force", "--volumes", "a" * 64]
-    assert (engine / "input").read_bytes() == data
+            run()
+        assert "PRIVATE-DIAGNOSTIC" not in str(failure.value)
 
 
-def test_cleanup_failure_is_not_reported_as_success(
-    engine: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv("SYNTHETIC_CLEANUP_FAILURE", "1")
-    with pytest.raises(Blocked, match="worker_cleanup_unverified"):
-        isolation.invoke_worker("sha256:" + "0" * 64, b"synthetic")
+@pytest.mark.parametrize("parent_exits", [False, True])
+def test_owned_descendants_are_killed_even_after_leader_exits(tmp_path: Path, parent_exits):
+    pidfile = tmp_path / "child.pid"
+    code = (
+        "import os,subprocess,sys,time; "
+        "p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(300)'],"
+        "stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); "
+        "open(sys.argv[1],'w').write(str(p.pid)); "
+        + ("sys.exit(0)" if parent_exits else "os.close(1); os.close(2); time.sleep(300)")
+    )
+    args = ([sys.executable, "-c", code, str(pidfile)], b"")
+    if parent_exits:
+        assert bounded_process(*args, timeout=2, stdout_limit=100) == (0, b"")
+    else:
+        with pytest.raises(Blocked, match="process_timeout"):
+            bounded_process(*args, timeout=0.5, stdout_limit=100)
+    pid = int(pidfile.read_text())
+    try:
+        for _ in range(100):
+            state = subprocess.run(
+                ["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, check=False,
+            ).stdout.strip()
+            if not state or state.startswith(b"Z"):
+                break
+            time.sleep(0.02)
+        else:
+            pytest.fail("owned child survived process cleanup")
+    finally:
+        try:
+            os.kill(pid, 9)
+        except ProcessLookupError:
+            pass
 
 
-@pytest.mark.parametrize(
-    "setting,value",
-    [
-        ("DOCKER_HOST", "tcp://remote.invalid:2375"),
-        ("SYNTHETIC_ENDPOINT", "ssh://remote.invalid"),
-        ("SYNTHETIC_VOLUMES", '{"/private":{}}'),
-    ],
-)
-def test_unverified_route_or_implicit_volume_rejected_before_packet(
-    engine: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    setting: str,
-    value: str,
-) -> None:
-    monkeypatch.setenv(setting, value)
-    with pytest.raises(Denied):
-        isolation.invoke_worker("sha256:" + "0" * 64, b"must not leave launcher")
-    assert not (engine / "input").exists() and not (engine / "created").exists()
+def test_unavailable_program_has_content_free_error(tmp_path):
+    with pytest.raises(Blocked, match="^process_unavailable$"):
+        bounded_process([str(tmp_path / "missing")], b"secret", timeout=1, stdout_limit=10)
 
 
-def test_closed_output_pipes_do_not_bypass_worker_deadline() -> None:
-    command = [sys.executable, "-c", "import os,time; os.close(1); os.close(2); time.sleep(300)"]
-    with pytest.raises(Blocked, match="worker_timeout"):
-        isolation.bounded_process(command, b"", timeout=0.2, stdout_limit=100)
+def test_retired_workers_never_launch_or_read(monkeypatch, tmp_path):
+    def forbidden(*args, **kwargs):
+        raise AssertionError("retired operation launched a process")
+    monkeypatch.setattr(subprocess, "Popen", forbidden)
+    for action in (
+        lambda: invoke_worker("unused", b"source bytes"),
+        lambda: fetch_isolated(None, "https://example.invalid", set()),
+        lambda: check_worker("unused"),
+        lambda: prepare_activation(
+            tmp_path / "absent", expected_sha256=None, statement=None, acknowledgements=None,
+        ),
+    ):
+        with pytest.raises(Blocked, match="retired"):
+            action()
+    assert list(tmp_path.iterdir()) == []

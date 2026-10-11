@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import stat
 from pathlib import Path
 from typing import Any
 
+from cairn.adapters.legacy import retired
 from cairn.errors import Blocked, CairnError, Conflict, Denied
 from cairn.ingest.service import SourceType, capture_bytes
 from cairn.library.models import (
@@ -167,29 +167,12 @@ def inspect_pdf(ws: Workspace, data: bytes) -> dict[str, Any]:
         from cairn.library.pdf import inspect_metadata
 
         return inspect_metadata(data)
-    import base64
-
-    from cairn.adapters.isolation import invoke_worker
-
-    if not ws.config.worker_image:
-        raise Denied("isolated PDF metadata extraction unavailable")
-    result = json.loads(
-        invoke_worker(
-            ws.config.worker_image,
-            canonical(
-                {
-                    "operation": "inspect_pdf",
-                    "data": base64.b64encode(data).decode(),
-                }
-            ),
-        )
-    )
-    if not isinstance(result, dict):
-        raise CairnError("invalid PDF metadata result")
-    return result
+    retired("Legacy PDF metadata worker")
 
 
 def scan(ws: Workspace, *, extract_metadata: bool = True, rehash: bool = False) -> ScanReport:
+    if extract_metadata and not ws.config.synthetic:
+        retired("Legacy PDF metadata scan")
     with ws.lock():
         config = config_unlocked(ws)
         records = entities_unlocked(ws, config.scope)

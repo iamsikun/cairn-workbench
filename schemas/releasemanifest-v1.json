@@ -44,6 +44,7 @@
     }
   },
   "additionalProperties": false,
+  "description": "Version 1 remains strict for historical runtime approvals.",
   "properties": {
     "adapters": {
       "additionalProperties": {
@@ -126,10 +127,10 @@
     "python_implementation",
     "python_executable_hash",
     "platform",
-    "worker_image",
     "artifacts",
     "bootstrap_files",
-    "adapters"
+    "adapters",
+    "worker_image"
   ],
   "title": "ReleaseManifest",
   "type": "object"

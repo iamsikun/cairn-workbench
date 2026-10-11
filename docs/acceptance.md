@@ -1,5 +1,32 @@
 # Acceptance evidence
 
+## Native Docker removal (2026-10-11; implementation in progress)
+
+Docker execution, worker activation and managed updater installation/enabling are retired.
+Historical worker profiles remain data for approval validation. Native adapters enforce
+process deadlines and stream budgets and clean up their owned process groups; they do
+not establish network or filesystem isolation. Linux PDF extraction retains its address-
+space limit; macOS uses CPU/input/output/deadline budgets without that memory limit.
+
+Executed milestone checks on macOS arm64, Python 3.12.12:
+
+- 90 release/schema/updater/upgrade-chain/installation-transition tests passed.
+- 30 activation/archive, discovery/catalog, presentation and release tests passed.
+- 12 legacy draft/cached-extraction tests passed after preserving the cached read path.
+- 9 native process/retired-worker tests passed, including descendant cleanup after the
+  leader exits. The restricted shell denied `ps`; the complete targeted rerun passed
+  outside that shell, inspecting only synthetic child PIDs.
+- 3 configured/missing-Node and failed-parser preservation tests passed.
+- Ruff and strict mypy passed (125 source files).
+- Native Chromium's application acceptance test passed with its sandbox enabled and a
+  temporary profile. The restricted-shell browser attempt did not pass.
+
+Full native acceptance and installed-package results will be recorded below after execution.
+All inputs/settings are synthetic; no owner workspace, real schedule, installed skill,
+Docker installation/images, or client configuration was changed. Historical evidence below
+is retained unchanged and does not establish native acceptance.
+
+
 ## Direct-save restructuring (2026-10-11; automated gates passed, not released)
 
 Historical evidence below applies to the previous requirements. It is not a passing

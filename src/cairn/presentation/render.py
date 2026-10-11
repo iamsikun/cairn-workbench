@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from urllib.parse import quote
 
-from cairn.adapters.isolation import invoke_worker
-from cairn.errors import Blocked, Conflict, Denied
+from cairn.adapters.legacy import retired
+from cairn.errors import Conflict, Denied
 from cairn.presentation.models import (
     CatalogItem,
     CatalogPayload,
@@ -16,7 +16,6 @@ from cairn.presentation.models import (
     ProjectPayload,
     ProposalPayload,
     QueryPayload,
-    RenderJob,
     ViewBlock,
     ViewBundle,
     ViewDocument,
@@ -360,6 +359,8 @@ def _paper(row: CatalogItem) -> ViewBlock:
 def render_bundle(
     ws: Workspace, bundle: ViewBundle, *, feedback: bool = False, inline_synthetic: bool = False
 ) -> bytes:
+    if not (inline_synthetic and ws.config.synthetic):
+        retired("Legacy HTML worker")
     if bundle.renderer != renderer_identity():
         raise Conflict("renderer changed; regenerate the view")
     doc = document(bundle, feedback=feedback)
@@ -367,19 +368,4 @@ def render_bundle(
         if not ws.config.synthetic:
             raise Denied("inline rendering is synthetic-only")
         return run_renderer(doc)
-    if not ws.config.worker_image:
-        raise Blocked("view_renderer_unavailable")
-    import base64
-
-    from cairn.records.json import read_json
-
-    result = read_json(invoke_worker(ws.config.worker_image, canonical(RenderJob(document=doc))))
-    if (
-        set(result) != {"html", "document_hash", "renderer"}
-        or result["document_hash"] != digest(canonical(doc))
-        or result["renderer"] != bundle.renderer
-    ):
-        raise Denied("renderer response binding mismatch")
-    html = base64.b64decode(result["html"], validate=True)
-    validate_html(html, doc)
-    return html
+    retired("Legacy HTML worker")

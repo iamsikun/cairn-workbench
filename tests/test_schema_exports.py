@@ -51,7 +51,7 @@ from cairn.records.migration import (
     MigrationTransaction,
 )
 from cairn.records.models import Event, Extraction, Record
-from cairn.records.release import ReleaseManifest
+from cairn.records.release import NativeReleaseManifest, ReleaseManifest
 from cairn.records.runtime import ProbeRequest, ProbeResult, RuntimeApproval, WorkerProfile
 from cairn.storage.backup import BackupManifest
 from cairn.storage.code_source import CodeSourceChange
@@ -117,6 +117,7 @@ from cairn.storage.workspace import WorkspaceConfig, WorkspaceConfigV2, Workspac
         LifeDossier,
         BackupManifest,
         ReleaseManifest,
+        NativeReleaseManifest,
         ProbeRequest,
         ProbeResult,
         WorkerProfile,
@@ -137,7 +138,7 @@ def test_export_matches_model(model: type[Record]) -> None:
     name = (
         "workspaceconfig"
         if model in (WorkspaceConfigV2, WorkspaceConfigV3)
-        else model.__name__.lower()
+        else "releasemanifest" if model is NativeReleaseManifest else model.__name__.lower()
     )
     path = Path(__file__).parents[1] / "schemas" / f"{name}-v{number}.json"
     assert json.loads(path.read_text()) == model.model_json_schema()

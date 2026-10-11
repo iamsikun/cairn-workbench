@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from cairn.errors import Conflict, Denied
 from cairn.records.models import canonical, digest
-from cairn.records.release import ReleaseManifest, WheelArtifact
+from cairn.records.release import NativeReleaseManifest, ReleaseManifest, WheelArtifact
 from cairn.storage.release import current_platform, requirements, verify_bundle, verify_runtime
 
 
@@ -35,8 +35,13 @@ def manifest() -> ReleaseManifest:
     )
 
 
-def test_release_bundle_inventory_and_independent_hash(tmp_path: Path) -> None:
+@pytest.mark.parametrize("native", [False, True])
+def test_release_bundle_inventory_and_independent_hash(tmp_path: Path, native: bool) -> None:
     release = manifest()
+    if native:
+        release = NativeReleaseManifest.model_validate(
+            {**release.model_dump(exclude={"worker_image"}), "schema_version": 2}
+        )
     (tmp_path / "wheels").mkdir()
     wheel = tmp_path / "wheels" / release.artifacts[0].filename
     wheel.write_bytes(b"synthetic wheel")
@@ -77,3 +82,11 @@ def test_release_manifest_rejects_ambiguous_or_unsafe_artifacts() -> None:
 def test_checkout_invocation_cannot_claim_reviewed_runtime() -> None:
     with pytest.raises(Denied, match="python -I -B"):
         verify_runtime(manifest())
+
+
+def test_release_versions_do_not_reinterpret_legacy_authorization():
+    old = manifest().model_dump()
+    with pytest.raises(ValidationError):
+        NativeReleaseManifest.model_validate({**old, "schema_version": 2})
+    with pytest.raises(ValidationError):
+        ReleaseManifest.model_validate({k: v for k, v in old.items() if k != "worker_image"})

@@ -1,14 +1,14 @@
-import os
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
+from cairn.adapters.legacy import retired
 from cairn.cli.commands import JsonOption, WorkspaceOption, emit, guarded
-from cairn.errors import Blocked, Denied
+from cairn.errors import Denied
 from cairn.storage import upgrade
 from cairn.storage.workspace import Workspace
-from cairn.updater import schedule, service
+from cairn.updater import schedule
 from cairn.updater.home import DEFAULT_REF, DEFAULT_REPOSITORY, Home, UpdaterConfig, bound_release
 
 ENABLE_STATEMENT = (
@@ -20,7 +20,7 @@ ENABLE_STATEMENT = (
 def configured(home: Home) -> UpdaterConfig:
     config = home.config()
     if config is None:
-        raise Denied("automatic updates are not set up; run `cairn update setup`")
+        raise Denied("no historical managed update configuration was found")
     return config
 
 
@@ -33,24 +33,13 @@ def register_workspace(home: Home, root: Path, *, add: bool) -> None:
 
 
 def enable_workspace(home: Home, ws: Workspace, statement: str) -> dict[str, object]:
-    config = configured(home)
-    authorization = upgrade.enable(
-        ws,
-        repository=config.repository,
-        ref=config.ref,
-        statement=statement,
-    )
-    register_workspace(home, ws.root, add=True)
-    return {
-        "workspace_id": ws.config.id,
-        "update_authorization_id": authorization.id,
-        "repository": authorization.repository,
-        "ref": authorization.ref,
-    }
+    retired("Managed automatic updates")
 
 
 def register(app: typer.Typer) -> None:
-    update = typer.Typer(help="Automatic Cairn updates from the stable channel.")
+    update = typer.Typer(
+        help="Historical update status and removal; installation and updates are retired."
+    )
     app.add_typer(update, name="update")
 
     @update.command("setup")
@@ -62,26 +51,7 @@ def register(app: typer.Typer) -> None:
         schedule_updates: Annotated[bool, typer.Option("--schedule/--no-schedule")] = True,
         interval_hours: int = 24,
     ) -> None:
-        """Install the current stable release as a managed runtime and keep it current."""
-        home = Home.from_env()
-        existing = home.config()
-        config = UpdaterConfig(
-            repository=repository,
-            ref=ref,
-            workspaces=existing.workspaces if existing else [],
-            interval_hours=interval_hours,
-            path=os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
-        )
-        home.save_config(config)
-        result = service.run(home)
-        if home.current_runtime() is None:
-            raise Blocked(f"no release could be installed: {result.get('reason', '')}")
-        user_home = Path.home()
-        report: dict[str, object] = {"update": result, "home": str(home.root)}
-        report["shim"] = str(schedule.write_shim(home, bin_dir or user_home / ".local" / "bin"))
-        if schedule_updates:
-            report["schedule"] = schedule.install(home, config, user_home=user_home)
-        emit(report, True)
+        retired("Managed automatic updates")
 
     @update.command("run")
     @guarded
@@ -89,10 +59,7 @@ def register(app: typer.Typer) -> None:
         if_due: Annotated[bool, typer.Option("--if-due")] = False,
         quiet: Annotated[bool, typer.Option("--quiet")] = False,
     ) -> None:
-        """Check the channel now; install, verify and adopt a newer release."""
-        result = service.run(Home.from_env(), if_due=if_due)
-        if not quiet or result.get("status") in ("updated", "failed"):
-            emit(result, True)
+        retired("Managed automatic updates")
 
     @update.command("status")
     @guarded
@@ -128,12 +95,7 @@ def register(app: typer.Typer) -> None:
     @update.command("enable")
     @guarded
     def enable(workspace: WorkspaceOption, statement: str = ENABLE_STATEMENT) -> None:
-        """Record standing owner consent for automatic updates of this knowledge base."""
-        from cairn.cli.commands import owner_confirm
-
-        ws = Workspace(workspace)
-        owner_confirm(ws, "enable", "Allow automatic Cairn updates for this knowledge base.")
-        emit(enable_workspace(Home.from_env(), ws, statement), True)
+        retired("Managed automatic updates")
 
     @update.command("disable")
     @guarded
@@ -155,12 +117,10 @@ def register(app: typer.Typer) -> None:
     @update.command("schedule")
     @guarded
     def schedule_command(off: Annotated[bool, typer.Option("--off")] = False) -> None:
-        """Install (or remove) the periodic update job."""
-        home = Home.from_env()
-        if off:
-            emit(schedule.remove(user_home=Path.home()), True)
-        else:
-            emit(schedule.install(home, configured(home), user_home=Path.home()), True)
+        """Remove a historical periodic update job with --off; creation is retired."""
+        if not off:
+            retired("Managed update scheduling")
+        emit(schedule.remove(user_home=Path.home()), True)
 
     @update.command("rebind", hidden=True)
     @guarded
@@ -172,15 +132,4 @@ def register(app: typer.Typer) -> None:
         tag: Annotated[str, typer.Option()],
         backup_dir: Annotated[Path, typer.Option()],
     ) -> None:
-        """Run by a newly installed runtime: adopt it for one knowledge base."""
-        emit(
-            upgrade.rebind(
-                workspace,
-                release=release,
-                release_sha256=release_sha256,
-                mirror=mirror,
-                tag=tag,
-                backup_dir=backup_dir,
-            ),
-            True,
-        )
+        retired("Managed automatic updates")

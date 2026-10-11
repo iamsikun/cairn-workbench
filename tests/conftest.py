@@ -31,6 +31,7 @@ def synthetic_cairn_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch) 
     # The updater lives under CAIRN_HOME; never the real home.
     directory = tmp_path_factory.mktemp("cairn-home")
     monkeypatch.setenv("CAIRN_HOME", str(directory))
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: directory))
     monkeypatch.setenv("CAIRN_NO_AUTO_UPDATE", "1")
     return directory
 

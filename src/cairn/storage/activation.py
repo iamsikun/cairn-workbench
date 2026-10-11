@@ -1,52 +1,31 @@
 from __future__ import annotations
 
-import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
-from uuid import uuid4
 
-from cairn.adapters.isolation import container_command, invoke_worker
-from cairn.errors import Blocked, Conflict, Denied
+from cairn.adapters.legacy import historical_worker_profile, retired
+from cairn.errors import Conflict, Denied
 from cairn.records.json import read_json
 from cairn.records.models import canonical, digest, new_id, now
 from cairn.records.release import ReleaseManifest
 from cairn.records.runtime import (
     REQUIRED_REVIEWS,
-    ProbeRequest,
-    ProbeResult,
     ReviewAcknowledgement,
     RuntimeApproval,
     UpdateAuthorization,
     WorkerProfile,
 )
-from cairn.storage.release import load_release, verify_runtime
+from cairn.storage.release import verify_runtime
 
 if TYPE_CHECKING:
     from cairn.storage.workspace import WorkspaceConfiguration
 
 
 def check_worker(image: str) -> WorkerProfile:
-    """Fresh probe through the actual launcher, with no private input or owner mounts."""
-    nonce = uuid4().hex
-    with tempfile.TemporaryDirectory(prefix="cairn-synthetic-probe-") as temporary:
-        canary = Path(temporary) / "canary"
-        original = b"Cairn synthetic isolation canary: " + nonce.encode()
-        canary.write_bytes(original)
-        request = ProbeRequest(nonce=nonce, canary_path=str(canary))
-        result = ProbeResult.model_validate(read_json(invoke_worker(image, canonical(request))))
-        if result.nonce != nonce or not all(result.checks.values()):
-            raise Blocked("isolation_probe_failed_or_stale")
-        if not canary.is_file() or canary.is_symlink() or canary.read_bytes() != original:
-            raise Blocked("isolation_probe_modified_host_canary")
-    return WorkerProfile(
-        id=new_id("profile"),
-        at=now(),
-        image=image,
-        profile_hash=digest(canonical(container_command(image))),
-        result=result,
-    )
+    """Retired before creating a canary, reading inputs, or launching a process."""
+    retired("Legacy worker activation/probing")
 
 
 @dataclass(frozen=True)
@@ -83,28 +62,7 @@ def prepare_activation(
     statement: str | None,
     acknowledgements: set[ReviewAcknowledgement] | None,
 ) -> PreparedActivation:
-    if (
-        file is None
-        or expected_sha256 is None
-        or not statement
-        or not statement.strip()
-        or acknowledgements != REQUIRED_REVIEWS
-    ):
-        raise Denied(
-            "private activation requires a reviewed release, statement, "
-            "and all review acknowledgements"
-        )
-    manifest = load_release(file, expected_sha256=expected_sha256)
-    verify_runtime(manifest)
-    # Keep the exact reviewed bytes, including external formatting; check again before
-    # using them to bind a new workspace rather than assuming the file stayed unchanged.
-    from cairn.ingest.service import read_source_file
-
-    raw = read_source_file(file)
-    if digest(raw) != expected_sha256:
-        raise Conflict("release manifest changed during verification")
-    worker = check_worker(manifest.worker_image)
-    return PreparedActivation(raw, manifest, statement, acknowledgements, worker)
+    retired("Legacy runtime activation")
 
 
 LEGACY_RELEASE = "policy/runtime-release.json"
@@ -182,7 +140,7 @@ def check_runtime_metadata(
         or approval.worker.image != manifest.worker_image
         or config.worker_image != manifest.worker_image
         or approval.worker.profile_hash
-        != digest(canonical(container_command(manifest.worker_image)))
+        != digest(canonical(historical_worker_profile(manifest.worker_image)))
         or not all(approval.worker.result.checks.values())
         or (approval.operation == "restore" and not approval.archive_hash)
     ):

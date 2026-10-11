@@ -12,7 +12,7 @@ from cairn.errors import Conflict, Denied
 from cairn.ingest.service import read_source_file
 from cairn.records.json import read_json
 from cairn.records.models import digest
-from cairn.records.release import ReleaseManifest
+from cairn.records.release import NativeReleaseManifest, PackageManifest, ReleaseManifest
 from cairn.storage.files import RootFS
 
 
@@ -24,20 +24,23 @@ def current_platform() -> str:
     return f"{sys.platform}-{platform.machine()}"
 
 
-def requirements(manifest: ReleaseManifest) -> bytes:
+def requirements(manifest: PackageManifest) -> bytes:
     return "".join(
         f"{item.name}=={item.version} --hash=sha256:{item.sha256}\n" for item in manifest.artifacts
     ).encode()
 
 
-def load_release(file: Path, *, expected_sha256: str) -> ReleaseManifest:
+def load_release(file: Path, *, expected_sha256: str) -> PackageManifest:
     raw = read_source_file(file)
     if digest(raw) != expected_sha256:
         raise Conflict("release manifest differs from the independently reviewed digest")
-    return ReleaseManifest.model_validate(read_json(raw))
+    value = read_json(raw)
+    if isinstance(value, dict) and value.get("schema_version", 1) == 2:
+        return NativeReleaseManifest.model_validate(value)
+    return ReleaseManifest.model_validate(value)
 
 
-def verify_bundle(directory: Path, *, expected_sha256: str) -> ReleaseManifest:
+def verify_bundle(directory: Path, *, expected_sha256: str) -> PackageManifest:
     fs = RootFS(directory)
     manifest = load_release(directory / "release.json", expected_sha256=expected_sha256)
     if digest(fs.read("uv.lock")) != manifest.lock_hash:
@@ -53,7 +56,7 @@ def verify_bundle(directory: Path, *, expected_sha256: str) -> ReleaseManifest:
     return manifest
 
 
-def verify_runtime(manifest: ReleaseManifest) -> dict[str, str | int | bool]:
+def verify_runtime(manifest: PackageManifest) -> dict[str, str | int | bool]:
     """Check an owner-reviewed installation; this is not a host compromise detector."""
     if not sys.flags.isolated or not sys.dont_write_bytecode:
         raise Denied("reviewed runtime requires python -I -B -m cairn")
@@ -119,12 +122,17 @@ def verify_runtime(manifest: ReleaseManifest) -> dict[str, str | int | bool]:
                 raise Denied("invalid installation origin metadata")
             if metadata_url.get("dir_info", {}).get("editable"):
                 raise Denied("editable installations cannot process private data")
-    return {
+    result: dict[str, str | int | bool] = {
         "installation_verified": True,
         "code_revision": manifest.code_revision,
         "distributions": len(expected),
         "verified_files": len(files),
-        "worker_image": manifest.worker_image,
-        "worker_profile_verified": False,
-        "private_ready": False,
+        "manifest_schema": manifest.schema_version,
     }
+    if isinstance(manifest, ReleaseManifest):
+        result.update(
+            worker_image=manifest.worker_image,
+            worker_profile_verified=False,
+            private_ready=False,
+        )
+    return result

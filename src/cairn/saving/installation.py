@@ -14,18 +14,11 @@ from cairn.errors import Conflict, Denied
 from cairn.records.models import canonical, digest
 from cairn.storage.files import RootFS, disjoint
 from cairn.updater.home import Busy, Home, UpdaterConfig
-from cairn.updater.schedule import LABEL, Runner, cron_line, launchd_plist
+from cairn.updater.schedule import LABEL, Runner, cron_line, launchd_plist, shim_bytes
 
 
 def _old_shim(home: Home) -> bytes:
-    python = shlex.quote(str(home.current / "venv" / "bin" / "python"))
-    return (
-        "#!/bin/sh\n"
-        "# Installed by `cairn update setup`; runs the current verified Cairn runtime.\n"
-        f'CAIRN_HOME="${{CAIRN_HOME:-{home.root}}}"\n'
-        "export CAIRN_HOME\n"
-        f'exec {python} -I -B -m cairn "$@"\n'
-    ).encode()
+    return shim_bytes(home)
 
 
 def retire(

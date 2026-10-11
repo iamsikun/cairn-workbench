@@ -41,7 +41,7 @@ def register(app: typer.Typer) -> None:
     @release.command("check-worker")
     @guarded
     def worker(image: str, json_output: JsonOption = False) -> None:
-        """Run a fresh synthetic isolation probe through the local owner launcher."""
+        """Retired: native Cairn has no worker activation or probes."""
         from cairn.storage.activation import check_worker
 
         emit(check_worker(image), json_output)

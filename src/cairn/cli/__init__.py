@@ -70,6 +70,10 @@ def init(
 ) -> None:
     """Initialize an empty, separate workspace (synthetic during development)."""
     try:
+        if worker_image or auto_update:
+            from cairn.adapters.legacy import retired
+
+            retired("Legacy worker configuration/automatic updates")
         if not synthetic and worker_image:
             from cairn.errors import Denied
 
@@ -99,13 +103,6 @@ def init(
             statement=statement,
             acknowledgements=set(acknowledge) if acknowledge else None,
         )
-        if worker_image:
-            from cairn.adapters.isolation import container_command
-            from cairn.records.models import canonical
-
-            container_command(worker_image)
-            ws.config.worker_image = worker_image
-            ws.fs.write("workspace.json", canonical(ws.config))
         result: dict[str, object] = {
             "workspace_id": ws.config.id,
             "synthetic": ws.config.synthetic,

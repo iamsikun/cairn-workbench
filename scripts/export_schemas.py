@@ -1,4 +1,4 @@
-"""Emit versioned public schemas; run inside the development container."""
+"""Emit versioned public schemas; run in the native synthetic environment."""
 
 import json
 from pathlib import Path
@@ -51,7 +51,7 @@ from cairn.records.migration import (
     MigrationTransaction,
 )
 from cairn.records.models import Event, Extraction, Record
-from cairn.records.release import ReleaseManifest
+from cairn.records.release import NativeReleaseManifest, ReleaseManifest
 from cairn.records.runtime import (
     ProbeRequest,
     ProbeResult,
@@ -124,6 +124,7 @@ if __name__ == "__main__":
         LifeDossier,
         BackupManifest,
         ReleaseManifest,
+        NativeReleaseManifest,
         ProbeRequest,
         ProbeResult,
         WorkerProfile,
@@ -144,7 +145,7 @@ if __name__ == "__main__":
         name = (
             "workspaceconfig"
             if model in (WorkspaceConfigV2, WorkspaceConfigV3)
-            else model.__name__.lower()
+            else "releasemanifest" if model is NativeReleaseManifest else model.__name__.lower()
         )
         (destination / f"{name}-v{number}.json").write_text(
             json.dumps(model.model_json_schema(), indent=2, sort_keys=True) + "\n"

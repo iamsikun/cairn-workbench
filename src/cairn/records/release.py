@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 from pydantic import Field, field_validator, model_validator
 
@@ -32,8 +32,7 @@ class WheelArtifact(Model):
         return value
 
 
-class ReleaseManifest(Model):
-    schema_version: Literal[1] = 1
+class _ReleaseFields(Model):
     product: Literal["cairn-workbench"] = "cairn-workbench"
     code_revision: Annotated[str, Field(pattern=r"^[0-9a-f]{40,64}$")]
     source_hash: Digest
@@ -42,13 +41,12 @@ class ReleaseManifest(Model):
     python_implementation: str
     python_executable_hash: Digest
     platform: str
-    worker_image: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
     artifacts: list[WheelArtifact] = Field(min_length=1)
     bootstrap_files: dict[str, Digest]
     adapters: dict[str, str]
 
     @model_validator(mode="after")
-    def unique_artifacts(self) -> ReleaseManifest:
+    def unique_artifacts(self) -> Self:
         if len({a.name for a in self.artifacts}) != len(self.artifacts):
             raise ValueError("duplicate release package")
         if len({a.filename for a in self.artifacts}) != len(self.artifacts):
@@ -65,3 +63,19 @@ class ReleaseManifest(Model):
                 raise ValueError("release files overlap")
             names.update(artifact.installed_files)
         return self
+
+
+class ReleaseManifest(_ReleaseFields):
+    """Version 1 remains strict for historical runtime approvals."""
+
+    schema_version: Literal[1] = 1
+    worker_image: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
+
+
+class NativeReleaseManifest(_ReleaseFields):
+    """Native package inventory; never grants legacy runtime authorization."""
+
+    schema_version: Literal[2] = 2
+
+
+type PackageManifest = ReleaseManifest | NativeReleaseManifest

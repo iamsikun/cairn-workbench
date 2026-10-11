@@ -7,7 +7,7 @@ from pathlib import Path
 from cairn.errors import Blocked, Conflict, Denied
 from cairn.ingest.service import capture_bytes, extract, read_source_file
 from cairn.presentation.models import ViewBlock, ViewSection
-from cairn.presentation.render import document, run_renderer, validate_html
+from cairn.presentation.render import document, run_renderer
 from cairn.presentation.service import load_view, output_bytes, recheck, remember
 from cairn.presentation.writing_models import (
     ExplanationAnswer,
@@ -249,12 +249,10 @@ def import_explanation_bytes(ws: Workspace, raw: bytes) -> ExplanationResponse:
 def explanation_html(
     ws: Workspace, response: ExplanationResponse, output: Path, *, inline_synthetic: bool = False
 ) -> dict[str, str]:
-    import base64
+    from cairn.adapters.legacy import retired
 
-    from cairn.adapters.isolation import invoke_worker
-    from cairn.presentation.models import RenderJob
-    from cairn.records.json import read_json
-
+    if not (inline_synthetic and ws.config.synthetic):
+        retired("Legacy explanation HTML worker")
     with ws.lock():
         job = _returned(ws, response.job_id, response.input_hash)
         validate_explanation(job, response)
@@ -283,19 +281,7 @@ def explanation_html(
             title="Writer's limitations", blocks=[ViewBlock(text=t) for t in response.limitations]
         )
     )
-    if inline_synthetic and ws.config.synthetic:
-        html = run_renderer(doc)
-    elif inline_synthetic or not ws.config.worker_image:
-        raise Blocked("view_renderer_unavailable")
-    else:
-        raw = read_json(invoke_worker(ws.config.worker_image, canonical(RenderJob(document=doc))))
-        if (
-            raw.get("document_hash") != digest(canonical(doc))
-            or raw.get("renderer") != job.bundle.renderer
-        ):
-            raise Denied("renderer response binding mismatch")
-        html = base64.b64decode(raw["html"], validate=True)
-        validate_html(html, doc)
+    html = run_renderer(doc)
     with ws.lock(write=True):
         _returned(ws, response.job_id, response.input_hash)
         output_bytes(ws, output, html)

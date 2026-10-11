@@ -68,7 +68,9 @@ Cairn does not install, edit or update either skill.
 Accept PDFs, URLs, DOIs and supplied material without mandatory extraction. Unknown
 metadata stays unknown. Source bytes remain immutable and versions distinct. Native
 parsers use resource limits, not claimed container-equivalent isolation. Ordinary
-operation needs no Docker; contributor execution stays in the development container.
+operation and contributor execution need no Docker. Contributor checks use the documented
+native environment with synthetic data; this is not an OS sandbox. Legacy worker execution
+and managed updates are retired, while their data formats and validators remain readable.
 
 ## Compatibility and delivery
 

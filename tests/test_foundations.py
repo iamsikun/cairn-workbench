@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from cairn.errors import CairnError, Denied
+from cairn.errors import Blocked, CairnError, Denied
 from cairn.policies.models import require_inheritance
 from cairn.records.models import Labels, Money, Record, canonical
 from cairn.storage.markdown import decode, encode
@@ -65,7 +65,7 @@ def test_roots_must_be_disjoint_and_not_git(tmp_path: Path) -> None:
     alias.symlink_to(public)
     with pytest.raises(Denied):
         Workspace.init(alias / "private", code_roots=[public], synthetic=True)
-    with pytest.raises(Denied):
+    with pytest.raises(Blocked, match="retired"):
         Workspace.init(tmp_path / "private", code_roots=[public])
 
 

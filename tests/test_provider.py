@@ -56,17 +56,17 @@ def test_fake_is_deterministic_and_injection_is_data() -> None:
     assert Result.model_validate_json(canonical(one)) == one
 
 
-def test_worker_profile_has_no_mount_or_network() -> None:
+def test_historical_profile_remains_readable() -> None:
     import pytest
 
-    from cairn.adapters.isolation import container_command
+    from cairn.adapters.legacy import historical_worker_profile
 
-    args = container_command("sha256:" + "0" * 64)
+    args = historical_worker_profile("sha256:" + "0" * 64)
     assert "--network=none" in args
     assert "--read-only" in args
     assert not any("mount" in part or "volume" in part for part in args)
     with pytest.raises(Blocked):
-        container_command("cairn:latest")
+        historical_worker_profile("cairn:latest")
 
 
 def test_worker_wire_protocol_and_rejection() -> None:
@@ -81,6 +81,6 @@ def test_worker_wire_protocol_and_rejection() -> None:
             capture_output=True,
             check=False,
         )
-        assert bad.returncode == 2
+        assert bad.returncode == 5
         assert bad.stdout == b""
-        assert bad.stderr == b"worker rejected job\n"
+        assert b"retired" in bad.stderr

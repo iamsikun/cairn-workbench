@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any, Literal
 
+from cairn.adapters.legacy import retired
 from cairn.errors import CairnError
 from cairn.library import catalog, discovery, feed
 from cairn.library.models import Paper, metadata
@@ -36,6 +37,8 @@ def update(
     page_budget: int = 100,
     fetch: discovery.Fetch | None = None,
 ) -> dict[str, Any]:
+    if not ws.config.synthetic or fetch is None:
+        retired("Legacy library update workers")
     import fcntl
     import os
 

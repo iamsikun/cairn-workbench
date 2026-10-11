@@ -19,6 +19,7 @@ from urllib.parse import quote, urlencode, urljoin, urlsplit
 
 from pydantic import Field
 
+from cairn.adapters.legacy import retired
 from cairn.errors import Blocked, CairnError, Conflict, Denied
 from cairn.ingest.service import capture_bytes
 from cairn.library.catalog import config_unlocked, new_entity
@@ -306,10 +307,7 @@ def discover(
     if fetch is not None and not ws.config.synthetic:
         raise Denied("injected publication fetcher is synthetic-only")
     if fetch is None:
-        from cairn.library.fetcher import fetch_isolated
-
-        def fetch(url: str, hosts: set[str]) -> bytes:
-            return fetch_isolated(ws, url, hosts)
+        retired("Legacy publication discovery worker")
 
     if page_budget < 1 or page_budget > 10000:
         raise ValueError("invalid discovery page budget")

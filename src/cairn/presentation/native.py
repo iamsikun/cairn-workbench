@@ -1,9 +1,11 @@
 """Bounded native renderer, without workspace policies or proposal execution."""
 
+import os
+import shutil
 from pathlib import Path
 
-from cairn.adapters.isolation import bounded_process
-from cairn.errors import CairnError, Denied
+from cairn.adapters.process import bounded_process
+from cairn.errors import Blocked, CairnError, Denied
 from cairn.presentation.document import ViewDocument
 from cairn.records.models import canonical
 
@@ -11,12 +13,15 @@ RESOURCE = Path(__file__).parent / "resources"
 
 
 def run_renderer(doc: ViewDocument) -> bytes:
+    node = shutil.which("node")
+    if node is None:
+        raise Blocked("Node 20 or later is required for HTML; add node to PATH")
     status, html = bounded_process(
-        ["node", str(RESOURCE / "application.mjs")],
+        [node, str(RESOURCE / "application.mjs")],
         canonical(doc),
         timeout=60,
         stdout_limit=32 * 1024 * 1024,
-        env={"PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin", "LANG": "C.UTF-8"},
+        env={"PATH": os.environ.get("PATH", os.defpath), "LANG": "C.UTF-8"},
     )
     if status:
         raise CairnError("application renderer rejected document")

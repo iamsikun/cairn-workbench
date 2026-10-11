@@ -16,16 +16,16 @@ from cairn.storage.workspace import Workspace
 def test_weekly_baseline_additions_deduplicate_and_recover(ws: Workspace, tmp_path: Path) -> None:
     root = library(ws, tmp_path)
     (root / "Example Journal/a.pdf").write_bytes(pdf("Old"))
-    first = update(ws)
+    first = update(ws, fetch=lambda *args: b"synthetic")
     assert first["baseline"] and not feed.history(ws, "research")[0].entries
     (root / "Example Journal/b.pdf").write_bytes(pdf("Added"))
-    second = update(ws)
+    second = update(ws, fetch=lambda *args: b"synthetic")
     assert second["digest"]
     values = feed.history(ws, "research")
     assert len(values[0].entries) == 1 and values[0].entries[0].event.kind == "box_addition"
-    assert update(ws)["digest"] is None
+    assert update(ws, fetch=lambda *args: b"synthetic")["digest"] is None
     with pytest.raises(Denied):
-        update(ws, scope="finance")
+        update(ws, scope="finance", fetch=lambda *args: b"synthetic")
 
 
 def test_streaming_backup_exceeds_legacy_limit(ws: Workspace, tmp_path: Path, monkeypatch) -> None:

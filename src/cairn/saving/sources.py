@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from cairn.adapters.isolation import bounded_process
+from cairn.adapters.process import bounded_process
 from cairn.errors import CairnError, Denied
 from cairn.records.models import canonical, digest
 from cairn.saving.models import KnowledgeRecord, SourceInfo
@@ -114,5 +114,8 @@ def extract(raw: bytes) -> dict[str, Any]:
 
 if __name__ == "__main__":
     resource.setrlimit(resource.RLIMIT_CPU, (15, 15))
-    resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
+    # macOS does not implement Linux address-space limits for this process. CPU,
+    # input/page/output budgets and the parent deadline remain enforced there.
+    if sys.platform == "linux":
+        resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
     sys.stdout.buffer.write(canonical(extract(sys.stdin.buffer.read(16 * 1024 * 1024 + 1))))

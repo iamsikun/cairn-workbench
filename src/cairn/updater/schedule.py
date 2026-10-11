@@ -10,6 +10,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+from cairn.adapters.legacy import retired
 from cairn.updater.home import Home, UpdaterConfig
 
 LABEL = "io.github.iamsikun.cairn.update"
@@ -53,24 +54,7 @@ def install(
     platform: str = sys.platform,
     run: Runner = subprocess.run,
 ) -> dict[str, str]:
-    if platform == "darwin":
-        plist = user_home / "Library" / "LaunchAgents" / f"{LABEL}.plist"
-        plist.parent.mkdir(parents=True, exist_ok=True)
-        plist.write_bytes(launchd_plist(home, config))
-        domain = f"gui/{os.getuid()}"
-        run(["launchctl", "bootout", domain, str(plist)], capture_output=True, check=False)
-        loaded = run(["launchctl", "bootstrap", domain, str(plist)], capture_output=True)
-        state = "scheduled" if loaded.returncode == 0 else "written_not_loaded"
-        return {"scheduler": "launchd", "path": str(plist), "status": state}
-    existing = run(["crontab", "-l"], capture_output=True, check=False)
-    lines = [
-        line
-        for line in (existing.stdout.decode() if existing.returncode == 0 else "").splitlines()
-        if CRON_MARKER not in line
-    ]
-    lines.append(cron_line(home, config))
-    written = run(["crontab", "-"], input=("\n".join(lines) + "\n").encode(), capture_output=True)
-    return {"scheduler": "cron", "status": "scheduled" if written.returncode == 0 else "failed"}
+    retired("Managed update scheduling")
 
 
 def remove(
@@ -93,17 +77,17 @@ def remove(
     return {"scheduler": "cron", "status": "removed"}
 
 
-def write_shim(home: Home, bin_dir: Path) -> Path:
-    """A `cairn` command that always runs the current verified runtime."""
-    bin_dir.mkdir(parents=True, exist_ok=True)
-    shim = bin_dir / "cairn"
+def shim_bytes(home: Home) -> bytes:
+    """Exact historical shim bytes for identification and synthetic fixtures."""
     python = shlex.quote(str(home.current / "venv" / "bin" / "python"))
-    shim.write_text(
+    return (
         "#!/bin/sh\n"
         "# Installed by `cairn update setup`; runs the current verified Cairn runtime.\n"
         f'CAIRN_HOME="${{CAIRN_HOME:-{home.root}}}"\n'
         "export CAIRN_HOME\n"
         f'exec {python} -I -B -m cairn "$@"\n'
-    )
-    shim.chmod(0o755)
-    return shim
+    ).encode()
+
+
+def write_shim(home: Home, bin_dir: Path) -> Path:
+    retired("Managed launcher installation")

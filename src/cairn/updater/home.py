@@ -44,7 +44,7 @@ class UpdaterConfig(Model):
     workspaces: list[str] = Field(default_factory=list)
     enabled: bool = True
     interval_hours: int = Field(default=24, ge=1, le=168)
-    # The owner's PATH at setup, so scheduled runs find git, uv and docker.
+    # The owner's PATH at setup, retained only to identify historical scheduled jobs.
     path: str = Field(default="/usr/local/bin:/usr/bin:/bin", max_length=8192)
 
 

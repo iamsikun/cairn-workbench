@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 import os
 from datetime import date
 from pathlib import Path
@@ -8,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import JsonValue
 
-from cairn.adapters.isolation import invoke_worker
+from cairn.adapters.legacy import retired
 from cairn.errors import Blocked, CairnError, Conflict
 from cairn.ingest.extractors import extract_bytes
 from cairn.policies.models import require_inheritance
@@ -241,7 +240,9 @@ def run_extraction_unlocked(
     scope_name: str,
     inline_synthetic: bool = False,
 ) -> Extraction:
-    """Deterministic extraction through the route check and isolated worker; no writes."""
+    """Synthetic-only extraction through the historical route checks; no writes."""
+    if not (inline_synthetic and ws.config.synthetic):
+        retired("Legacy source extraction")
     from cairn.policies.audit import require_local_route_unlocked
 
     assert source.source is not None
@@ -261,19 +262,7 @@ def run_extraction_unlocked(
             )
         ),
     )
-    if inline_synthetic and ws.config.synthetic:
-        result = extract_bytes(source, data)
-    elif ws.config.worker_image:
-        job = {
-            "operation": "extract",
-            "source": source.model_dump(mode="json"),
-            "data": base64.b64encode(data).decode(),
-        }
-        result = Extraction.model_validate_json(
-            invoke_worker(ws.config.worker_image, canonical(job))
-        )
-    else:
-        raise Blocked("isolation_unavailable: configure a pinned worker image")
+    result = extract_bytes(source, data)
     if result.source_id != source.id or result.source_hash != source.source.content_hash:
         raise Conflict("worker returned evidence for another source")
     return result
@@ -286,6 +275,16 @@ def extract(
     scope_name: str = "owner",
     inline_synthetic: bool = False,
 ) -> tuple[Extraction, str]:
+    if not (inline_synthetic and ws.config.synthetic):
+        # Reading a preserved extraction is compatible; creating one requires the
+        # retired worker. Check without a writer lock or failure-receipt mutation.
+        with ws.lock():
+            _, existing, _ = ws.record(source_id, ws.policy.scope(scope_name))
+            if existing.source and existing.source.extraction and (
+                existing.source.extraction.coverage != "failed"
+            ):
+                return load_extraction(ws, existing)
+        retired("Legacy source extraction")
     with ws.lock(write=True):
         path, source, body = ws.record(source_id, ws.policy.scope(scope_name))
         if source.source is None:

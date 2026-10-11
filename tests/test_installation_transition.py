@@ -8,7 +8,7 @@ import pytest
 from cairn.errors import Conflict
 from cairn.saving.installation import retire
 from cairn.updater.home import Busy, Home, UpdaterConfig
-from cairn.updater.schedule import LABEL, cron_line, launchd_plist, write_shim
+from cairn.updater.schedule import LABEL, cron_line, launchd_plist, shim_bytes
 
 
 class Scheduler:
@@ -62,7 +62,10 @@ def setup(tmp_path):
     home.save_config(config)
     owner = tmp_path / "synthetic-home"
     owner.mkdir()
-    shim = write_shim(home, owner / "bin")
+    shim = owner / "bin" / "cairn"
+    shim.parent.mkdir()
+    shim.write_bytes(shim_bytes(home))
+    shim.chmod(0o755)
     return home, config, owner, shim, Scheduler(home, config)
 
 

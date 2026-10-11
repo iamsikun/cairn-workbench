@@ -4,10 +4,11 @@ Read KNOWLEDGE_WORKBENCH_BUILD_BRIEF.md and CAIRN_BUILD_PLAN.md before changing 
 The approved direct-save restructuring supersedes proposal-only and managed-runtime
 requirements. Historical requirements and evidence remain under docs/legacy.
 
-Develop and execute contributor code only in the documented development container with
-synthetic data. Never inspect or mount a real private workspace, home, credentials, or
-Docker socket. Acquisition may use networking; processing containers have no network,
-owner filesystem, or credentials. A skipped isolation check is not a pass.
+Develop and execute contributor code in the documented native Python/uv environment with
+synthetic data and temporary settings only. Never inspect a real private workspace, home,
+or credentials. Dependency acquisition may use networking; checks use acquired dependencies
+and synthetic inputs. Native execution is not a filesystem or network sandbox. Docker is
+not used. A skipped mandatory check is not a pass.
 
 New-format Cairn connects the owner's existing agent to a fixed collection (research by
 default). Ordinary saves need no cloud grant, proposal, approval, activation, or terminal
@@ -34,6 +35,6 @@ transition handling active processes and retaining rollback artifacts. Package u
 do not implicitly migrate data. No real schedules or installations change in development.
 
 Use small milestone commits and maintain docs/acceptance.md with executed evidence.
-Run meaningful failure-mode tests in the container. Keep protocol tests separate from
+Run meaningful failure-mode tests in the native environment. Keep protocol tests separate from
 actual Claude Code/Codex trials and semantic quality. Never add a remote, push, publish,
 deploy, migrate private data, or change actual client settings in contributor work.
