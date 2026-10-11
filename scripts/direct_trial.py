@@ -27,6 +27,34 @@ def trial(python: Path, env: dict[str, str], root: Path) -> dict[str, Any]:
         return json.loads(result.stdout)
 
     assert cli("init", str(workspace), "--synthetic")["schema"] == 4
+    subprocess.run(
+        [str(python.parent / "cairn"), "--help"],
+        env=env,
+        capture_output=True,
+        check=True,
+        timeout=30,
+    )
+    legacy = directory / "legacy"
+    code = directory / "synthetic-code"
+    code.mkdir()
+    cli("legacy", "init", "--workspace", str(legacy), "--code-root", str(code), "--synthetic")
+    cli(
+        "legacy",
+        "note",
+        "Synthetic personal research observation",
+        "--domain",
+        "research",
+        "--workspace",
+        str(legacy),
+        "--json",
+    )
+    assert (
+        cli("migrate", "--workspace", str(legacy), "--backup", str(directory / "legacy.zip"))[
+            "status"
+        ]
+        == "migrated"
+    )
+    assert cli("search", "observation", "--workspace", str(legacy))
     for client in ("claude", "codex"):
         args = ("connect", client, "--workspace", str(workspace), "--settings-home", str(settings))
         first = cli(*args)
@@ -90,6 +118,7 @@ def trial(python: Path, env: dict[str, str], root: Path) -> dict[str, Any]:
         "installed_stdio": "passed",
         "connection_adapters": "passed",
         "backup_restore": "passed",
+        "legacy_to_v4": "passed",
         "html": "passed",
         "actual_clients": "unverified",
     }

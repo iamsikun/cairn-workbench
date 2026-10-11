@@ -213,7 +213,11 @@ def feedback(request: Path, workspace: WorkspacePath, collection: str = "researc
 
 
 @app.command()
-def migrate(workspace: WorkspacePath, backup: Path, mapping: Path | None = None) -> None:
+def migrate(
+    workspace: WorkspacePath,
+    backup: Annotated[Path, typer.Option("--backup")],
+    mapping: Path | None = None,
+) -> None:
     from cairn.saving.migration import migrate as convert
 
     output(convert(workspace, backup, json.loads(mapping.read_bytes()) if mapping else None))

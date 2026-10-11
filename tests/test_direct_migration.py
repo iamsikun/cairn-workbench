@@ -168,3 +168,23 @@ def test_library_inventory_and_reading_marks_preserved(ws, tmp_path):
             assert book.fs.read(path) == original
     record = book.record(identity, "research")[1]
     assert record.legacy_path and book.fs.read(record.legacy_path) == before[record.legacy_path]
+
+
+def test_documented_migration_cli(ws, tmp_path):
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "cairn",
+            "migrate",
+            "--workspace",
+            str(ws.root),
+            "--backup",
+            str(tmp_path / "cli-backup.zip"),
+        ],
+        capture_output=True,
+        check=True,
+        timeout=30,
+    )
+    assert json.loads(result.stdout)["status"] == "migrated"
+    assert Book(ws.root).config.schema_version == 4
