@@ -1,5 +1,30 @@
 # Acceptance evidence
 
+## 0.3.0 release verification (2026-10-10)
+
+After the owner requested publication, the package, module and lockfile versions
+were advanced together to 0.3.0. Release notes clarify that paper notes and topic
+notes are Markdown pages, and HTML is an optional generated view.
+
+The release candidate `d4156d2c8676070bed064a2333a2e2d2991efdf5` passed
+`bash scripts/check.sh`: **364 tests**, schema parity, Ruff, strict mypy across
+102 source files, all required isolation probes, worker extraction and HTML
+round trips, **129/129 gold-set checks**, and real-engine worker/child cleanup.
+No isolation check was skipped. The initial sandboxed build could not write
+Docker builder metadata; the authorized rerun completed successfully.
+
+`bash scripts/release_check.sh` then passed sequentially on that clean commit.
+The [offline installed trial](evidence/release-0.3.0.json) verified 15 distributions
+and 929 files, including the evolving paper-note/topic-note workflow and HTML
+refresh. Tampered package, renderer and contract rejection passed, along with the
+final pinned-worker [13-check isolation probe](evidence/release-0.3.0-worker-profile.json).
+The following evidence commit changes documentation only. The renderer source and
+bundle are unchanged from the browser, portable-runtime and reproducibility checks
+recorded below; those checks were not repeated for the version bump.
+
+All evidence remains synthetic. Real-host agent validation is unperformed, and no
+private workspace, installed skill or agent configuration was changed.
+
 ## Paper notes, connected notebooks and synchronized HTML — final verification (2026-10-10)
 
 Implementation and installed-release revision: `1847e686c4e0ae46a0b6304c5e710a9ec638901a`
