@@ -265,3 +265,22 @@ def test_source_versions_aliases_questions_and_quotes(book: Book) -> None:
     second = save(book, "research", Capture(operation_key="v2", source=revised))["notes"][0]
     assert captured["id"] != second["id"]
     assert get_note(book, "research", captured["id"])["source"]["text"] == source.text
+
+
+def test_explicit_target_cannot_duplicate_a_paper_identity(book: Book) -> None:
+    paper = SourceInput(identity="doi:10.9999/unique", title="Unique synthetic paper")
+    first = SaveReading(
+        operation_key="first",
+        paper=paper,
+        note=NoteChange(title=paper.title, markdown="First reading"),
+    )
+    saved = save(book, "research", first)
+    duplicate = SaveReading(
+        operation_key="duplicate",
+        paper=paper,
+        note=NoteChange(id="concept_duplicate", title=paper.title, markdown="Second copy"),
+    )
+    with pytest.raises(Conflict, match="already has a note"):
+        save(book, "research", duplicate)
+    assert len([r for _, r, _ in book.records("research").values() if r.paper_identity]) == 1
+    assert len(recent(book, "research")) == 1 and saved["status"] == "saved"

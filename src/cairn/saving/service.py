@@ -185,6 +185,8 @@ def save(
                     ]
                     if len(matches) > 1 and change.id is None:
                         raise Conflict("multiple paper notes; choose a target revision")
+                    if matches and change.id is not None and change.id not in matches:
+                        raise Conflict("paper already has a note; update its current revision")
                     identity = change.id or (matches[0] if matches else paper_id)
                 if identity in seen:
                     raise Conflict("duplicate target in save")
