@@ -1,40 +1,26 @@
 # Working on Cairn
 
-Read KNOWLEDGE_WORKBENCH_BUILD_BRIEF.md and CAIRN_BUILD_PLAN.md before changing boundaries.
-The approved direct-save restructuring supersedes proposal-only and managed-runtime
-requirements. Historical requirements and evidence remain under docs/legacy.
+Cairn has one job. While the owner reads papers with Finch in Claude Code or Codex, it
+saves notes automatically and connects them into a network of topics. Keep it minimal.
+Before adding a feature, ask whether that workflow needs it. See README.md for the design.
 
-Develop and execute contributor code in the documented native Python/uv environment with
-synthetic data and temporary settings only. Never inspect a real private workspace, home,
-or credentials. Dependency acquisition may use networking; checks use acquired dependencies
-and synthetic inputs. Native execution is not a filesystem or network sandbox. Docker is
-not used. A skipped mandatory check is not a pass.
+- The code is four modules in `src/cairn/`:
+  - `store.py`: notes, links, search and suggestions.
+  - `mcp.py`: the stdio server and the agent instructions.
+  - `html.py`: optional offline pages.
+  - `cli.py`: the command line.
+- Markdown files are the only state. Indexes, caches and HTML are derived or absent.
+- The MCP tools are search, get_note, list_topics, save_reading and save_note.
+- Cairn never runs a model. The connected agent writes notes and decides links; Cairn
+  stores them and suggests candidate topics.
+- Finch is an independent skill. Do not install, vendor or edit it.
+- Never overwrite a note without its current revision. Writes are atomic and stay inside
+  the selected collection.
+- `cairn connect` delegates to `claude mcp add` / `codex mcp add`. It never edits client
+  settings files itself.
 
-New-format Cairn connects the owner's existing agent to a fixed collection (research by
-default). Ordinary saves need no cloud grant, proposal, approval, activation, or terminal
-acknowledgement. Client/model metadata is provenance, not authorization. Collection
-filtering governs Cairn tools, not independent filesystem access by the agent.
-
-Keep original source bytes immutable and user contributions attributed and recoverable.
-Saving never verifies a claim or adopts a decision. Preserve six record types, stable IDs,
-source locators, safe paths, a recoverable writer, revision checks, and schema parity.
-Markdown and editable visual resources are authoritative; indexes and HTML are derived.
-Persist readings independently of extraction, enrichment, indexing, and rendering;
-report their states honestly. Use operation keys for retries and compensating undo.
-
-Cairn never launches a semantic agent. Finch supplies reading method and Quill supplies
-writing method inside the owner's agent. Do not install, vendor, edit, or update either
-skill. Cairn owns connection instructions and contracts. New MCP exposes only capture,
-search, get_note, list_topics, save_reading, and save_note.
-
-Keep legacy validators/readers for migration, backups, and historical provenance.
-Never reinterpret pending proposals as saved knowledge or bypass legacy authorization
-by pretending a real workspace is synthetic. Migration is explicit, backed up, journaled,
-and tested on schemas 1–3. Retire scheduled and startup updates through a verified
-transition handling active processes and retaining rollback artifacts. Package upgrades
-do not implicitly migrate data. No real schedules or installations change in development.
-
-Use small milestone commits and maintain docs/acceptance.md with executed evidence.
-Run meaningful failure-mode tests in the native environment. Keep protocol tests separate from
-actual Claude Code/Codex trials and semantic quality. Never add a remote, push, publish,
-deploy, migrate private data, or change actual client settings in contributor work.
+Develop with `uv` and synthetic data in temporary folders. Never read a real knowledge
+base, home directory or credentials. Never change real client settings: run `connect` only
+with `--dry-run`. Never push, publish or add remotes.
+Run `uv run pytest` and `uv run ruff check . && uv run ruff format --check .` before
+committing. Make small commits.

@@ -1,3 +1,5 @@
-from cairn.entry import main
+import sys
 
-main()
+from cairn.cli import main
+
+sys.exit(main())

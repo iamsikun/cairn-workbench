@@ -4,17 +4,17 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cairn-workbench"
-version = "0.4.0"
-description = "Versioned readings, connected learning notebooks, and scoped agent context"
+version = "0.5.0"
+description = "A Markdown research knowledge base that your agent writes while you read"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["pydantic>=2.11,<3", "typer>=0.16,<1", "PyYAML>=6.0.2,<7", "pypdf>=6,<7"]
+dependencies = ["PyYAML>=6.0.2,<7", "markdown-it-py>=3,<5"]
 
 [project.scripts]
-cairn = "cairn.entry:main"
+cairn = "cairn.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8.3,<10", "ruff>=0.12,<1", "mypy>=1.16,<2", "types-PyYAML>=6.0"]
+dev = ["pytest>=8.3,<10", "ruff>=0.12,<1"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cairn"]
@@ -28,9 +28,3 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
-
-[tool.mypy]
-python_version = "3.12"
-strict = true
-packages = ["cairn"]
-mypy_path = "src"

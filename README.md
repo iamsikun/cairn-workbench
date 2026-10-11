@@ -1,49 +1,93 @@
 # Cairn
 
-A personal knowledge base your agent develops with you: save readings, connect papers,
-maintain learning notebooks, and produce visual explanations.
+A Markdown research knowledge base that your agent writes while you read.
 
-Markdown and editable visual resources preserve knowledge independently of any client.
-Finch guides reading; Quill develops clear prose. Cairn stores revisions, relationships,
-original evidence and your observations, with scoped retrieval, recovery and undo.
+Read a paper with the Finch skill in Claude Code or Codex. As the discussion progresses,
+the agent saves a note for the paper and files it under topics, such as
+*Generative recommendation* or *Large recommendation models*. Those topics nest under
+broader ones like *Recommendation systems*. Over many sessions and both clients, the notes
+grow into a connected network.
 
-## Restructuring status
-
-The direct-save implementation uses workspace schema 4. See CAIRN_BUILD_PLAN.md and
-docs/acceptance.md for milestone evidence and remaining real-client trials. Historical 0.3.0 behavior
-and tests are retained for compatibility; they do not prove the new workflow.
-
-The workflow is init -> connect -> read/discuss -> save -> connect knowledge.
-Ordinary saves require no grants, approval commands or Docker. Research is the default
-collection; finance/life require separate selection. The collection is a tool boundary,
-not a sandbox for the agent's independent filesystem access.
-
-Requested HTML companions show visual overviews, architectures, comparisons and scenarios.
-They track their Markdown and asset inputs. An interrupted render never loses a note.
-Finch and Quill are independently installed and maintained; Cairn manages neither skill.
-
-```sh
-cairn init /synthetic/knowledge
-cairn connect codex --workspace /synthetic/knowledge
+```text
+Recommendation systems
+├── Generative recommendation
+│   └── TIGER: Recommender Systems with Generative Retrieval
+└── Large recommendation models
+    └── Actions Speak Louder than Words: HSTU
 ```
 
-These are illustrative paths. See [installation and agent integration](docs/installation.md),
-[HTML companions](docs/notebook-html.md), [migration](docs/migration.md), and
-[recovery and undo](docs/recovery.md). Ordinary commands never run a startup updater;
-legacy maintenance commands require the explicit `cairn legacy` prefix.
+## Setup
+
+```sh
+uv tool install .                       # from this checkout; provides `cairn`
+cairn init ~/knowledge                  # create the knowledge base
+cairn connect claude -w ~/knowledge     # runs `claude mcp add --scope user cairn ...`
+cairn connect codex  -w ~/knowledge     # runs `codex mcp add cairn ...`
+```
+
+`--dry-run` prints the registration command without running it, and `--remove`
+unregisters it. Finch is installed separately; Cairn does not install or modify it.
+
+## How it works
+
+The knowledge base is a folder of Markdown files, and it opens as an Obsidian vault:
+
+```text
+~/knowledge/research/papers/tiger-recommender-systems-with-generative-retrieval.md
+~/knowledge/research/topics/generative-recommendation.md
+~/knowledge/research/topics/recommendation-systems.md
+```
+
+```markdown
+---
+title: 'TIGER: Recommender Systems with Generative Retrieval'
+kind: paper
+source: arxiv:2305.05065
+topics:
+- '[[generative-recommendation]]'
+created: '2026-10-11'
+updated: '2026-10-11'
+---
+## Main idea
+...
+```
+
+- **Notes.** A paper's file name is its slug. One DOI or arXiv id always maps to the same note.
+- **Links.** `topics:` puts a paper in a topic, and a topic in its broader topics. A topic
+  may have several broader topics. `[[slug]]` in a body links any two notes. Backlinks and
+  the topic tree are computed from these links.
+- **Saving and linking.** The connected agent calls Cairn's MCP tools. Cairn runs no model
+  of its own:
+  - `search`, `get_note` and `list_topics` read the knowledge base.
+  - `save_reading` saves a paper note and its topics.
+  - `save_note` saves a topic or a free-standing note.
+- **Topics.** Naming a topic that does not exist creates it. Each save returns
+  `suggested_topics`: existing topics whose names appear in the note but are not linked
+  yet. The server's instructions tell the agent to save after each substantive step, reuse
+  existing topics, add broader topics, and link the suggestions that are real.
+- **Safe updates.** Updating a note requires the revision returned by `get_note`. Edits you
+  make in an editor, or that another session makes, are never silently overwritten.
+- **Collections.** `research` is the default. `finance` and `life` are separate folders.
+  Pass `--collection` to `connect` to expose one of them under its own server name. Each
+  server reads and writes only its own collection.
+- **HTML.** `get_note(html=true)` or `cairn html` writes offline pages to
+  `html/<collection>/`. These include a topic-tree index and backlinks. The pages are
+  generated from the Markdown and can be deleted at any time.
+
+From the terminal: `cairn search QUERY`, `cairn show NAME`, `cairn topics` and `cairn html`.
+These take `-w PATH` or read `$CAIRN_WORKSPACE`.
 
 ## Development
 
-Use the documented native Python/uv environment with synthetic data. Docker is not
-needed for development, CI or releases. Never use a real home, private knowledge base,
-credentials or client settings. See [development](docs/development.md).
-Run bash scripts/check.sh for required checks and bash scripts/release_check.sh for
-installed-package evidence. Missing mandatory checks are not passes.
+```sh
+uv sync
+uv run pytest
+uv run ruff check . && uv run ruff format --check .
+```
 
-This repository is the software checkout. Private knowledge bases stay outside it.
-No real deployment, migration, client configuration, schedule changes or publication
-occurs as part of development. Historical acceptance evidence remains in docs/acceptance.md.
+Tests use temporary folders. Don't point development commands at a real knowledge base,
+and don't run `cairn connect` without `--dry-run` during development.
 
 ## License
 
-MIT. The vendored HTML renderer retains its own MIT license.
+MIT.

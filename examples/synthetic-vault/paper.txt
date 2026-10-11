@@ -1,8 +1,0 @@
-Synthetic experiment: retrieval with explicit evidence
-
-The synthetic baseline found 8 of 10 relevant documents.
-Adding bilingual aliases found 9 of 10 relevant documents.
-The evaluation uses invented documents and does not establish real-world quality.
-Evidence provenance is necessary; citation presence alone does not prove a conclusion.
-
-中文别名：证据 evidence；检索 retrieval。
