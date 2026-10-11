@@ -9,6 +9,7 @@ from cairn.saving.models import (
     SaveTransaction,
     WorkspaceConfigV4,
 )
+from cairn.saving.views import NotebookFeedback, Scenario
 
 SCHEMAS = {
     "workspaceconfig-v4": WorkspaceConfigV4,
@@ -18,4 +19,6 @@ SCHEMAS = {
     "capture-v1": Capture,
     "savereceipt-v1": SaveReceipt,
     "savetransaction-v1": SaveTransaction,
+    "notebookfeedback-v1": NotebookFeedback,
+    "scenario-v1": Scenario,
 }

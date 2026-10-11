@@ -5,7 +5,8 @@ reading and writing methods. Six tools share the CLI's save/retrieval services.
 Markdown records and versioned visual resources are canonical. Original source blobs
 and attributed contributions are preserved. Stable IDs connect papers, topics, projects
 and questions. Explained relationships preserve direction, provenance and corrections.
-SQLite search and graph indexes are disposable and collection-specific.
+SQLite search is disposable and collection-specific. Graph neighbors are resolved from
+the selected collection's canonical records.
 
 The writer validates a bounded change set under a workspace lock, journals before/after
 bytes, and commits content plus revision receipts. Readers refuse prepared transactions.

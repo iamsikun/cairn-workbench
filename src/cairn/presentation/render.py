@@ -361,7 +361,7 @@ def run_renderer(doc: ViewDocument) -> bytes:
         canonical(doc),
         timeout=60,
         stdout_limit=32 * 1024 * 1024,
-        env={"PATH": "/usr/local/bin:/usr/bin:/bin", "LANG": "C.UTF-8"},
+        env={"PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin", "LANG": "C.UTF-8"},
     )
     if status:
         raise CairnError("application renderer rejected document")

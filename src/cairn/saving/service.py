@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import sqlite3
 from typing import Any
 
-from cairn.errors import CairnError, Conflict, Denied
+from cairn.errors import Conflict, Denied
 from cairn.records.models import Domain, canonical, digest, new_id, now
 from cairn.saving.models import (
     Capture,
@@ -118,7 +117,7 @@ def _result(book: Book, receipt: SaveReceipt) -> dict[str, Any]:
     try:
         rebuild(book, receipt.collection)
         value["index"] = "current"
-    except (CairnError, OSError, sqlite3.Error):
+    except Exception:  # Derived maintenance must never obscure a committed save.
         value["index"] = "pending"
     value["html"] = "not_requested"
     if not book.fs.files(f"views/{receipt.collection}"):
@@ -127,7 +126,7 @@ def _result(book: Book, receipt: SaveReceipt) -> dict[str, Any]:
         from cairn.saving.views import maintain
 
         value["html"] = maintain(book, receipt.collection)
-    except (ImportError, CairnError, OSError, ValueError):
+    except Exception:  # The authoritative receipt remains usable after renderer failures.
         value["html"] = "pending"
     return value
 

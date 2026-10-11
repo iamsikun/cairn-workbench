@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from typing import Any
 
@@ -35,11 +36,24 @@ def search(book: Book, collection: Domain, query: str, limit: int = 20) -> list[
     book.collection(collection)
     with book.lock():
         # Rebuild from canonical records: external Markdown edits cannot yield stale results.
+        ranks: dict[str, float] = {}
+        terms = query.casefold().split()
         try:
             rebuild(book, collection)
+            if terms:
+                db = sqlite3.connect(":memory:")
+                try:
+                    db.deserialize(book.fs.read(f"cache/search/{collection}.sqlite"))
+                    expression = " OR ".join('"' + term.replace('"', '""') + '"' for term in terms)
+                    ranks = dict(
+                        db.execute(
+                            "SELECT id, -bm25(notes) FROM notes WHERE notes MATCH ?", (expression,)
+                        )
+                    )
+                finally:
+                    db.close()
         except (OSError, sqlite3.Error):
             pass  # Canonical fallback below remains scoped and current.
-        terms = query.casefold().split()
         matches: list[dict[str, Any]] = []
         for identity, (path, record, body) in book.records(collection).items():
             if record.archived:
@@ -64,7 +78,7 @@ def search(book: Book, collection: Domain, query: str, limit: int = 20) -> list[
                         "kind": record.kind,
                         "revision": book.revision(path),
                         "excerpt": body[:500],
-                        "score": score,
+                        "score": ranks.get(identity, 0.0) + score * 0.000000001,
                         "enrichment": record.enrichment,
                     }
                 )
@@ -74,8 +88,38 @@ def search(book: Book, collection: Domain, query: str, limit: int = 20) -> list[
 def get_note(book: Book, collection: Domain, identity: str) -> dict[str, Any]:
     with book.lock():
         path, record, body = book.record(identity, collection)
-        visible = {k: r for k, (_, r, _) in book.records(collection).items() if not r.archived}
+        rows = book.records(collection)
+        visible = {k: r for k, (_, r, _) in rows.items() if not r.archived}
         value = record.model_dump(mode="json")
+        index_state = "pending"
+        index_path = f"cache/search/{collection}.json"
+        if book.fs.exists(index_path):
+            try:
+                if json.loads(book.fs.read(index_path)) == {
+                    p: book.revision(p) for p, _, _ in rows.values()
+                }:
+                    index_state = "current"
+            except (ValueError, OSError):
+                pass
+        html_state = "not_requested"
+        manifest_path = f"views/{collection}/{identity}.json"
+        if book.fs.exists(manifest_path):
+            html_state = "stale"
+            try:
+                manifest = json.loads(book.fs.read(manifest_path))
+                if all(
+                    k in rows and book.revision(rows[k][0]) == rev
+                    for k, rev in manifest["inputs"].items()
+                ):
+                    html_state = "current"
+            except (ValueError, OSError, KeyError):
+                pass
+        value["states"] = {
+            "content": "saved",
+            "enrichment": record.enrichment,
+            "search": index_state,
+            "html": html_state,
+        }
         value["relationships"] = [
             {
                 **r.model_dump(mode="json"),

@@ -11,7 +11,7 @@ gate for the direct-save release. Only synthetic data is used in this implementa
 | R2 saves, recovery, undo | 13 direct-save tests: retries, no-op, external/stale edits, two concurrent processes, four crash points, recovery conflict, index failure, selective undo | Core passed; final suite pending |
 | R3 notebooks, graph, scope | Paper follow-up identity, aliases/questions, retained observations, explained backlinks, rejected-link memory, scoped reads and located quotes in the same suite | Core passed; integration pending |
 | R4 CLI/MCP/connections/extraction | Six synthetic integration tests: CLI init, six-tool stdio, retry/resumption, two client settings formats, interrupted registration, unavailable/actual PDF parsing | Adapter checks passed; actual clients unverified |
-| R5 HTML and scenarios | Rendering, freshness, browser checks | Pending |
+| R5 HTML and scenarios | Three lifecycle tests plus mandatory Chromium: desktop/narrow, themes, print, reduced motion, offline requests, deterministic temporary controls | Passed in synthetic container; final package gate pending |
 | R6 migration/install transition | Backup, migration, updater races, package trial | Pending |
 | Actual Claude Code/Codex behavior | Separate real-client synthetic trial | Unverified |
 | Semantic quality | Human assessment of real model explanations | Unverified |

@@ -1,0 +1,68 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "annual_contribution": {
+      "anyOf": [
+        {
+          "maximum": 1000000000000.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "type": "string"
+        }
+      ],
+      "title": "Annual Contribution"
+    },
+    "annual_rate": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": -1.0,
+          "maximum": 1.0,
+          "type": "number"
+        },
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "type": "string"
+        }
+      ],
+      "title": "Annual Rate"
+    },
+    "initial": {
+      "anyOf": [
+        {
+          "maximum": 1000000000000.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "type": "string"
+        }
+      ],
+      "title": "Initial"
+    },
+    "unit": {
+      "maxLength": 30,
+      "minLength": 1,
+      "title": "Unit",
+      "type": "string"
+    },
+    "years": {
+      "maximum": 100,
+      "minimum": 0,
+      "title": "Years",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "initial",
+    "annual_contribution",
+    "annual_rate",
+    "years",
+    "unit"
+  ],
+  "title": "Scenario",
+  "type": "object"
+}
