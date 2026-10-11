@@ -270,3 +270,16 @@ def test_normalize_source() -> None:
     assert normalize_source("10.1145/abc") == "doi:10.1145/abc"
     assert normalize_source("https://arxiv.org/pdf/2305.05065v2") == "arxiv:2305.05065"
     assert normalize_source("https://example.com/p") == "https://example.com/p"
+
+
+def test_knowledge_base_cannot_live_inside_a_repository(tmp_path: Path) -> None:
+    (tmp_path / "code" / ".git").mkdir(parents=True)
+    with pytest.raises(CairnError, match="git repository"):
+        init(tmp_path / "code" / "notes")
+    (tmp_path / "code" / "kb").mkdir()
+    (tmp_path / "code" / "kb" / ".cairn").touch()
+    with pytest.raises(CairnError, match="git repository"):
+        KB(tmp_path / "code" / "kb")
+    private = init(tmp_path / "private")
+    (private / ".git").mkdir()  # A knowledge base may be its own private repository.
+    assert KB(private).list_topics() == []

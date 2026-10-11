@@ -25,6 +25,8 @@ cairn connect claude -w ~/knowledge     # runs `claude mcp add --scope user cair
 cairn connect codex  -w ~/knowledge     # runs `codex mcp add cairn ...`
 ```
 
+Keep the knowledge base private and outside this repository. `cairn` refuses a folder
+inside any git checkout, though the knowledge base may be its own private git repo.
 `--dry-run` prints the registration command without running it, and `--remove`
 unregisters it. Finch is installed separately; Cairn does not install or modify it.
 

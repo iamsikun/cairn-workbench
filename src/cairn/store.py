@@ -139,8 +139,20 @@ def _write(path: Path, content: str) -> None:
         raise
 
 
-def init(root: Path) -> Path:
+def _outside_repositories(root: Path) -> Path:
+    """Keep private notes out of code checkouts, e.g. this public repository.
+
+    The knowledge base may itself be a (private) git repository; it may not sit inside one.
+    """
     root = Path(root).expanduser().resolve()
+    for parent in root.parents:
+        if (parent / ".git").exists():
+            raise CairnError(f"{root} is inside the git repository {parent}; use a private folder")
+    return root
+
+
+def init(root: Path) -> Path:
+    root = _outside_repositories(root)
     root.mkdir(parents=True, exist_ok=True)
     (root / MARKER).touch()
     for collection in COLLECTIONS:
@@ -153,7 +165,7 @@ class KB:
     """One collection of a knowledge base. Every read and write stays inside it."""
 
     def __init__(self, root: Path | str, collection: str = "research"):
-        self.root = Path(root).expanduser().resolve()
+        self.root = _outside_repositories(root)
         if not (self.root / MARKER).exists():
             raise CairnError(f"{self.root} is not a Cairn knowledge base; run `cairn init`")
         if collection not in COLLECTIONS:
