@@ -28,6 +28,15 @@ def complete(book: Book, tx: SaveTransaction) -> SaveReceipt:
         raw = book.fs.read(entry.path).decode() if book.fs.exists(entry.path) else None
         if raw not in (entry.before, entry.after):
             raise Conflict("recovery conflicts with an external edit; bytes preserved")
+    planned = {entry.path: digest(entry.after.encode()) for entry in tx.entries}
+    for note in tx.receipt.notes:
+        if not note.path.startswith(f"vault/collections/{tx.collection}/"):
+            raise Denied("receipt target is outside the transaction collection")
+        revision = planned.get(note.path)
+        if revision is None:
+            revision = book.revision(note.path)
+        if revision != note.revision:
+            raise Conflict("receipt target changed before transaction completion")
     for index, entry in enumerate(tx.entries):
         book.fs.write(entry.path, entry.after.encode())
         crash(book, f"write:{index}")

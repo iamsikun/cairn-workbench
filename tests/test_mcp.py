@@ -60,6 +60,7 @@ class Client:
                 sys.executable,
                 "-m",
                 "cairn",
+                "legacy",
                 "mcp",
                 "--workspace",
                 str(ws.root),

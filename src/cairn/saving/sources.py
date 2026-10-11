@@ -2,7 +2,9 @@
 
 import base64
 import re
+import resource
 import sys
+from pathlib import Path
 from typing import Any
 
 from cairn.adapters.isolation import bounded_process
@@ -13,6 +15,8 @@ from cairn.saving.workspace import Book
 
 
 def located_text(source: SourceInfo, locator: str) -> str | None:
+    if locator in source.locators:
+        return source.locators[locator]
     page = re.fullmatch(r"page (\d+)", locator)
     if page:
         return source.pages.get(int(page[1]))
@@ -60,6 +64,11 @@ def attach_pdf(book: Book, record: KnowledgeRecord, encoded: str) -> tuple[Knowl
             raw,
             timeout=20,
             stdout_limit=4 * 1024 * 1024,
+            env={
+                "PATH": "/usr/local/bin:/usr/bin:/bin",
+                "PYTHONPATH": str(Path(__file__).resolve().parents[2]),
+                "LANG": "C.UTF-8",
+            },
         )
         if code:
             raise CairnError("local PDF parser unavailable or failed")
@@ -104,4 +113,6 @@ def extract(raw: bytes) -> dict[str, Any]:
 
 
 if __name__ == "__main__":
+    resource.setrlimit(resource.RLIMIT_CPU, (15, 15))
+    resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
     sys.stdout.buffer.write(canonical(extract(sys.stdin.buffer.read(16 * 1024 * 1024 + 1))))

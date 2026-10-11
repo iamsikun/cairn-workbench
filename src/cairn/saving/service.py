@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Mapping
 from typing import Any
 
 from cairn.errors import CairnError, Conflict, Denied
@@ -19,6 +18,7 @@ from cairn.saving.models import (
     SourceInfo,
     SourceInput,
 )
+from cairn.saving.references import validate_references
 from cairn.saving.workspace import Book, decode, encode
 from cairn.transactions.writer import commit, operation_hash
 
@@ -111,28 +111,6 @@ def _merge(
     return KnowledgeRecord.model_validate(record.model_dump())
 
 
-def _references(record: KnowledgeRecord, available: Mapping[str, KnowledgeRecord]) -> None:
-    refs = [*record.citations, *(c for r in record.relationships for c in r.sources)]
-    targets = [r.target for r in record.relationships if r.state == "active"]
-    if record.primary_source_id:
-        targets.append(record.primary_source_id)
-    if any(t not in available or available[t].archived for t in targets):
-        raise Denied("relationship target unavailable in this collection")
-    for ref in refs:
-        source = available.get(ref.id)
-        if source is None or source.source is None:
-            raise Denied("citation source unavailable in this collection")
-        text = source.source.text
-        if ref.quote and (text is None or ref.quote not in text):
-            raise Denied("quote cannot be verified against supplied source material")
-        if ref.locator and ref.quote:
-            from cairn.saving.sources import located_text
-
-            located = located_text(source.source, ref.locator)
-            if located is None or ref.quote not in located:
-                raise Denied("quote cannot be verified at its supplied locator")
-
-
 def _result(book: Book, receipt: SaveReceipt) -> dict[str, Any]:
     from cairn.saving.retrieval import rebuild
 
@@ -180,6 +158,15 @@ def save(
                 from cairn.saving.sources import attach_pdf
 
                 source, text = attach_pdf(book, source, request.pdf_base64)
+            if isinstance(request, SaveReading) and request.source_id:
+                existing = rows.get(request.source_id)
+                if existing is None or existing[1].source is None:
+                    raise Denied("source unavailable in this collection")
+                if normalize_identity(existing[1].source.identity) != normalize_identity(
+                    request.paper.identity
+                ):
+                    raise Conflict("source identity differs from the paper identity")
+                source, text = existing[1], existing[2]
             if source.id not in rows:
                 drafts.append((source, text))
             else:
@@ -217,12 +204,15 @@ def save(
                         raise Denied("target belongs to a different paper")
                     record.kind = "paper"
                     record.primary_source_id = source.id
+                    record.source_versions = list(
+                        dict.fromkeys([*record.source_versions, source.id])
+                    )
                     record.paper_identity = paper_identity
                     record.coverage = request.paper.coverage
                 drafts.append((record, change.markdown))
         available.update({record.id: record for record, _ in drafts})
         for record, _ in drafts:
-            _references(record, available)
+            validate_references(record, available)
         entries = []
         notes = []
         for record, body in drafts:

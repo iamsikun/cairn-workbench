@@ -336,6 +336,29 @@
           "title": "Kind",
           "type": "string"
         },
+        "synthesis_inputs": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_]{2,95}$": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          "title": "Synthesis Inputs",
+          "type": "object"
+        },
+        "synthesis_markdown_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Synthesis Markdown Hash"
+        },
         "title": {
           "maxLength": 500,
           "minLength": 1,
@@ -475,6 +498,19 @@
     },
     "paper": {
       "$ref": "#/$defs/SourceInput"
+    },
+    "source_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z][a-z0-9_]{2,95}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Id"
     },
     "topics": {
       "items": {

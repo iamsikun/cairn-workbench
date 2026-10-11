@@ -68,6 +68,7 @@ class SourceInfo(SourceInput):
     original_hash: Digest | None = None
     original_blob: str | None = None
     pages: dict[int, str] = Field(default_factory=dict)
+    locators: dict[str, str] = Field(default_factory=dict)
 
 
 class Resource(Model):
@@ -77,6 +78,8 @@ class Resource(Model):
     # Declarative renderer inputs only; never source-supplied executable code.
     content: str = Field(max_length=1000000)
     description: str = Field(min_length=1, max_length=10000)
+    synthesis_inputs: dict[ID, Digest] = Field(default_factory=dict)
+    synthesis_markdown_hash: Digest | None = None
 
 
 class KnowledgeRecord(Model):
@@ -94,6 +97,7 @@ class KnowledgeRecord(Model):
     observations: list[Observation] = Field(default_factory=list)
     resources: list[Resource] = Field(default_factory=list)
     primary_source_id: ID | None = None
+    source_versions: list[ID] = Field(default_factory=list)
     paper_identity: str | None = None
     source: SourceInfo | None = None
     enrichment: Literal["complete", "pending"] = "pending"
@@ -101,6 +105,9 @@ class KnowledgeRecord(Model):
     coverage: str = "unknown"
     verification: Literal["unreviewed"] = "unreviewed"
     archived: bool = False
+    legacy_path: str | None = None
+    legacy_hash: Digest | None = None
+    legacy_state: str | None = None
 
     @model_validator(mode="after")
     def consistent(self) -> "KnowledgeRecord":
@@ -142,6 +149,7 @@ class SaveNote(Model):
 class SaveReading(SaveNote):
     paper: SourceInput
     topics: list[NoteChange] = Field(default_factory=list, max_length=19)
+    source_id: ID | None = None
 
 
 class Capture(Model):

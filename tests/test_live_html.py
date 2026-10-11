@@ -155,7 +155,7 @@ def test_interrupted_replacement_retries(ws, tmp_path, first_render):
         else ["sync"]
     )
     result = subprocess.run(
-        [sys.executable, "-m", "cairn", "view", *command, "--workspace", str(ws.root)],
+        [sys.executable, "-m", "cairn", "legacy", "view", *command, "--workspace", str(ws.root)],
         env={**os.environ, "CAIRN_TEST_CRASH_AT": "html:replaced"},
         timeout=30,
     )

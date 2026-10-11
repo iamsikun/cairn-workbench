@@ -89,6 +89,9 @@ def get_note(book: Book, collection: Domain, identity: str) -> dict[str, Any]:
         ]
         if record.primary_source_id not in visible:
             value["primary_source_id"] = None
+        value["source_versions"] = [
+            identity for identity in record.source_versions if identity in visible
+        ]
         from cairn.saving.models import SaveReceipt
 
         receipts = [

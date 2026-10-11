@@ -11,7 +11,6 @@ from cairn.policies.models import require_inheritance
 from cairn.proposals.models import Approval, Change, JobEnvelope, Proposal
 from cairn.records.models import (
     Event,
-    EvidenceRef,
     Labels,
     Record,
     canonical,
@@ -19,6 +18,8 @@ from cairn.records.models import (
     new_id,
     now,
 )
+from cairn.records.references import all_refs as all_refs
+from cairn.records.references import check_reference as check_reference
 from cairn.storage.markdown import decode, encode
 from cairn.storage.workspace import Workspace
 
@@ -152,33 +153,6 @@ def review_flags(record: Record, previous: Record | None = None) -> set[str]:
     ):
         flags.add("conflicting_evidence")
     return flags
-
-
-def all_refs(record: Record) -> list[EvidenceRef]:
-    return [
-        *record.sources,
-        *(ref for assertion in record.assertions for ref in assertion.sources),
-        *(
-            ref
-            for assertion in record.assertions
-            for amount in assertion.amounts
-            for ref in amount.sources
-        ),
-    ]
-
-
-def check_reference(ws: Workspace, ref: EvidenceRef, scope_name: str) -> None:
-    _, source, _ = ws.record(ref.id, ws.policy.scope(scope_name))
-    extraction, key = load_extraction(ws, source)
-    if ref.source_hash != extraction.source_hash or ref.evidence_hash != key:
-        raise CairnError("citation version/hash mismatch")
-    segments = [segment for segment in extraction.segments if segment.locator == ref.locator]
-    if not segments:
-        raise CairnError("citation locator does not exist")
-    if ref.quote is not None and not ref.quote.strip():
-        raise CairnError("empty quotes cannot support a citation")
-    if ref.quote is not None and not any(ref.quote in segment.text for segment in segments):
-        raise CairnError("quoted text does not exist at the cited locator")
 
 
 def _check_inputs(ws: Workspace, envelope: JobEnvelope) -> None:
