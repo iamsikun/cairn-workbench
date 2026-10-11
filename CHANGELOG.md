@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 — minimal rewrite; unpublished
+## 0.4.0 — minimal rewrite
 
 Cairn is rebuilt around a single workflow. While you read a paper with Finch in Claude
 Code or Codex, the agent saves a note and links it into a network of topics.
