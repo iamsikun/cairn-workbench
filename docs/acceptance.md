@@ -1,5 +1,23 @@
 # Acceptance evidence
 
+## Direct-save restructuring (2026-10-11; in progress)
+
+Historical evidence below applies to the previous requirements. It is not a passing
+gate for the direct-save release. Only synthetic data is used in this implementation.
+
+| Gate | Evidence | Status |
+| --- | --- | --- |
+| R1 requirements and legacy fixtures | Revised baseline; 3 fixture-reader tests passed in offline development container | Passed |
+| R2 saves, recovery, undo | New transaction and failure-mode suite | Pending |
+| R3 notebooks, graph, scope | Knowledge/scoped retrieval suite | Pending |
+| R4 CLI/MCP/connections/extraction | Synthetic settings and stdio suite | Pending |
+| R5 HTML and scenarios | Rendering, freshness, browser checks | Pending |
+| R6 migration/install transition | Backup, migration, updater races, package trial | Pending |
+| Actual Claude Code/Codex behavior | Separate real-client synthetic trial | Unverified |
+| Semantic quality | Human assessment of real model explanations | Unverified |
+
+No private workspace, home, credentials, real client settings, or schedules were used.
+
 ## Repository code source and workspace schema 3 (2026-10-11; software checks passed, not released)
 
 A knowledge base can name Cairn's code by repository URL, by local checkout paths,
