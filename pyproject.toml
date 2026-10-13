@@ -14,19 +14,20 @@ dependencies = ["PyYAML>=6.0.2,<7", "markdown-it-py>=3,<5"]
 cairn = "cairn.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8.3,<10", "ruff>=0.12,<1", "cairn-catalog"]
+dev = ["pytest>=8.3,<10", "ruff>=0.12,<1", "cairn-catalog", "cairn-garden"]
 
 [tool.uv.workspace]
 members = ["packages/*"]
 
 [tool.uv.sources]
 cairn-catalog = { workspace = true }
+cairn-garden = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cairn"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "packages/catalog/tests"]
+testpaths = ["tests", "packages/catalog/tests", "packages/gardener/tests"]
 addopts = ["--import-mode=importlib"]
 
 [tool.ruff]
@@ -39,3 +40,5 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.ruff.lint.per-file-ignores]
 # Ported tooling keeps its long SQL statements and inline lambdas.
 "packages/**" = ["E501", "E731"]
+# fix_body's helpers run within the loop iteration that defines them.
+"packages/gardener/src/cairn_garden/engine.py" = ["E501", "E731", "B023"]

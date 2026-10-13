@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cairn-garden"
+version = "0.5.0"
+description = "Daily and weekly gardening for a Cairn knowledge base, run by your own agent"
+requires-python = ">=3.12"
+dependencies = ["cairn-workbench", "cairn-catalog"]
+
+[project.scripts]
+cairn-garden = "cairn_garden.cli:main"
+
+[tool.uv.sources]
+cairn-workbench = { workspace = true }
+cairn-catalog = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cairn_garden"]

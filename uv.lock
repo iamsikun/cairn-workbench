@@ -5,6 +5,7 @@ requires-python = ">=3.12"
 [manifest]
 members = [
     "cairn-catalog",
+    "cairn-garden",
     "cairn-workbench",
 ]
 
@@ -26,6 +27,21 @@ requires-dist = [
 ]
 
 [[package]]
+name = "cairn-garden"
+version = "0.5.0"
+source = { editable = "packages/gardener" }
+dependencies = [
+    { name = "cairn-catalog" },
+    { name = "cairn-workbench" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cairn-catalog", editable = "packages/catalog" },
+    { name = "cairn-workbench", editable = "." },
+]
+
+[[package]]
 name = "cairn-workbench"
 version = "0.5.0"
 source = { editable = "." }
@@ -37,6 +53,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "cairn-catalog" },
+    { name = "cairn-garden" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -50,6 +67,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "cairn-catalog", editable = "packages/catalog" },
+    { name = "cairn-garden", editable = "packages/gardener" },
     { name = "pytest", specifier = ">=8.3,<10" },
     { name = "ruff", specifier = ">=0.12,<1" },
 ]
