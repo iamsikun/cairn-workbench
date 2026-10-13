@@ -34,6 +34,7 @@ FOLDERS = {"paper": "papers", "topic": "topics", "idea": "ideation", "note": "no
 MARKER = ".cairn"
 MANAGED = {"title", "kind", "topics", "aliases", "created", "updated"}
 STATUSES = ("seed", "exploring", "testing", "parked", "developed")
+IDEA_FIELDS = ("status", "next_action", "last_discussed", "last_review")
 MINUTES = re.compile(r"^## Minutes[ \t]*$", re.M)
 WIKILINK = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]")
 STOPWORDS = set(
@@ -258,16 +259,22 @@ class KB:
                     "broader": note.topics,
                     "narrower": [s for s in inside if notes[s].kind == "topic"],
                     "papers": sum(notes[s].kind == "paper" for s in inside),
+                    "ideas": sum(notes[s].kind == "idea" for s in inside),
                     "empty": not note.body.strip(),
                 }
             )
         return sorted(topics, key=lambda t: t["title"].casefold())
 
-    def search(self, query: str, limit: int = 10, kind: str | None = None) -> list[dict[str, Any]]:
+    def search(
+        self, query: str, limit: int = 10, kind: str | None = None, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Notes ranked by keyword matches; an empty query lists them all, e.g. by status."""
         terms = [t for t in query.casefold().split() if t]
         hits = []
         for note in self.notes().values():
             if kind and note.kind != kind:
+                continue
+            if status and note.meta.get("status") != status:
                 continue
             title = " ".join([note.title, *note.aliases]).casefold()
             body = note.body.casefold()
@@ -281,6 +288,7 @@ class KB:
                 "title": n.title,
                 "kind": n.kind,
                 "topics": n.topics,
+                **{k: n.meta[k] for k in IDEA_FIELDS if n.kind == "idea" and k in n.meta},
                 "snippet": _snippet(n.body, terms),
             }
             for _, n in hits[:limit]

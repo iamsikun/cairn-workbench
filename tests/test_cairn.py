@@ -216,6 +216,11 @@ def test_idea_minutes_are_append_only_and_status_changes_need_reasons(kb: KB) ->
     assert kb.get("tiger")["backlinks"] == [
         {"slug": first["slug"], "title": "Semantic IDs for ads", "kind": "idea", "via": "body"}
     ]
+    [hit] = kb.search("", kind="idea", status="exploring")
+    assert hit["next_action"] == "Find an ads dataset" and hit["status"] == "exploring"
+    assert kb.search("", status="parked") == []
+    [topic] = kb.list_topics()
+    assert (topic["papers"], topic["ideas"]) == (1, 1)
     with pytest.raises(CairnError, match="only for ideas"):
         kb.save(kind="note", title="N", body="x", minute="y")
 
@@ -351,6 +356,7 @@ def test_cli_and_connect_commands(tmp_path: Path, capsys: pytest.CaptureFixture[
     root = tmp_path / "kb"
     assert main(["init", str(root)]) == 0
     assert main(["topics", "-w", str(root)]) == 0
+    assert main(["search", "--kind", "idea", "--status", "seed", "-w", str(root)]) == 0
     assert main(["connect", "claude", "-w", str(root), "--dry-run"]) == 0
     assert main(["show", "nothing", "-w", str(root)]) == 1
     assert connect_command("claude", root, "research", False) == [

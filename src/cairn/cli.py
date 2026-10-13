@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from cairn.store import COLLECTIONS, KB, CairnError, init
+from cairn.store import COLLECTIONS, FOLDERS, KB, STATUSES, CairnError, init
 
 
 def connect_command(client: str, root: Path, collection: str, remove: bool) -> list[str]:
@@ -48,7 +48,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--dry-run", action="store_true", help="print the command only")
     command("mcp", "run the MCP server on stdio (started by the client)")
     p = command("search", "search notes")
-    p.add_argument("query")
+    p.add_argument("query", nargs="?", default="", help="keywords; omit to list all")
+    p.add_argument("--kind", choices=list(FOLDERS))
+    p.add_argument("--status", choices=STATUSES, help="idea status")
     p = command("show", "print a note with its links and backlinks")
     p.add_argument("name")
     command("topics", "list topics and their hierarchy")
@@ -73,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         result: Any
         if args.command == "search":
-            result = kb.search(args.query)
+            result = kb.search(args.query, 50, args.kind, args.status)
         elif args.command == "show":
             result = kb.get(args.name)
         elif args.command == "topics":
