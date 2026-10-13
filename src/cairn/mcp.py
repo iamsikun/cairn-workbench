@@ -1,4 +1,4 @@
-"""Stdio MCP server: five tools over one collection of a knowledge base."""
+"""Stdio MCP server: six tools over one collection of a knowledge base."""
 
 from __future__ import annotations
 
@@ -8,11 +8,12 @@ from typing import IO, Any
 
 from cairn import __version__
 from cairn.html import render
-from cairn.store import KB, CairnError
+from cairn.store import FOLDERS, KB, STATUSES, CairnError
 
 INSTRUCTIONS = """\
-Cairn is the user's persistent research knowledge base: Markdown notes for papers and \
-topics, connected into a network. Save to it automatically; do not ask for permission.
+Cairn is the user's persistent research knowledge base: Markdown notes for papers, \
+research ideas and topics, connected into a network. Save to it automatically; do not ask \
+for permission.
 
 While the user reads or discusses a paper (for example with the Finch skill):
 1. Before writing, `search` for the paper and `list_topics` to see the existing network.
@@ -28,6 +29,22 @@ explanation, and its broader `topics` (e.g. "Generative recommendation" -> \
 5. Read `suggested_topics` and `created_topics` in every save result. Link genuinely \
 related suggestions with another save; ignore weak ones. Use [[slug]] in a body to \
 reference another note.
+
+While the user brainstorms or develops a research idea:
+1. `search` with kind=idea (and `list_topics`) first; resume an existing idea with \
+`get_note` rather than starting a duplicate.
+2. After each substantive step, call `save_idea`. `body` is the current account: \
+question, motivation, hypothesis or mechanism, related work ([[slug]] links), evidence \
+for and against, open questions. Revise it freely. Set `next_action` to the next useful \
+test or step, and file the idea under `topics` as for a paper.
+3. Record the step itself in `minute`: what was proposed, alternatives, decisions and \
+their reasons, unresolved points. Attribute every line: **User:** for the user's own \
+views and decisions, **Agent (suggestion):** for yours, **Source:** [[slug]] for claims \
+from papers. Capture reasoning, not the transcript. Minutes are append-only: correct \
+earlier entries with a new one.
+4. Change `status` (seed, exploring, testing, parked, developed) only on the user's \
+decision, with the reason in `minute`. Do not propose a parked idea again without new \
+evidence. To rename an idea, pass its `slug` with the new title.
 
 Updating an existing note requires its current `revision` from get_note; if a save is \
 rejected, get_note again, merge, and retry. Report the saved slug when done. Only \
@@ -45,15 +62,21 @@ COMMON = {
     "topics": TOPICS,
     "aliases": {"type": "array", "items": {"type": "string"}},
     "revision": {"type": "string", "description": "Required when updating an existing note."},
+    "slug": {
+        "type": "string",
+        "description": "Slug of the note to update; needed only to change its title.",
+    },
 }
 TOOLS: dict[str, dict[str, Any]] = {
     "search": {
-        "description": "Search notes in this knowledge base by keywords.",
+        "description": "Search notes in this knowledge base by keywords. Filter ideas by "
+        "status; idea results include status and next_action.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "query": {"type": "string"},
-                "kind": {"type": "string", "enum": ["paper", "topic", "note"]},
+                "query": {"type": "string", "description": "Keywords; empty lists all."},
+                "kind": {"type": "string", "enum": list(FOLDERS)},
+                "status": {"type": "string", "enum": list(STATUSES)},
                 "limit": {"type": "integer", "minimum": 1, "maximum": 50},
             },
             "required": ["query"],
@@ -70,7 +93,8 @@ TOOLS: dict[str, dict[str, Any]] = {
         },
     },
     "list_topics": {
-        "description": "List all topics with their broader/narrower topics and paper counts. "
+        "description": "List all topics with their broader/narrower topics and paper and "
+        "idea counts. "
         "empty=true marks topics that still need an explanation.",
         "inputSchema": {"type": "object", "properties": {}},
     },
@@ -87,6 +111,35 @@ TOOLS: dict[str, dict[str, Any]] = {
                 "url": {"type": "string"},
             },
             "required": ["title", "body", "topics"],
+        },
+    },
+    "save_idea": {
+        "description": "Create or update a research idea: its current account in `body` and "
+        "a new dated, attributed entry in its append-only minutes. Repeating an entry already "
+        "recorded adds nothing.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                **COMMON,
+                "body": {
+                    "type": "string",
+                    "description": "The current account in Markdown. Omit the '## Minutes' "
+                    "section or leave it exactly as get_note returned it.",
+                },
+                "minute": {"type": "string", "description": "New minutes entry, attributed."},
+                "status": {
+                    "type": "string",
+                    "enum": list(STATUSES),
+                    "description": "A change needs its reason in `minute`.",
+                },
+                "next_action": {"type": "string"},
+                "review": {
+                    "type": "boolean",
+                    "description": "true for a maintenance review, not a user discussion; it "
+                    "cannot change status.",
+                },
+            },
+            "required": ["title", "body"],
         },
     },
     "save_note": {
@@ -120,7 +173,7 @@ def _text(args: dict[str, Any], key: str) -> str:
 def call(kb: KB, name: str, args: dict[str, Any]) -> Any:
     if name == "search":
         limit = args.get("limit", 10)
-        return kb.search(_text(args, "query"), int(limit), args.get("kind"))
+        return kb.search(_text(args, "query"), int(limit), args.get("kind"), args.get("status"))
     if name == "get_note":
         note = kb.get(_text(args, "name"))
         if args.get("html"):
@@ -139,6 +192,23 @@ def call(kb: KB, name: str, args: dict[str, Any]) -> Any:
             aliases=_strings(args, "aliases"),
             revision=args.get("revision"),
             fields=fields,
+            slug=args.get("slug"),
+        )
+    if name == "save_idea":
+        minute = args.get("minute")
+        if minute is not None and not isinstance(minute, str):
+            raise CairnError("minute must be a string")
+        return kb.save(
+            kind="idea",
+            title=_text(args, "title"),
+            body=_text(args, "body"),
+            topics=_strings(args, "topics"),
+            aliases=_strings(args, "aliases"),
+            revision=args.get("revision"),
+            fields={k: args.get(k) for k in ("status", "next_action")},
+            slug=args.get("slug"),
+            minute=minute,
+            review=args.get("review") is True,
         )
     raise CairnError(f"unknown tool {name!r}")
 

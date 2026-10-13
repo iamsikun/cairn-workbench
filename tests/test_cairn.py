@@ -319,7 +319,7 @@ def test_mcp_protocol_round_trip(kb: KB) -> None:
     assert [r["id"] for r in replies] == [1, 2, 3, 4, 5, 6, None]
     assert "save_reading" in replies[0]["result"]["instructions"]
     names = [t["name"] for t in replies[1]["result"]["tools"]]
-    assert names == ["search", "get_note", "list_topics", "save_reading", "save_note"]
+    assert names == ["search", "get_note", "list_topics", "save_reading", "save_idea", "save_note"]
     saved = json.loads(replies[2]["result"]["content"][0]["text"])
     assert saved["slug"] == "tiger" and not replies[2]["result"]["isError"]
     assert replies[3]["result"]["isError"]  # Same paper again without a revision.
@@ -327,6 +327,43 @@ def test_mcp_protocol_round_trip(kb: KB) -> None:
     assert topics[0]["slug"] == "generative-recommendation" and topics[0]["empty"]
     assert replies[5]["error"]["code"] == -32601
     assert replies[6]["error"]["code"] == -32700
+
+
+def test_mcp_saves_resumes_and_renames_an_idea(kb: KB) -> None:
+    def call(id: int, name: str, **arguments: object) -> dict:
+        return {
+            "jsonrpc": "2.0",
+            "id": id,
+            "method": "tools/call",
+            "params": {"name": name, "arguments": arguments},
+        }
+
+    idea = {"title": "Semantic IDs for ads", "body": "Do they help?", "minute": "**User:** maybe."}
+    replies = rpc(
+        kb, call(1, "save_idea", **idea, next_action="Find data"), call(2, "save_idea", **idea)
+    )
+    saved = json.loads(replies[0]["result"]["content"][0]["text"])
+    assert saved["kind"] == "idea" and not replies[0]["result"]["isError"]
+    assert replies[1]["result"]["isError"]  # Resuming needs the current revision.
+
+    current = kb.get(saved["slug"])
+    replies = rpc(
+        kb,
+        call(
+            1,
+            "save_idea",
+            title="Semantic IDs for cold-start ads",
+            body=current["body"],
+            slug=saved["slug"],
+            revision=current["revision"],
+            status="exploring",
+            minute="**User:** narrow to cold start; worth exploring.",
+        ),
+        call(2, "search", query="", kind="idea", status="exploring"),
+    )
+    [hit] = json.loads(replies[1]["result"]["content"][0]["text"])
+    assert hit["slug"] == saved["slug"] and hit["title"] == "Semantic IDs for cold-start ads"
+    assert hit["next_action"] == "Find data"
 
 
 def test_mcp_reports_bad_arguments_and_tolerates_broken_notes(kb: KB) -> None:
