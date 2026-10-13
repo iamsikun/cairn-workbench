@@ -13,6 +13,9 @@ schedule [--catalog] [--remove]
 skill [--remove]               link the kb-gardener skill into Claude Code and other agents
 zotero-bridge --output FILE.xpi [--credentials]
                                build the local Zotero extension and provision its credential
+migrate [--dry-run] [--workspace PATH] [--resources-to PATH] | migrate --rollback JOURNAL
+                               move a kb-gardener install and in-workspace catalog out of the
+                               knowledge base, into this layout
 """
 
 from __future__ import annotations
@@ -94,6 +97,25 @@ def main(argv: list[str] | None = None) -> int:
     if command == "skill":
         _print(skill("--remove" in rest))
         return 0
+    if command == "migrate":
+        import argparse
+
+        from . import migrate
+
+        parser = argparse.ArgumentParser(prog="cairn-garden migrate", description=migrate.__doc__)
+        parser.add_argument("--dry-run", action="store_true")
+        parser.add_argument("--workspace", type=Path)
+        parser.add_argument("--resources-to", type=Path, help="where research/resources moves")
+        parser.add_argument("--rollback", type=Path, metavar="JOURNAL")
+        args = parser.parse_args(rest)
+        if args.rollback:
+            result = migrate.rollback(args.rollback)
+        elif args.dry_run:
+            result = migrate.plan(args.workspace, args.resources_to)
+        else:
+            result = migrate.run(args.workspace, args.resources_to)
+        _print(result)
+        return 0 if not result.get("problems") else 1
     if command == "zotero-bridge":
         import argparse
 

@@ -131,12 +131,16 @@ def catalog_dir() -> Path:
     return catalog_paths.data_dir()
 
 
-def state_dir(cfg) -> Path:
+def workspace_state(cfg) -> Path:
     """Per-workspace state: discovery ledger, run receipts, write gate and locks."""
     root = workspace(cfg).resolve()
-    path = (
+    return (
         HOME / "workspaces" / (root.name + "-" + hashlib.sha256(str(root).encode()).hexdigest()[:8])
     )
+
+
+def state_dir(cfg) -> Path:
+    path = workspace_state(cfg)
     path.mkdir(parents=True, exist_ok=True)
     return path
 
