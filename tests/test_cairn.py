@@ -8,7 +8,7 @@ import pytest
 from cairn.cli import connect_command, main
 from cairn.html import render
 from cairn.mcp import serve
-from cairn.store import KB, CairnError, init, normalize_source, parse
+from cairn.store import KB, CairnError, init, normalize_source, parse, split_minutes
 
 
 @pytest.fixture
@@ -132,6 +132,92 @@ def test_rename_by_slug_keeps_identity_links_and_front_matter(kb: KB) -> None:
         kb.save(kind="note", title="Other", body="x", slug="draft", revision=renamed["revision"])
     with pytest.raises(CairnError, match="no note with slug"):
         kb.save(kind="note", title="New", body="x", slug="missing")
+
+
+def test_idea_minutes_are_append_only_and_status_changes_need_reasons(kb: KB) -> None:
+    kb.save(kind="paper", title="TIGER", body="Semantic IDs.", topics=["Generative recommendation"])
+    first = kb.save(
+        kind="idea",
+        title="Semantic IDs for ads",
+        body="**Question:** do semantic IDs help cold-start ads? Builds on [[tiger]].",
+        topics=["Generative recommendation"],
+        fields={"next_action": "Find an ads dataset"},
+        minute="**User:** cold-start ads might benefit most.",
+    )
+    path = Path(first["path"])
+    assert path.parent.name == "ideation"
+    meta = parse(path).meta
+    assert meta["status"] == "seed" and meta["last_discussed"] == meta["created"]
+
+    # A later session resumes the same idea by title, echoing the body as get_note gave it.
+    current = kb.get("Semantic IDs for ads")
+    with pytest.raises(CairnError, match="reason"):
+        kb.save(
+            kind="idea",
+            title="Semantic IDs for ads",
+            body=current["body"],
+            fields={"status": "exploring"},
+            revision=current["revision"],
+        )
+    second = kb.save(
+        kind="idea",
+        title="Semantic IDs for ads",
+        body=current["body"].replace("cold-start ads?", "cold-start ads? (narrowed)"),
+        fields={"status": "exploring"},
+        minute="**User:** worth a pilot; **Agent (suggestion):** use Criteo.",
+        revision=current["revision"],
+    )
+    assert second["slug"] == first["slug"]
+    with pytest.raises(CairnError, match="append-only"):
+        kb.save(
+            kind="idea",
+            title="Semantic IDs for ads",
+            body=kb.get(first["slug"])["body"].replace("cold-start ads might", "ads might"),
+            revision=second["revision"],
+        )
+
+    # A retried entry is not added twice, and a review cannot change the status.
+    current = kb.get(first["slug"])
+    retry = kb.save(
+        kind="idea",
+        title="Semantic IDs for ads",
+        body=split_minutes(current["body"])[0],  # The account alone is fine too.
+        minute="**User:** worth a pilot; **Agent (suggestion):** use Criteo.",
+        revision=current["revision"],
+    )
+    assert retry["revision"] == current["revision"]
+    with pytest.raises(CairnError, match="review"):
+        kb.save(
+            kind="idea",
+            title="Semantic IDs for ads",
+            body="x",
+            fields={"status": "parked"},
+            minute="stale",
+            review=True,
+            revision=retry["revision"],
+        )
+    kb.save(
+        kind="idea",
+        title="Semantic IDs for ads",
+        body="Narrowed question.",
+        minute="**Source:** [[tiger]] reports gains on sparse items.",
+        review=True,
+        revision=retry["revision"],
+    )
+
+    idea = parse(path)
+    account, minutes = split_minutes(idea.body)
+    assert account == "Narrowed question."
+    assert minutes.count("worth a pilot") == 1 and "Status: seed → exploring." in minutes
+    assert minutes.index("cold-start ads might") < minutes.index("(review)")
+    assert idea.meta["status"] == "exploring"
+    assert idea.meta["next_action"] == "Find an ads dataset"
+    assert idea.meta["last_review"] == idea.meta["last_discussed"]
+    assert kb.get("tiger")["backlinks"] == [
+        {"slug": first["slug"], "title": "Semantic IDs for ads", "kind": "idea", "via": "body"}
+    ]
+    with pytest.raises(CairnError, match="only for ideas"):
+        kb.save(kind="note", title="N", body="x", minute="y")
 
 
 def test_same_paper_by_doi_reuses_note_and_different_paper_gets_new_slug(kb: KB) -> None:

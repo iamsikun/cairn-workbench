@@ -33,6 +33,8 @@ COLLECTIONS = ("research", "finance", "life")
 FOLDERS = {"paper": "papers", "topic": "topics", "idea": "ideation", "note": "notes"}
 MARKER = ".cairn"
 MANAGED = {"title", "kind", "topics", "aliases", "created", "updated"}
+STATUSES = ("seed", "exploring", "testing", "parked", "developed")
+MINUTES = re.compile(r"^## Minutes[ \t]*$", re.M)
 WIKILINK = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]")
 STOPWORDS = set(
     "a an and are as at be by for from in into is of on or the to via with "
@@ -119,6 +121,18 @@ def parse(path: Path) -> Note:
         if isinstance(loaded, dict):
             meta, body = loaded, rest
     return Note(path.stem, path, meta, body, revision(raw))
+
+
+def split_minutes(body: str) -> tuple[str, str]:
+    """An idea's body: its current account, then the `## Minutes` section."""
+    match = MINUTES.search(body)
+    if match is None:
+        return body.strip(), ""
+    return body[: match.start()].strip(), body[match.end() :].strip()
+
+
+def _squash(text: str) -> str:
+    return " ".join(text.split())
 
 
 def dump(meta: dict[str, Any], body: str) -> str:
@@ -318,13 +332,16 @@ class KB:
         revision: str | None = None,
         fields: dict[str, Any] | None = None,
         slug: str | None = None,
+        minute: str | None = None,
+        review: bool = False,
     ) -> dict[str, Any]:
         """Create or update a note, creating any topics it names that do not exist yet.
 
         Updating an existing note requires the revision returned by `get`, so edits made
         meanwhile (by you in an editor, or by another session) are never overwritten.
         `slug` names the note to update; with it the title may change, and the old title
-        is kept as an alias. Front matter not passed again is kept.
+        is kept as an alias. Front matter not passed again is kept. For ideas, `minute` is
+        appended to the minutes (see `_idea_body`); `review` marks it as a maintenance review.
         """
         if kind not in FOLDERS:
             raise CairnError(f"kind must be one of {list(FOLDERS)}")
@@ -346,6 +363,11 @@ class KB:
                 )
             if existing is None and revision is not None:
                 raise CairnError("revision given, but no such note exists")
+            today = date.today().isoformat()
+            if kind == "idea":
+                body = self._idea_body(existing, body, fields, minute, review, today)
+            elif minute is not None or review:
+                raise CairnError("minutes and reviews are only for ideas")
             slug = existing.slug if existing else self._new_slug(title, notes)
             old = existing.meta if existing else {}
             if topics is None:
@@ -364,7 +386,6 @@ class KB:
                 if target.slug != slug and target.slug not in topic_slugs:
                     topic_slugs.append(target.slug)
 
-            today = date.today().isoformat()
             meta: dict[str, Any] = {"title": title.strip(), "kind": kind}
             meta.update((k, v) for k, v in old.items() if k not in MANAGED)
             meta.update(fields)
@@ -392,6 +413,49 @@ class KB:
                 "unresolved_links": [s for s in note.body_links if s not in notes],
                 "suggested_topics": self.suggest_topics(note, notes),
             }
+
+    def _idea_body(
+        self,
+        existing: Note | None,
+        body: str,
+        fields: dict[str, Any],
+        minute: str | None,
+        review: bool,
+        today: str,
+    ) -> str:
+        """The account the agent sent, then the stored minutes plus a new dated entry.
+
+        Minutes are append-only, and a retried entry is not added twice. A status change
+        needs a reason, and a review (maintenance, not the user's decision) cannot make one.
+        """
+        account, sent = split_minutes(body)
+        minutes = split_minutes(existing.body)[1] if existing else ""
+        if not account:
+            raise CairnError("the body needs the idea's current account above '## Minutes'")
+        if sent and _squash(sent) != _squash(minutes):
+            raise CairnError(
+                "minutes are append-only: leave the '## Minutes' section as get_note returned "
+                "it, or omit it, and pass the new entry as `minute`"
+            )
+        before = str(existing.meta.get("status", "seed")) if existing else "seed"
+        status = str(fields.setdefault("status", before))
+        if status not in STATUSES:
+            raise CairnError(f"status must be one of {list(STATUSES)}")
+        text = (minute or "").strip()
+        entry = []
+        if existing and status != before:
+            if review:
+                raise CairnError("a review cannot change an idea's status; that is the user's")
+            if not text:
+                raise CairnError("give the reason for the status change in `minute`")
+            entry.append(f"Status: {before} → {status}.")
+        if text and _squash(text) not in _squash(minutes):
+            entry.append(text)
+        if entry:
+            heading = f"### {today}" + (" (review)" if review else "")
+            minutes = "\n\n".join(filter(None, [minutes, heading, *entry]))
+            fields["last_review" if review else "last_discussed"] = today
+        return account + (f"\n\n## Minutes\n\n{minutes}" if minutes else "")
 
     def _by_slug(self, kind: str, slug: str, title: str, notes: dict[str, Note]) -> Note:
         note = notes.get(_unlink(slug))
