@@ -225,6 +225,15 @@ def test_idea_minutes_are_append_only_and_status_changes_need_reasons(kb: KB) ->
         kb.save(kind="note", title="N", body="x", minute="y")
 
 
+def test_knowledge_base_without_ideation_folder_still_works(kb: KB) -> None:
+    (kb.dir / "ideation").rmdir()  # As made by an earlier version of `cairn init`.
+    kb.save(kind="paper", title="TIGER", body="Semantic IDs.", topics=["Recsys"])
+    assert [t["slug"] for t in kb.list_topics()] == ["recsys"]
+    assert kb.search("", kind="idea") == []
+    result = kb.save(kind="idea", title="Idea", body="Try it.", topics=["Recsys"])
+    assert Path(result["path"]).parent == kb.dir / "ideation"
+
+
 def test_same_paper_by_doi_reuses_note_and_different_paper_gets_new_slug(kb: KB) -> None:
     a = kb.save(kind="paper", title="Attention", body="x", fields={"source": "doi:10.1/A"})
     b = kb.save(kind="paper", title="Attention", body="y", fields={"source": "10.2/b"})
