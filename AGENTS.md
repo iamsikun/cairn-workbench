@@ -28,6 +28,11 @@ above are the core's.
 - `packages/catalog` (`cairn-catalog`): the public journal catalog and its offline
   browser. Its data, preferences and generated pages live outside the knowledge base and
   outside this repository; `paths.py` resolves them from the config file or environment.
+- `packages/gardener` (`cairn-garden`): daily and weekly gardening and the `kb-gardener`
+  skill. Unlike the core, it may launch the user's own `claude` or `codex` CLI to draft
+  reports. Its state, logs and note history live in the state folder, never in the
+  knowledge base. Keep `bridge/` byte-identical unless a new Zotero extension is intended:
+  any change requires reinstalling the extension in Zotero.
 - The knowledge base holds knowledge only. Code, views, caches, run state and raw evidence
   stay out of it.
 

@@ -122,8 +122,10 @@ These take `-w PATH` or read `$CAIRN_WORKSPACE`.
 
 - [`cairn-catalog`](packages/catalog/README.md): a local catalog of public journal
   metadata with an offline browser. Import selected papers into the knowledge base.
+- [`cairn-garden`](packages/gardener/README.md): daily digests and weekly reviews of the
+  knowledge base, drafted by your own agent, with proposals you approve.
 
-Their data and settings live outside the knowledge base, configured in
+Their data, state and settings live outside the knowledge base, configured in
 `~/.config/cairn-workbench/config.toml`.
 
 ## Development
