@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.5.0 — ideation notes
+
+Brainstorming is saved like reading. While you develop a research idea with the agent, it
+keeps an idea note, files it under topics and links it to papers.
+
+- New `idea` notes in `ideation/`. The body is the current account, followed by dated
+  `## Minutes` that Cairn only appends to. An entry that is already recorded is not added
+  again.
+- Ideas have a `status` (`seed`, `exploring`, `testing`, `parked`, `developed`) and a
+  `next_action`. A status change needs its reason in the minutes. A save marked as a
+  review cannot change the status and sets `last_review`, not `last_discussed`.
+- New MCP tool `save_idea`. `search` filters by any kind and by status. `list_topics`
+  counts ideas. `cairn search` takes `--kind` and `--status`, and the query is optional.
+- Every save tool accepts `slug` to rename a note; the old title becomes an alias.
+- Updates keep front matter, topics and aliases that are not passed again. Before, a
+  field that was not resent was dropped.
+- Knowledge bases without an `ideation/` folder keep working.
+
 ## 0.4.0 — minimal rewrite
 
 Cairn is rebuilt around a single workflow. While you read a paper with Finch in Claude
