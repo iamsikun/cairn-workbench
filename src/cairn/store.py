@@ -5,6 +5,7 @@ Layout of a knowledge base::
     <root>/.cairn                     marker written by `cairn init`
     <root>/<collection>/papers/*.md   one evolving note per paper
     <root>/<collection>/topics/*.md   topic notebooks; `topics:` lists broader topics
+    <root>/<collection>/ideation/*.md research ideas: an account plus dated minutes
     <root>/<collection>/notes/*.md    anything else
 
 A note's file name (its slug) is its identity and is unique within a collection.
@@ -29,8 +30,9 @@ from typing import Any
 import yaml
 
 COLLECTIONS = ("research", "finance", "life")
-FOLDERS = {"paper": "papers", "topic": "topics", "note": "notes"}
+FOLDERS = {"paper": "papers", "topic": "topics", "idea": "ideation", "note": "notes"}
 MARKER = ".cairn"
+MANAGED = {"title", "kind", "topics", "aliases", "created", "updated"}
 WIKILINK = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]")
 STOPWORDS = set(
     "a an and are as at be by for from in into is of on or the to via with "
@@ -315,11 +317,14 @@ class KB:
         aliases: list[str] | None = None,
         revision: str | None = None,
         fields: dict[str, Any] | None = None,
+        slug: str | None = None,
     ) -> dict[str, Any]:
         """Create or update a note, creating any topics it names that do not exist yet.
 
         Updating an existing note requires the revision returned by `get`, so edits made
         meanwhile (by you in an editor, or by another session) are never overwritten.
+        `slug` names the note to update; with it the title may change, and the old title
+        is kept as an alias. Front matter not passed again is kept.
         """
         if kind not in FOLDERS:
             raise CairnError(f"kind must be one of {list(FOLDERS)}")
@@ -330,7 +335,10 @@ class KB:
             fields["source"] = normalize_source(str(fields["source"]))
         with self.lock():
             notes = self.notes()
-            existing = self._existing(kind, title, fields.get("source"), notes)
+            if slug is not None:
+                existing = self._by_slug(kind, slug, title, notes)
+            else:
+                existing = self._existing(kind, title, fields.get("source"), notes)
             if existing is not None and revision != existing.revision:
                 raise CairnError(
                     f"{existing.slug!r} already exists and may hold earlier or hand-made edits; "
@@ -339,6 +347,13 @@ class KB:
             if existing is None and revision is not None:
                 raise CairnError("revision given, but no such note exists")
             slug = existing.slug if existing else self._new_slug(title, notes)
+            old = existing.meta if existing else {}
+            if topics is None:
+                topics = [str(t) for t in old.get("topics") or []]
+            if aliases is None:
+                aliases = [str(a) for a in old.get("aliases") or []]
+            if existing and existing.title != title.strip() and existing.title not in aliases:
+                aliases = [*aliases, existing.title]
 
             topic_slugs, created = [], []
             for name in topics or []:
@@ -351,6 +366,7 @@ class KB:
 
             today = date.today().isoformat()
             meta: dict[str, Any] = {"title": title.strip(), "kind": kind}
+            meta.update((k, v) for k, v in old.items() if k not in MANAGED)
             meta.update(fields)
             if topic_slugs:
                 meta["topics"] = [f"[[{s}]]" for s in topic_slugs]
@@ -376,6 +392,17 @@ class KB:
                 "unresolved_links": [s for s in note.body_links if s not in notes],
                 "suggested_topics": self.suggest_topics(note, notes),
             }
+
+    def _by_slug(self, kind: str, slug: str, title: str, notes: dict[str, Note]) -> Note:
+        note = notes.get(_unlink(slug))
+        if note is None:
+            raise CairnError(f"no note with slug {slug!r}; omit slug to create a note")
+        if note.kind != kind:
+            raise CairnError(f"{note.slug!r} is a {note.kind}, not a {kind}")
+        other = self.resolve(title, notes)
+        if other is not None and other.slug != note.slug:
+            raise CairnError(f"another note is named {title!r} ({other.slug})")
+        return note
 
     def _existing(
         self, kind: str, title: str, source: str | None, notes: dict[str, Note]

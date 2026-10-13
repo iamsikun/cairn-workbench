@@ -107,6 +107,33 @@ def test_update_requires_current_revision(kb: KB) -> None:
     assert parse(path).meta["created"] == parse(path).meta["updated"]
 
 
+def test_rename_by_slug_keeps_identity_links_and_front_matter(kb: KB) -> None:
+    first = kb.save(
+        kind="note",
+        title="Draft",
+        body="v1",
+        topics=["Recommendation systems"],
+        fields={"source": "10.1/x"},
+    )
+    path = Path(first["path"])
+    path.write_text(path.read_text().replace("kind: note", "kind: note\nmine: kept"))
+    kb.save(kind="note", title="Other", body="See [[draft]].")
+    current = kb.get("draft")
+    renamed = kb.save(
+        kind="note", title="Better name", body="v2", slug="draft", revision=current["revision"]
+    )
+    assert renamed["slug"] == "draft" and renamed["status"] == "updated"
+    meta = parse(path).meta
+    assert meta["title"] == "Better name" and meta["aliases"] == ["Draft"]
+    assert meta["mine"] == "kept" and meta["topics"] == ["[[recommendation-systems]]"]
+    assert kb.get("Draft")["backlinks"][0]["slug"] == "other"
+    assert len(list((kb.dir / "notes").glob("*.md"))) == 2
+    with pytest.raises(CairnError, match="another note"):
+        kb.save(kind="note", title="Other", body="x", slug="draft", revision=renamed["revision"])
+    with pytest.raises(CairnError, match="no note with slug"):
+        kb.save(kind="note", title="New", body="x", slug="missing")
+
+
 def test_same_paper_by_doi_reuses_note_and_different_paper_gets_new_slug(kb: KB) -> None:
     a = kb.save(kind="paper", title="Attention", body="x", fields={"source": "doi:10.1/A"})
     b = kb.save(kind="paper", title="Attention", body="y", fields={"source": "10.2/b"})
