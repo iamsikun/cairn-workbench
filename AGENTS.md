@@ -1,7 +1,8 @@
 # Working on Cairn
 
-Cairn has one job. While the owner reads papers with Finch in Claude Code or Codex, it
-saves notes automatically and connects them into a network of topics. Keep it minimal.
+Cairn has one job. While the owner reads papers with Finch in Claude Code or Codex, or
+brainstorms research ideas, it saves notes automatically and connects them into a network
+of topics. Keep it minimal.
 Before adding a feature, ask whether that workflow needs it. See README.md for the design.
 
 - The code is four modules in `src/cairn/`:
@@ -10,10 +11,11 @@ Before adding a feature, ask whether that workflow needs it. See README.md for t
   - `html.py`: optional offline pages.
   - `cli.py`: the command line.
 - Markdown files are the only state. Indexes, caches and HTML are derived or absent.
-- The MCP tools are search, get_note, list_topics, save_reading and save_note.
+- The MCP tools are search, get_note, list_topics, save_reading, save_idea and save_note.
 - Cairn never runs a model. The connected agent writes notes and decides links; Cairn
   stores them and suggests candidate topics.
 - Finch is an independent skill. Do not install, vendor or edit it.
+- Idea minutes are append-only. Never rewrite or drop earlier entries.
 - Never overwrite a note without its current revision. Writes are atomic and stay inside
   the selected collection.
 - `cairn connect` delegates to `claude mcp add` / `codex mcp add`. It never edits client

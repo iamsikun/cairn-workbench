@@ -8,6 +8,10 @@ the agent saves a note for the paper and files it under topics, such as
 broader ones like *Recommendation systems*. Over many sessions and both clients, the notes
 grow into a connected network.
 
+Brainstorming works the same way. When you develop a research idea with the agent, it
+saves an idea note, files it under topics and links it to papers. Later sessions resume
+it, and its dated minutes record how the idea developed.
+
 ```text
 Recommendation systems
 ├── Generative recommendation
@@ -38,6 +42,7 @@ The knowledge base is a folder of Markdown files, and it opens as an Obsidian va
 ~/knowledge/research/papers/tiger-recommender-systems-with-generative-retrieval.md
 ~/knowledge/research/topics/generative-recommendation.md
 ~/knowledge/research/topics/recommendation-systems.md
+~/knowledge/research/ideation/semantic-ids-for-cold-start-ads.md
 ```
 
 ```markdown
@@ -54,7 +59,9 @@ updated: '2026-10-11'
 ...
 ```
 
-- **Notes.** A paper's file name is its slug. One DOI or arXiv id always maps to the same note.
+- **Notes.** A note's file name is its slug. One DOI or arXiv id always maps to the same
+  note. Renaming a note keeps its slug and adds the old title to `aliases`, so links still
+  work.
 - **Links.** `topics:` puts a paper in a topic, and a topic in its broader topics. A topic
   may have several broader topics. `[[slug]]` in a body links any two notes. Backlinks and
   the topic tree are computed from these links.
@@ -62,11 +69,41 @@ updated: '2026-10-11'
   of its own:
   - `search`, `get_note` and `list_topics` read the knowledge base.
   - `save_reading` saves a paper note and its topics.
+  - `save_idea` saves a research idea and adds an entry to its minutes.
   - `save_note` saves a topic or a free-standing note.
 - **Topics.** Naming a topic that does not exist creates it. Each save returns
   `suggested_topics`: existing topics whose names appear in the note but are not linked
   yet. The server's instructions tell the agent to save after each substantive step, reuse
   existing topics, add broader topics, and link the suggestions that are real.
+- **Ideas.** An idea note has two parts. Above `## Minutes` is its current account, which
+  the agent revises: question, hypothesis, related work, evidence and open questions.
+  Below it are dated minutes. Cairn only ever appends to these, and an entry that is
+  already there is not added twice. Each line is attributed to the user, the agent or a
+  source. `status` is one of `seed`, `exploring`, `testing`, `parked` and `developed`, and
+  a change records its reason in the minutes. `next_action` names the next useful step.
+  `last_discussed` and `last_review` are dated by Cairn. A save marked as a review, such
+  as a maintenance pass, cannot change the status.
+
+  ```markdown
+  ---
+  title: Semantic IDs for cold-start ads
+  kind: idea
+  status: exploring
+  next_action: Find an ads dataset with cold-start items
+  last_discussed: '2026-10-13'
+  topics:
+  - '[[generative-recommendation]]'
+  ---
+  **Question:** do semantic IDs help cold-start ads? Builds on [[tiger-recommender-systems-with-generative-retrieval]].
+
+  ## Minutes
+
+  ### 2026-10-13
+
+  Status: seed → exploring.
+
+  **User:** cold-start ads might benefit most; worth a pilot.
+  ```
 - **Safe updates.** Updating a note requires the revision returned by `get_note`. Edits you
   make in an editor, or that another session makes, are never silently overwritten.
 - **Collections.** `research` is the default. `finance` and `life` are separate folders.
@@ -76,7 +113,7 @@ updated: '2026-10-11'
   `html/<collection>/`. These include a topic-tree index and backlinks. The pages are
   generated from the Markdown and can be deleted at any time.
 
-From the terminal: `cairn search QUERY`, `cairn show NAME`, `cairn topics` and `cairn html`.
+From the terminal: `cairn search [QUERY] [--kind idea] [--status testing]`, `cairn show NAME`, `cairn topics` and `cairn html`.
 These take `-w PATH` or read `$CAIRN_WORKSPACE`.
 
 ## Development
