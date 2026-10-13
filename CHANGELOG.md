@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.6.0 — optional catalog and gardener packages
+
+The journal catalog and the kb-gardener tooling that lived inside a knowledge base are now
+optional packages of this repository. The knowledge base holds notes only; tools, data
+and run state live outside it. The core is unchanged.
+
+- `cairn-catalog` (`packages/catalog`): the public journal catalog with its offline
+  browser, catalog app (`serve --open`), incremental `update`, search and `import-paper`.
+  Its data and preferences live in `~/.local/share/cairn-workbench/catalog` and
+  `~/.config/cairn-workbench/`, configured in `~/.config/cairn-workbench/config.toml`.
+- `cairn-garden` (`packages/gardener`): daily digests and weekly reviews drafted by your
+  own Claude Code or Codex agent, with proposals you approve, Zotero sync through the
+  bundled local extension, and the `kb-gardener` skill (`cairn-garden skill`). Run state,
+  logs and the private note history live in `~/.local/state/cairn-workbench/garden/`.
+- `cairn-garden schedule` installs the launchd jobs after both workflows pass readiness;
+  `--catalog` adds a weekly `cairn-catalog update`.
+- `cairn-garden migrate` moves an existing kb-gardener install and in-workspace catalog
+  to this layout, with `--dry-run` and `--rollback`. It renames on one filesystem and
+  copies or deletes nothing.
+- `cairn-garden lint` reports anything in the knowledge base that is not a note.
+- The gardener's private history now includes idea notes.
+- Removed from the gardener: the upstream issue drafts (`workbench-scan`,
+  `workbench-issue`).
+- The Zotero extension is unchanged, so installed copies keep working.
+
 ## 0.5.0 — ideation notes
 
 Brainstorming is saved like reading. While you develop a research idea with the agent, it
