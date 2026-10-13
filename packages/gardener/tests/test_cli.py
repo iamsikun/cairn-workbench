@@ -86,3 +86,16 @@ def test_release_hash_covers_instructions(tmp_path, monkeypatch):
 def test_old_layout_is_gone():
     package = Path(workflow.__file__).parent
     assert not (package / "scripts").exists() and not (package / "run.sh").exists()
+
+
+def test_workflow_commands_find_agents_from_a_minimal_path(tmp_path):
+    env = sandbox(tmp_path)
+    env["PATH"] = "/usr/bin:/bin"
+    init(tmp_path / "kb")
+    (tmp_path / "config.toml").write_text(f'workspace = "{tmp_path / "kb"}"\n')
+    agent = tmp_path / "home/.local/bin/claude"
+    agent.parent.mkdir(parents=True)
+    agent.write_text("#!/bin/sh\necho '{\"loggedIn\": true}'\n")
+    agent.chmod(0o755)
+    code, out = run(env, "health")
+    assert json.loads(out)["executable"] == str(agent)

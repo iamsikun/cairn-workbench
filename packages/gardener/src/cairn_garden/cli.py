@@ -35,13 +35,22 @@ def _print(value) -> None:
     print(json.dumps(value, indent=2, ensure_ascii=False, default=str))
 
 
-def scheduled_environment(mode: str) -> None:
-    """launchd starts with a minimal PATH and no terminal; find agent CLIs and keep a log."""
+def agent_path() -> None:
+    """launchd and other minimal environments lack the folders where agent CLIs are installed."""
+    extra = [
+        str(Path.home() / ".local/bin"),
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin",
+    ]
+    os.environ["PATH"] = os.pathsep.join([*extra, os.environ.get("PATH", "")])
+
+
+def scheduled_log(mode: str) -> None:
+    """A scheduled run has no terminal; append its output to a dated log."""
     from . import engine
 
-    home = Path.home()
-    extra = [str(home / ".local/bin"), "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"]
-    os.environ["PATH"] = os.pathsep.join([*extra, os.environ.get("PATH", "")])
     logs = engine.HOME / "logs"
     logs.mkdir(parents=True, exist_ok=True)
     log = open(logs / f"{date.today().isoformat()}-{mode}.log", "a")  # kept open for the process
@@ -80,8 +89,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if argv else 2
     command, rest = argv[0], argv[1:]
     if command in WORKFLOW:
+        agent_path()
         if command in ("daily", "weekly") and "--scheduled" in rest:
-            scheduled_environment(command)
+            scheduled_log(command)
         from . import workflow
 
         return workflow.main(argv)
