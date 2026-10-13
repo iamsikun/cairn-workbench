@@ -1,0 +1,997 @@
+[
+  {
+    "id": "aer",
+    "title": "American Economic Review",
+    "abbreviation": "AER",
+    "issns": [
+      "0002-8282",
+      "1944-7981"
+    ],
+    "start_year": 1911,
+    "group": "Economics top five",
+    "url": "https://www.aeaweb.org/journals/aer/issues",
+    "field": "economics"
+  },
+  {
+    "id": "qje",
+    "title": "The Quarterly Journal of Economics",
+    "abbreviation": "QJE",
+    "issns": [
+      "0033-5533",
+      "1531-4650"
+    ],
+    "start_year": 1886,
+    "group": "Economics top five",
+    "url": "https://academic.oup.com/qje/issue",
+    "field": "economics"
+  },
+  {
+    "id": "ecta",
+    "title": "Econometrica",
+    "abbreviation": "ECTA",
+    "issns": [
+      "0012-9682",
+      "1468-0262"
+    ],
+    "start_year": 1933,
+    "group": "Economics top five",
+    "url": "https://www.econometricsociety.org/publications/econometrica/browse",
+    "field": "economics"
+  },
+  {
+    "id": "jpe",
+    "title": "Journal of Political Economy",
+    "abbreviation": "JPE",
+    "issns": [
+      "0022-3808",
+      "1537-534X"
+    ],
+    "start_year": 1892,
+    "group": "Economics top five",
+    "url": "https://www.journals.uchicago.edu/loi/jpe",
+    "field": "economics"
+  },
+  {
+    "id": "restud",
+    "title": "The Review of Economic Studies",
+    "abbreviation": "REStud",
+    "issns": [
+      "0034-6527",
+      "1467-937X"
+    ],
+    "start_year": 1933,
+    "group": "Economics top five",
+    "url": "https://academic.oup.com/restud/issue",
+    "field": "economics"
+  },
+  {
+    "id": "mksc",
+    "title": "Marketing Science",
+    "abbreviation": "MKSC",
+    "issns": [
+      "0732-2399",
+      "1526-548X"
+    ],
+    "start_year": 1982,
+    "group": "Marketing and operations",
+    "url": "https://pubsonline.informs.org/loi/mksc",
+    "field": "business"
+  },
+  {
+    "id": "mnsc",
+    "title": "Management Science",
+    "abbreviation": "MNSC",
+    "issns": [
+      "0025-1909",
+      "1526-5501"
+    ],
+    "start_year": 1954,
+    "group": "Marketing and operations",
+    "url": "https://pubsonline.informs.org/loi/mnsc",
+    "field": "business"
+  },
+  {
+    "id": "opre",
+    "title": "Operations Research",
+    "abbreviation": "OPRE",
+    "issns": [
+      "0030-364X",
+      "1526-5463",
+      "0096-3984"
+    ],
+    "start_year": 1952,
+    "group": "Marketing and operations",
+    "url": "https://pubsonline.informs.org/loi/opre",
+    "aliases": [
+      "OR"
+    ],
+    "field": "business"
+  },
+  {
+    "id": "jmr",
+    "title": "Journal of Marketing Research",
+    "abbreviation": "JMR",
+    "issns": [
+      "0022-2437",
+      "1547-7193"
+    ],
+    "start_year": 1964,
+    "group": "Marketing and operations",
+    "url": "https://journals.sagepub.com/loi/mrj",
+    "field": "business"
+  },
+  {
+    "id": "msom",
+    "title": "Manufacturing & Service Operations Management",
+    "abbreviation": "M&SOM",
+    "issns": [
+      "1523-4614",
+      "1526-5498"
+    ],
+    "start_year": 1999,
+    "group": "Marketing and operations",
+    "url": "https://pubsonline.informs.org/loi/msom",
+    "field": "business"
+  },
+  {
+    "id": "jmlr",
+    "title": "Journal of Machine Learning Research",
+    "abbreviation": "JMLR",
+    "issns": [
+      "1532-4435",
+      "1533-7928"
+    ],
+    "start_year": 2000,
+    "group": "Machine learning",
+    "url": "https://www.jmlr.org/papers/",
+    "publishers": [],
+    "aliases": [
+      "JMLR",
+      "Journal of Machine Learning Research (online)",
+      "Journal of Machine Learning Research (print)",
+      "JLR"
+    ],
+    "metadata_sources": [
+      "https://www.jmlr.org/",
+      "https://www.jmlr.org/history.html",
+      "https://portal.issn.org/resource/issn/1533-7928",
+      "https://api.crossref.org/journals/1532-4435",
+      "https://api.crossref.org/journals/1533-7928"
+    ],
+    "openalex_source_ids": [
+      "S118988714"
+    ],
+    "publication_unit": "volume",
+    "archive_prefixes": [
+      "https://jmlr.org/papers/",
+      "https://www.jmlr.org/papers/"
+    ],
+    "field": "stats-ml"
+  },
+  {
+    "id": "aos",
+    "title": "The Annals of Statistics",
+    "abbreviation": "AoS",
+    "issns": [
+      "0090-5364",
+      "2168-8966"
+    ],
+    "start_year": 1973,
+    "group": "Statistics",
+    "url": "https://projecteuclid.org/journals/annals-of-statistics",
+    "publishers": [
+      "Institute of Mathematical Statistics"
+    ],
+    "aliases": [
+      "AoS",
+      "Annals of Statistics",
+      "The Annals of Statistics"
+    ],
+    "metadata_sources": [
+      "https://projecteuclid.org/journals/annals-of-statistics",
+      "https://portal.issn.org/resource/ISSN-L/0090-5364",
+      "https://api.crossref.org/journals/0090-5364"
+    ],
+    "openalex_source_ids": [
+      "S119757635"
+    ],
+    "field": "stats-ml"
+  },
+  {
+    "id": "jasa",
+    "title": "Journal of the American Statistical Association",
+    "abbreviation": "JASA",
+    "issns": [
+      "0162-1459",
+      "1537-274X",
+      "1522-5445",
+      "1522-5437",
+      "2326-621X"
+    ],
+    "start_year": 1888,
+    "group": "Statistics",
+    "url": "https://www.tandfonline.com/journals/uasa20",
+    "publishers": [
+      "Informa UK Limited",
+      "JSTOR",
+      "Informa UK (American Statistical Association)",
+      "Informa UK (Taylor & Francis)"
+    ],
+    "aliases": [
+      "JASA",
+      "Journal of the American Statistical Association",
+      "Quarterly Publications of the American Statistical Association",
+      "Quarterly publication of the American Statistical Association",
+      "Publications of the American Statistical Association"
+    ],
+    "metadata_sources": [
+      "https://www.tandfonline.com/journals/uasa20",
+      "https://www.ncbi.nlm.nih.gov/nlmcatalog?term=0162-1459%5BISSN%5D",
+      "https://api.crossref.org/journals/0162-1459",
+      "https://www.tandfonline.com/journals/uasa20/about-this-journal",
+      "https://portal.issn.org/resource/ISSN-L/1522-5437",
+      "https://api.crossref.org/journals/1522-5445",
+      "https://api.crossref.org/journals/1522-5437",
+      "https://openalex.org/S62401924",
+      "https://openalex.org/S2764571228"
+    ],
+    "openalex_source_ids": [
+      "S4394736638",
+      "S62401924",
+      "S2764571228"
+    ],
+    "field": "stats-ml"
+  },
+  {
+    "id": "jrssb",
+    "title": "Journal of the Royal Statistical Society Series B Statistical Methodology",
+    "abbreviation": "JRSS-B",
+    "issns": [
+      "1369-7412",
+      "1467-9868",
+      "0035-9246",
+      "2517-6161",
+      "1466-6162",
+      "2517-617X"
+    ],
+    "start_year": 1934,
+    "group": "Statistics",
+    "url": "https://academic.oup.com/jrsssb/issue-archive",
+    "publishers": [
+      "Oxford University Press (OUP)",
+      "Wiley",
+      "Oxford University Press"
+    ],
+    "aliases": [
+      "JRSS-B",
+      "Journal of the Royal Statistical Society, Series B",
+      "Journal of the Royal Statistical Society: Series B (Statistical Methodology)",
+      "Journal of the Royal Statistical Society Series B (Methodological)",
+      "Supplement to the Journal of the Royal Statistical Society"
+    ],
+    "metadata_sources": [
+      "https://academic.oup.com/jrsssb",
+      "https://academic.oup.com/jrsssb/issue-archive",
+      "https://portal.issn.org/resource/ISSN-L/1369-7412",
+      "https://api.crossref.org/journals/1369-7412",
+      "https://api.crossref.org/journals/0035-9246",
+      "https://academic.oup.com/jrsssb/issue/34/3",
+      "https://academic.oup.com/jrsssb/issue/54/3",
+      "https://publishers.issn.org/resource/ISSN/2517-617X",
+      "https://portal.issn.org/resource/ISSN/2517-617X",
+      "https://api.crossref.org/journals/1466-6162",
+      "https://openalex.org/S4210190908"
+    ],
+    "openalex_source_ids": [
+      "S145009937",
+      "S4210190908"
+    ],
+    "field": "stats-ml"
+  },
+  {
+    "id": "aop",
+    "title": "The Annals of Probability",
+    "abbreviation": "AoP",
+    "issns": [
+      "0091-1798",
+      "2168-894X"
+    ],
+    "start_year": 1973,
+    "group": "Probability",
+    "url": "https://projecteuclid.org/journals/annals-of-probability",
+    "publishers": [
+      "Institute of Mathematical Statistics"
+    ],
+    "aliases": [
+      "AoP",
+      "Annals of Probability",
+      "The Annals of Probability"
+    ],
+    "metadata_sources": [
+      "https://projecteuclid.org/journals/annals-of-probability",
+      "https://portal.issn.org/custom-search/print/2168-894X/public",
+      "https://api.crossref.org/journals/0091-1798"
+    ],
+    "openalex_source_ids": [
+      "S40212770"
+    ],
+    "field": "probability"
+  },
+  {
+    "id": "ptrf",
+    "title": "Probability Theory and Related Fields",
+    "abbreviation": "PTRF",
+    "issns": [
+      "0178-8051",
+      "1432-2064",
+      "0044-3719"
+    ],
+    "start_year": 1962,
+    "group": "Probability",
+    "url": "https://link.springer.com/journal/440/volumes-and-issues",
+    "publishers": [
+      "Springer Science and Business Media LLC",
+      "Springer-Verlag"
+    ],
+    "aliases": [
+      "PTRF",
+      "Probability Theory and Related Fields",
+      "Zeitschrift für Wahrscheinlichkeitstheorie und Verwandte Gebiete",
+      "Zeitschrift für Wahrscheinlichkeitstheorie und verwandte Gebiete"
+    ],
+    "metadata_sources": [
+      "https://link.springer.com/journal/440",
+      "https://publishers.issn.org/resource/ISSN/1432-2064",
+      "https://api.crossref.org/journals/0178-8051",
+      "https://link.springer.com/article/10.1007/BF00539862",
+      "https://openalex.org/S4210205623"
+    ],
+    "openalex_source_ids": [
+      "S105693234",
+      "S4210205623"
+    ],
+    "field": "probability"
+  },
+  {
+    "id": "aap",
+    "title": "The Annals of Applied Probability",
+    "abbreviation": "AAP",
+    "issns": [
+      "1050-5164",
+      "2168-8737"
+    ],
+    "start_year": 1991,
+    "group": "Probability",
+    "url": "https://projecteuclid.org/journals/annals-of-applied-probability",
+    "publishers": [
+      "Institute of Mathematical Statistics"
+    ],
+    "aliases": [
+      "AAP",
+      "Annals of Applied Probability",
+      "The Annals of Applied Probability"
+    ],
+    "metadata_sources": [
+      "https://projecteuclid.org/journals/annals-of-applied-probability",
+      "https://www.imstat.org/publications/aap/",
+      "https://api.crossref.org/journals/1050-5164"
+    ],
+    "openalex_source_ids": [
+      "S9093621"
+    ],
+    "field": "probability"
+  },
+  {
+    "id": "mathprog",
+    "title": "Mathematical Programming",
+    "abbreviation": "Math. Program.",
+    "issns": [
+      "0025-5610",
+      "1436-4646"
+    ],
+    "start_year": 1971,
+    "group": "Optimization",
+    "url": "https://link.springer.com/journal/10107/volumes-and-issues",
+    "publishers": [
+      "Springer Science and Business Media LLC",
+      "Springer-Verlag"
+    ],
+    "aliases": [
+      "Math. Program.",
+      "Mathematical Programming Series A",
+      "Mathematical Programming Series B",
+      "Mathematical Programming Study"
+    ],
+    "metadata_sources": [
+      "https://link.springer.com/journal/10107",
+      "https://www.ncbi.nlm.nih.gov/nlmcatalog?term=0025-5610%5BISSN%5D",
+      "https://api.crossref.org/journals/0025-5610"
+    ],
+    "openalex_source_ids": [
+      "S193920097"
+    ],
+    "field": "applied-math"
+  },
+  {
+    "id": "annmath",
+    "title": "Annals of Mathematics",
+    "abbreviation": "Ann. Math.",
+    "issns": [
+      "0003-486X",
+      "1939-8980"
+    ],
+    "start_year": 1884,
+    "group": "Mathematics",
+    "url": "https://annals.math.princeton.edu/",
+    "publishers": [
+      "Annals of Mathematics",
+      "JSTOR"
+    ],
+    "aliases": [
+      "Ann. Math.",
+      "Annals of Mathematics (Second Series)",
+      "Annals of Mathematics (2nd Series)"
+    ],
+    "metadata_sources": [
+      "https://annals.math.princeton.edu/",
+      "https://api.crossref.org/journals/0003-486X",
+      "https://portal.issn.org/resource/ISSN/0003-486X"
+    ],
+    "series_restart_year": 1899,
+    "openalex_source_ids": [
+      "S45918994"
+    ],
+    "field": "mathematics"
+  },
+  {
+    "id": "invent",
+    "title": "Inventiones mathematicae",
+    "abbreviation": "Invent. Math.",
+    "issns": [
+      "0020-9910",
+      "1432-1297"
+    ],
+    "start_year": 1966,
+    "group": "Mathematics",
+    "url": "https://link.springer.com/journal/222",
+    "publishers": [
+      "Springer-Verlag",
+      "Springer Science and Business Media LLC"
+    ],
+    "aliases": [
+      "Invent. Math."
+    ],
+    "metadata_sources": [
+      "https://link.springer.com/journal/222",
+      "https://api.crossref.org/journals/0020-9910",
+      "https://www.loc.gov/item/66009875/"
+    ],
+    "openalex_source_ids": [
+      "S98347115"
+    ],
+    "field": "mathematics"
+  },
+  {
+    "id": "jams",
+    "title": "Journal of the American Mathematical Society",
+    "abbreviation": "JAMS",
+    "issns": [
+      "0894-0347",
+      "1088-6834"
+    ],
+    "start_year": 1988,
+    "group": "Mathematics",
+    "url": "https://www.ams.org/journals/jams/",
+    "publishers": [
+      "American Mathematical Society",
+      "American Mathematical Society (AMS)",
+      "JSTOR"
+    ],
+    "aliases": [
+      "JAMS",
+      "Journal of the AMS"
+    ],
+    "metadata_sources": [
+      "https://www.ams.org/journals/jams/",
+      "https://api.crossref.org/journals/0894-0347",
+      "https://www.ams.org/journals/jams/2025-38-03/jams-38-3-print-matter.pdf"
+    ],
+    "openalex_source_ids": [
+      "S130224168"
+    ],
+    "field": "mathematics"
+  },
+  {
+    "id": "actamath",
+    "title": "Acta Mathematica",
+    "abbreviation": "Acta Math.",
+    "issns": [
+      "0001-5962",
+      "1871-2509"
+    ],
+    "start_year": 1882,
+    "group": "Mathematics",
+    "url": "https://projecteuclid.org/journals/acta-mathematica",
+    "publishers": [
+      "International Press of Boston, Inc.",
+      "International Press of Boston",
+      "Springer Science and Business Media LLC"
+    ],
+    "aliases": [
+      "Acta Math.",
+      "Acta mathematica"
+    ],
+    "metadata_sources": [
+      "https://projecteuclid.org/journals/acta-mathematica",
+      "https://api.crossref.org/journals/0001-5962",
+      "https://portal.issn.org/resource/ISSN/1871-2509",
+      "https://www.actamathematica.org/publications/acta-mathematica/subscriptiononline-articles/"
+    ],
+    "openalex_source_ids": [
+      "S113542759"
+    ],
+    "field": "mathematics"
+  },
+  {
+    "id": "ihes",
+    "title": "Publications mathématiques de l'IHÉS",
+    "abbreviation": "Publ. Math. IHÉS",
+    "issns": [
+      "0073-8301",
+      "1618-1913"
+    ],
+    "start_year": 1959,
+    "group": "Mathematics",
+    "url": "https://pmihes.centre-mersenne.org/",
+    "publishers": [
+      "MathDoc/Centre Mersenne",
+      "Presses Universitaires de France",
+      "Springer"
+    ],
+    "aliases": [
+      "Publ. Math. IHÉS",
+      "Publications mathématiques de l'Institut des hautes études scientifiques",
+      "Publications Mathématiques de l'I.H.É.S."
+    ],
+    "metadata_sources": [
+      "https://pmihes.centre-mersenne.org/",
+      "https://api.crossref.org/journals/0073-8301",
+      "https://www.ihes.fr/bibliotheque/publications-mathematiques/",
+      "https://portal.issn.org/resource/ISSN/1618-1913",
+      "https://www.ihes.fr/pub-maths-mersenne/",
+      "https://cfp.mathdoc.fr/periodique/3780/"
+    ],
+    "publication_unit": "volume",
+    "openalex_source_ids": [
+      "S25010850"
+    ],
+    "field": "mathematics"
+  },
+  {
+    "id": "numerische",
+    "title": "Numerische Mathematik",
+    "abbreviation": "Numer. Math.",
+    "issns": [
+      "0029-599X",
+      "0945-3245"
+    ],
+    "start_year": 1959,
+    "group": "Numerical analysis and scientific computing",
+    "url": "https://link.springer.com/journal/211",
+    "publishers": [
+      "Springer-Verlag",
+      "Springer Science and Business Media LLC"
+    ],
+    "aliases": [
+      "Numer. Math."
+    ],
+    "metadata_sources": [
+      "https://link.springer.com/journal/211",
+      "https://api.crossref.org/journals/0029-599X",
+      "https://portal.issn.org/resource/ISSN/0029-599X"
+    ],
+    "openalex_source_ids": [
+      "S4210205683"
+    ],
+    "field": "applied-math"
+  },
+  {
+    "id": "mcom",
+    "title": "Mathematics of Computation",
+    "abbreviation": "Math. Comp.",
+    "issns": [
+      "0025-5718",
+      "1088-6842",
+      "0891-6837",
+      "2326-4853"
+    ],
+    "start_year": 1943,
+    "group": "Numerical analysis and scientific computing",
+    "url": "https://www.ams.org/journals/mcom/",
+    "publishers": [
+      "American Mathematical Society",
+      "American Mathematical Society (AMS)",
+      "JSTOR"
+    ],
+    "aliases": [
+      "Math. Comp.",
+      "Mathematical Tables and Other Aids to Computation",
+      "Mathematical Tables and other Aids to Computation",
+      "Mathematical Tables and Aids to Computation",
+      "MTAC"
+    ],
+    "metadata_sources": [
+      "https://www.ams.org/journals/mcom/",
+      "https://api.crossref.org/journals/0025-5718",
+      "https://www.ams.org/books/psapm/048/psapm048-endmatter.pdf",
+      "https://portal.issn.org/resource/ISSN/2326-4853",
+      "https://portal.issn.org/resource/ISSN/0891-6837",
+      "https://ftp.math.utah.edu/pub/tex/bib/idx/mathcomp1960/index.html",
+      "https://www.ams.org/journals/mcom/1960-14-072/S0025-5718-60-99227-9/"
+    ],
+    "openalex_source_ids": [
+      "S102439543",
+      "S4210199975"
+    ],
+    "field": "applied-math"
+  },
+  {
+    "id": "imajna",
+    "title": "IMA Journal of Numerical Analysis",
+    "abbreviation": "IMAJNA",
+    "issns": [
+      "0272-4979",
+      "1464-3642"
+    ],
+    "start_year": 1981,
+    "group": "Numerical analysis and scientific computing",
+    "url": "https://academic.oup.com/imajna/issue",
+    "publishers": [
+      "Oxford University Press (OUP)"
+    ],
+    "aliases": [
+      "IMA J. Numer. Anal."
+    ],
+    "metadata_sources": [
+      "https://academic.oup.com/imajna",
+      "https://api.crossref.org/journals/0272-4979"
+    ],
+    "openalex_source_ids": [
+      "S201897549"
+    ],
+    "field": "applied-math"
+  },
+  {
+    "id": "focm",
+    "title": "Foundations of Computational Mathematics",
+    "abbreviation": "FoCM",
+    "issns": [
+      "1615-3375",
+      "1615-3383"
+    ],
+    "start_year": 2001,
+    "group": "Numerical analysis and scientific computing",
+    "url": "https://link.springer.com/journal/10208",
+    "publishers": [
+      "Springer-Verlag",
+      "Springer Science and Business Media LLC",
+      "EMS Press"
+    ],
+    "aliases": [
+      "Found. Comput. Math.",
+      "Foundations of Computational Mathematics: The Journal of the Society for the Foundations of Computational Mathematics"
+    ],
+    "metadata_sources": [
+      "https://link.springer.com/journal/10208",
+      "https://api.crossref.org/journals/1615-3375",
+      "https://ems.press/journals/focm",
+      "https://assets.ctfassets.net/n7mu35lxs3vu/70ghZC2bQnxunEwjlhxHPp/d957fc89dbfaa54b9daa3c82e8d070a2/2026-03-30_FoCM_and_AdM_join_EMS_Press.pdf"
+    ],
+    "openalex_source_ids": [
+      "S151639445"
+    ],
+    "field": "applied-math"
+  },
+  {
+    "id": "prl",
+    "title": "Physical Review Letters",
+    "abbreviation": "PRL",
+    "issns": [
+      "0031-9007",
+      "1079-7114"
+    ],
+    "start_year": 1958,
+    "group": "Physics",
+    "url": "https://journals.aps.org/prl/issues",
+    "publishers": [
+      "American Physical Society (APS)"
+    ],
+    "aliases": [
+      "PRL"
+    ],
+    "metadata_sources": [
+      "https://librarians.aps.org/issn",
+      "https://journals.aps.org/prl/about",
+      "https://journals.aps.org/prl/issues"
+    ],
+    "openalex_source_ids": [
+      "S24807848"
+    ],
+    "field": "physics"
+  },
+  {
+    "id": "prx",
+    "title": "Physical Review X",
+    "abbreviation": "PRX",
+    "issns": [
+      "2160-3308"
+    ],
+    "start_year": 2011,
+    "group": "Physics",
+    "url": "https://journals.aps.org/prx/issues",
+    "publishers": [
+      "American Physical Society (APS)"
+    ],
+    "aliases": [
+      "PRX"
+    ],
+    "metadata_sources": [
+      "https://librarians.aps.org/issn",
+      "https://journals.aps.org/prx/issues"
+    ],
+    "openalex_source_ids": [
+      "S137042341"
+    ],
+    "field": "physics"
+  },
+  {
+    "id": "nphys",
+    "title": "Nature Physics",
+    "abbreviation": "Nat. Phys.",
+    "issns": [
+      "1745-2473",
+      "1745-2481"
+    ],
+    "start_year": 2005,
+    "group": "Physics",
+    "url": "https://www.nature.com/nphys/articles",
+    "publishers": [
+      "Springer Science and Business Media LLC"
+    ],
+    "aliases": [
+      "Nat. Phys."
+    ],
+    "metadata_sources": [
+      "https://www.nature.com/nphys/volumes/1",
+      "https://www.nature.com/nphys/articles?year=2005"
+    ],
+    "openalex_source_ids": [
+      "S156274416"
+    ],
+    "field": "physics"
+  },
+  {
+    "id": "rmp",
+    "title": "Reviews of Modern Physics",
+    "abbreviation": "RMP",
+    "issns": [
+      "0034-6861",
+      "1539-0756"
+    ],
+    "start_year": 1929,
+    "group": "Physics",
+    "url": "https://journals.aps.org/rmp/issues",
+    "publishers": [
+      "American Physical Society (APS)"
+    ],
+    "aliases": [
+      "Rev. Mod. Phys."
+    ],
+    "metadata_sources": [
+      "https://librarians.aps.org/issn",
+      "https://journals.aps.org/rmp/issues"
+    ],
+    "openalex_source_ids": [
+      "S73260565"
+    ],
+    "field": "physics"
+  },
+  {
+    "id": "cpa",
+    "title": "Communications on Pure and Applied Mathematics",
+    "abbreviation": "CPA",
+    "issns": [
+      "0010-3640",
+      "1097-0312"
+    ],
+    "start_year": 1948,
+    "group": "Applied mathematics",
+    "url": "https://onlinelibrary.wiley.com/loi/10970312",
+    "publishers": [
+      "Wiley"
+    ],
+    "aliases": [
+      "CPAM",
+      "Communications on Applied Mathematics",
+      "CPAM"
+    ],
+    "metadata_sources": [
+      "https://onlinelibrary.wiley.com/journal/10970312?journalRedirectCheck=true",
+      "https://onlinelibrary.wiley.com/loi/10970312",
+      "https://ci.nii.ac.jp/ncid/AA00127721.amp?l=en"
+    ],
+    "openalex_source_ids": [
+      "S134818455"
+    ],
+    "field": "applied-math"
+  },
+  {
+    "id": "arma",
+    "title": "Archive for Rational Mechanics and Analysis",
+    "abbreviation": "ARMA",
+    "issns": [
+      "0003-9527",
+      "1432-0673"
+    ],
+    "start_year": 1957,
+    "group": "Applied mathematics",
+    "url": "https://link.springer.com/journal/205",
+    "publishers": [
+      "Springer Science and Business Media LLC"
+    ],
+    "aliases": [
+      "ARMA"
+    ],
+    "metadata_sources": [
+      "https://portal.issn.org/resource/ISSN/1432-0673",
+      "https://link.springer.com/journal/205"
+    ],
+    "openalex_source_ids": [
+      "S136982523"
+    ],
+    "field": "applied-math"
+  },
+  {
+    "id": "siopt",
+    "title": "SIAM Journal on Optimization",
+    "abbreviation": "SIOPT",
+    "issns": [
+      "1052-6234",
+      "1095-7189"
+    ],
+    "start_year": 1991,
+    "group": "Optimization",
+    "url": "https://epubs.siam.org/loi/sjope8",
+    "publishers": [
+      "Society for Industrial & Applied Mathematics (SIAM)"
+    ],
+    "aliases": [
+      "SIAM J. Optim."
+    ],
+    "metadata_sources": [
+      "https://www.siam.org/media/ricluhpq/siopt_flyer_2024.pdf",
+      "https://epubs.siam.org/loi/sjope8"
+    ],
+    "openalex_source_ids": [
+      "S928796702"
+    ],
+    "field": "applied-math"
+  },
+  {
+    "id": "sinum",
+    "title": "SIAM Journal on Numerical Analysis",
+    "abbreviation": "SINUM",
+    "issns": [
+      "0036-1429",
+      "1095-7170",
+      "0887-459X"
+    ],
+    "start_year": 1964,
+    "group": "Numerical analysis and scientific computing",
+    "url": "https://epubs.siam.org/loi/sjnaam",
+    "publishers": [
+      "Society for Industrial & Applied Mathematics (SIAM)"
+    ],
+    "aliases": [
+      "SIAM J. Numer. Anal.",
+      "Journal of the Society for Industrial and Applied Mathematics, Series B: Numerical Analysis"
+    ],
+    "metadata_sources": [
+      "https://portal.issn.org/resource/ISSN-L/0036-1429",
+      "https://epubs.siam.org/loi/sjnaam",
+      "https://api.openalex.org/sources/S4210198295",
+      "https://www.jstor.org/journal/jsociinduapplma2"
+    ],
+    "openalex_source_ids": [
+      "S203348814",
+      "S4210198295"
+    ],
+    "field": "applied-math"
+  },
+  {
+    "id": "siap",
+    "title": "SIAM Journal on Applied Mathematics",
+    "abbreviation": "SIAP",
+    "issns": [
+      "0036-1399",
+      "1095-712X",
+      "0368-4245"
+    ],
+    "start_year": 1953,
+    "group": "Applied mathematics",
+    "url": "https://epubs.siam.org/loi/smjmap",
+    "publishers": [
+      "Society for Industrial & Applied Mathematics (SIAM)"
+    ],
+    "aliases": [
+      "SIAM J. Appl. Math.",
+      "Journal of the Society for Industrial and Applied Mathematics"
+    ],
+    "metadata_sources": [
+      "https://www.siam.org/publications/siam-journals/siam-journal-on-applied-mathematics/",
+      "https://epubs.siam.org/locus",
+      "https://epubs.siam.org/loi/smjmap",
+      "https://api.openalex.org/sources/S4210214951",
+      "https://portal.issn.org/resource/ISSN/0368-4245"
+    ],
+    "openalex_source_ids": [
+      "S77200987",
+      "S4210214951"
+    ],
+    "field": "applied-math"
+  },
+  {
+    "id": "actanumerica",
+    "title": "Acta Numerica",
+    "abbreviation": "Acta Numer.",
+    "issns": [
+      "0962-4929",
+      "1474-0508"
+    ],
+    "start_year": 1992,
+    "group": "Numerical analysis and scientific computing",
+    "url": "https://www.cambridge.org/core/journals/acta-numerica/all-issues",
+    "publishers": [
+      "Cambridge University Press (CUP)"
+    ],
+    "aliases": [
+      "Acta Numer."
+    ],
+    "metadata_sources": [
+      "https://www.cambridge.org/core/journals/acta-numerica",
+      "https://www.cambridge.org/core/journals/acta-numerica/all-issues"
+    ],
+    "openalex_source_ids": [
+      "S124973578"
+    ],
+    "publication_unit": "volume",
+    "field": "applied-math"
+  },
+  {
+    "id": "sirev",
+    "title": "SIAM Review",
+    "abbreviation": "SIAM Rev.",
+    "issns": [
+      "0036-1445",
+      "1095-7200"
+    ],
+    "start_year": 1959,
+    "group": "Applied mathematics",
+    "url": "https://epubs.siam.org/loi/siread",
+    "publishers": [
+      "Society for Industrial & Applied Mathematics (SIAM)"
+    ],
+    "aliases": [
+      "SIAM Rev."
+    ],
+    "metadata_sources": [
+      "https://epubs.siam.org/journal/siread",
+      "https://www.siam.org/publications/siam-news/articles/looking-back-at-60-volumes-of-siam-review/",
+      "https://epubs.siam.org/loi/siread"
+    ],
+    "openalex_source_ids": [
+      "S160107561"
+    ],
+    "field": "applied-math"
+  }
+]

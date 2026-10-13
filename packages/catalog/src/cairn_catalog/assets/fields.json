@@ -1,0 +1,9 @@
+[
+  {"id": "economics", "label": "Economics", "tier": "core"},
+  {"id": "business", "label": "Business", "tier": "core"},
+  {"id": "stats-ml", "label": "Statistics & ML", "tier": "core"},
+  {"id": "probability", "label": "Probability", "tier": "core"},
+  {"id": "applied-math", "label": "Optimization, Applied & Numerical Math", "tier": "skim"},
+  {"id": "mathematics", "label": "Mathematics", "tier": "skim"},
+  {"id": "physics", "label": "Physics", "tier": "skim"}
+]

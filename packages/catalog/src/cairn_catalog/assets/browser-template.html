@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Cairn · Journal catalog</title>
+<link rel="stylesheet" href="__ASSETS__catalog.css">
+</head>
+<body data-page="__PAGE__">
+<a class="skip" href="#main">Skip to content</a>
+<div id="catalogChrome" class="catalog-chrome">
+<header class="masthead">
+<a class="brand" href="catalog.html"><span class="brand-mark">C</span><span>Cairn<span class="brand-sub">Journal catalog</span></span></a>
+<nav aria-label="Catalog"><a href="catalog.html" data-nav="home">What’s New</a><a href="search.html" data-nav="search">Search</a><a href="authors.html" data-nav="author">Authors</a><a href="institutions.html" data-nav="institution">Institutions</a></nav>
+</header>
+<section data-view="home" class="home-toolbar" aria-label="Publication controls">
+<div class="page-heading"><div><p id="crumbs" class="crumbs" hidden><a id="allFields" href="catalog.html">← What’s New: For you &amp; all fields</a></p><h1 id="homeTitle">What’s New</h1></div><div class="home-controls"><div class="toggles" role="group" aria-label="Display options"><button type="button" id="newOnly" aria-pressed="false">New since last visit</button><button type="button" id="density" aria-pressed="true">Compact rows</button><button type="button" id="markSeen">Mark caught up</button></div><label class="window-label">Publication window<select id="homeWindow"><option value="1">Past month</option><option value="3" selected>Past 3 months</option><option value="6">Past 6 months</option><option value="12">Past year</option><option value="quarter">Previous calendar quarter</option><option value="custom">Custom dates</option></select></label></div></div>
+<form id="homeDates" class="custom-window" hidden><label>From<input id="homeStart" type="date" required></label><label>Through<input id="homeEnd" type="date" required></label><button class="primary">Apply dates</button></form>
+<div class="home-status"><strong id="homeCount" role="status" aria-live="polite">Loading recent publications…</strong><span id="homeRange" class="muted"></span><span id="snapshot" class="snapshot"></span></div>
+</section>
+</div>
+<main id="main" tabindex="-1">
+<section data-view="home">
+<div id="frontPage" hidden><section id="forYou" class="for-you" aria-labelledby="forYouTitle"></section><div id="coreTiles" class="tiles core"></div><div id="skimTiles" class="tiles skim"></div><p id="mutedFields" class="notice"></p></div>
+<div id="fieldPage" hidden><div id="fieldHead" class="field-head"></div>
+<div id="homeLayout"><aside id="journalIndex" class="journal-index" hidden><details id="journalDisclosure"><summary id="journalSummary">Journals</summary><p class="journal-index-title" aria-hidden="true">Journals</p><nav id="journalNav" aria-label="Journals"></nav></details></aside><div class="home-results"><div id="homeList"></div></div></div></div>
+<p id="uncertainLink" class="notice"></p>
+<p class="feed-note">Ordered by earliest known publication. Online-first papers keep their original date when assigned to an issue. Known book reviews and front/back matter are omitted. <a id="noticesLink" href="search.html#entry_type=correction_or_retraction">Corrections &amp; retractions</a></p>
+</section>
+<section data-view="search">
+<div class="page-heading"><div><p class="eyebrow">Explore the archive</p><h1>Search</h1><p class="intro">Find papers and issue contents across the complete catalog.</p></div></div>
+<form id="searchForm" class="search-form">
+<div class="search-main"><label class="query-label">Title, author, abstract or DOI<input name="query" id="paperSearch" type="search" placeholder="e.g. causal inference" autocomplete="off"></label><label>Journal<select name="journal" id="journal"><option value="">All journals</option></select></label><label>Issue<select name="issue" id="issue" disabled><option value="">Choose a journal first</option></select></label></div>
+<div id="searchDates" class="date-controls"></div>
+<details id="searchAdvanced"><summary>Advanced filters</summary><div class="advanced-fields"><label>Date basis<select name="basis"><option value="issue">Publication date (print preferred)</option><option value="first">Earliest known publication</option><option value="online">Online publication</option><option value="print">Print publication</option></select></label><label>Publication stage<select name="stage"><option value="all">All stages</option><option value="issue_assigned">Assigned to a volume or issue</option><option value="online_first">Online first</option><option value="pending">Awaiting issue assignment</option><option value="unassigned">Other missing issue details</option></select></label><label>Entry type<select name="entry_type"><option value="">All entry types</option><option value="article_or_other">Articles and other entries</option><option value="book_review">Book reviews</option><option value="correction_or_retraction">Corrections &amp; retractions</option><option value="front_or_back_matter">Front/back matter</option></select></label><label class="check"><input name="include_uncertain" type="checkbox" value="1">Include uncertain dates</label></div></details>
+<div class="form-actions"><button class="primary">Search catalog</button><button type="button" id="resetSearch">Clear</button></div>
+</form>
+<div class="result-bar"><strong id="searchCount" role="status" aria-live="polite"></strong><span id="searchSort"></span></div><div id="searchList" class="empty">Search for a paper, or choose a journal or publication period.</div><div id="searchPager" class="pager"></div>
+</section>
+<section data-view="entity">
+<div class="page-heading"><div><p class="eyebrow">Explore research connections</p><h1 id="entityTitle">Authors</h1><p id="entityIntro" class="intro"></p></div></div>
+<form id="entityForm" class="entity-search"><label id="entityLabel">Find an author<input id="entitySearch" name="query" type="search" autocomplete="off"></label><button class="primary">Find</button></form>
+<div class="entity-layout"><div id="entityResults" hidden><p id="entityCount" class="muted" role="status"></p><div id="entityList" class="entity-list"></div><div id="entityPager" class="pager"></div><p class="feed-note">Source identities remain separate when a name cannot be resolved.</p></div><div id="entityMain"><div id="entityLanding" class="landing" hidden></div><div id="entityHead" class="empty">Choose an identity to see publications.</div><div id="entitySummary" class="profile-summary" hidden></div><form id="publicationForm" class="publication-form" hidden><div id="publicationDates" class="date-controls"></div><details id="publicationAdvanced"><summary>More filters</summary><div class="advanced-fields"><label>Date basis<select name="basis"><option value="issue">Publication (print preferred)</option><option value="online">Online</option><option value="print">Print</option></select></label><label>Stage<select name="stage"><option value="all">All stages</option><option value="issue_assigned">Assigned to a volume or issue</option><option value="online_first">Online first</option><option value="pending">Awaiting issue assignment</option><option value="unassigned">Other missing issue details</option></select></label><label class="check"><input name="include_uncertain" type="checkbox" value="1">Include uncertain dates</label></div></details><button>Apply</button></form><p id="publicationCount" class="muted" role="status"></p><div id="publicationList"></div><div id="publicationPager" class="pager"></div></div></div>
+</section>
+<p id="saveStatus" class="save-status" role="status" aria-live="polite" hidden></p>
+<p id="error" class="error" role="alert"></p>
+<footer><span id="footerMeta"></span><p>Public bibliographic metadata; historical coverage is incomplete. Source identities and date precision remain explicit. <a href="COVERAGE.md">Coverage</a> · <a href="README.md">Catalog guide</a></p></footer>
+</main>
+<dialog id="detail" aria-labelledby="detailTitle"><button id="closeDetail" class="close" aria-label="Close paper details">Close ×</button><div id="detailBody"></div></dialog>
+<noscript><p class="empty">Enable JavaScript to browse the catalog. The underlying notes remain in the cairn-library folder.</p></noscript>
+<script>window.CAIRN_CONFIG=__CONFIG__;</script>
+<script src="catalog-personal.js"></script>
+<script src="__ASSETS__periods.js"></script><script src="__ASSETS__offline-runtime.js"></script><script src="__ASSETS__catalog-ui.js"></script>
+</body></html>
