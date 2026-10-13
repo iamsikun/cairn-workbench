@@ -21,6 +21,16 @@ Before adding a feature, ask whether that workflow needs it. See README.md for t
 - `cairn connect` delegates to `claude mcp add` / `codex mcp add`. It never edits client
   settings files itself.
 
+Optional tools live in `packages/` as separate packages of one uv workspace. They use the
+core through `cairn.store` and never change it; the core never imports them. The rules
+above are the core's.
+
+- `packages/catalog` (`cairn-catalog`): the public journal catalog and its offline
+  browser. Its data, preferences and generated pages live outside the knowledge base and
+  outside this repository; `paths.py` resolves them from the config file or environment.
+- The knowledge base holds knowledge only. Code, views, caches, run state and raw evidence
+  stay out of it.
+
 Develop with `uv` and synthetic data in temporary folders. Never read a real knowledge
 base, home directory or credentials. Never change real client settings: run `connect` only
 with `--dry-run`. Never push, publish or add remotes.

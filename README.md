@@ -116,6 +116,16 @@ updated: '2026-10-11'
 From the terminal: `cairn search [QUERY] [--kind idea] [--status testing]`, `cairn show NAME`, `cairn topics` and `cairn html`.
 These take `-w PATH` or read `$CAIRN_WORKSPACE`.
 
+## Optional tools
+
+`packages/` holds optional tools that work on a knowledge base without changing the core:
+
+- [`cairn-catalog`](packages/catalog/README.md): a local catalog of public journal
+  metadata with an offline browser. Import selected papers into the knowledge base.
+
+Their data and settings live outside the knowledge base, configured in
+`~/.config/cairn-workbench/config.toml`.
+
 ## Development
 
 ```sh
