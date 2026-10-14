@@ -153,13 +153,6 @@ jobs:
             echo "saved=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Save the journal catalog
-        if: steps.catalog.outputs.saved == 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ github.workspace }}/catalog
-          key: cairn-catalog-${{ github.run_id }}
-
       - name: Install the agent CLI
         if: steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true' || inputs.mode == 'enable-zotero-writes'
         run: npm install --global "${{ inputs.agent-cli }}"
@@ -175,6 +168,15 @@ jobs:
         if: steps.due.outputs.run_weekly == 'true'
         continue-on-error: true
         run: cairn-garden weekly ${{ inputs.scheduled && '--scheduled' || '' }}
+
+      # Weekly storage maintenance must reach the next runner, too. Saving before
+      # the review would restore the pruned recovery editions every week.
+      - name: Save the journal catalog
+        if: steps.catalog.outputs.saved == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ github.workspace }}/catalog
+          key: cairn-catalog-${{ github.run_id }}
 
       # After a manual daily and weekly run each proved a Zotero import and a collection update
       # on this release and configuration, scheduled runs may write to Zotero.
