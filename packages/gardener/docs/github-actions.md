@@ -30,6 +30,7 @@ Mac.
 | Completed periods, delivered discoveries, the Zotero write budget and creation ledger, applied proposals, the write gate, compact run receipts | `garden/` on the `garden-state` branch | Git history of that branch, never merged |
 | Journal catalog (database, snapshots, pages) | the Actions cache | Best effort; it can be rebuilt |
 | Agent output, gathered evidence, logs | a run artifact | 14 days |
+| Recovery copy of the collection, reports and exported state before publication | the same private run artifact | 14 days; for diagnosing and recovering a failed publish, never a substitute for the state branch |
 | Credentials | repository secrets | Never written anywhere |
 
 Correctness never depends on the cache or the artifacts. If they expire, a run rebuilds the
@@ -146,6 +147,11 @@ state are pushed in **one atomic push**: either both arrive or neither does.
   version. Delete the side branch once you have taken what you want from it.
 - **The push failed for any other reason.** The job fails and the summary says
   "NOT published". Nothing is presented as delivered.
+
+The workflow supplies a bot Git identity for rebases as well as the initial commits. Before
+publication it saves the collection, reports and the supported state export in the private
+diagnostic artifact. This preserves the actual receipts and write ledger if publication fails;
+keep these files intact when recovering, rather than rebuilding verification flags by hand.
 
 On your own machine, `git pull --rebase` before editing and push soon after. Ticking a proposal
 is an ordinary edit to `gardening/weekly/…`; the next weekly run applies it.
