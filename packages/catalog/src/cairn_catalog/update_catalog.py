@@ -325,6 +325,7 @@ def sync_entrypoints(root):
 
 def refresh(root=ROOT, rebuild_only=False):
     root = Path(root).resolve()
+    root.mkdir(parents=True, exist_ok=True)
     with (root / "update.lock").open("a") as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -335,23 +336,25 @@ def refresh(root=ROOT, rebuild_only=False):
         stage = run / "staged"
         stage.mkdir(parents=True)
         live_cache_version = cache_version(root)
-        shutil.copytree(root / "raw", stage / "raw")
+        if (root / "raw").exists():
+            shutil.copytree(root / "raw", stage / "raw")
         # Atomic note replacement means unchanged files may share storage safely.
-        shutil.copytree(root / "cairn-library", stage / "cairn-library", copy_function=os.link)
-        shutil.copy2(root / "journals.json", stage / "journals.json")
+        if (root / "cairn-library").exists():
+            shutil.copytree(root / "cairn-library", stage / "cairn-library", copy_function=os.link)
+        catalog.atomic_json(stage / "journals.json", paths.journals(root))
         today = datetime.now(ZoneInfo("America/Chicago")).date()
         upper = datetime.now(UTC).date().isoformat()
         state_file = root / "update-state.json"
         state = json.loads(state_file.read_text()) if state_file.exists() else {}
-        baseline = state.get(
-            "crossref_until", json.loads((root / "coverage.json").read_text())["as_of"]
-        )
+        coverage_file = root / "coverage.json"
+        previous = json.loads(coverage_file.read_text()) if coverage_file.exists() else {}
+        baseline = state.get("crossref_until", previous.get("as_of", today.isoformat()))
         lower = (date.fromisoformat(baseline) - timedelta(days=14)).isoformat()
         recent = entities.shift_months(today, -24).isoformat()
         report = {
             "started_at": catalog.now(),
             "as_of": today.isoformat(),
-            "mode": "rebuild_cached" if rebuild_only else "incremental",
+            "mode": "rebuild_cached" if rebuild_only else "incremental" if previous else "initial",
             "crossref_from": lower,
             "crossref_until": upper,
             "openalex_publication_since": recent,
@@ -401,8 +404,7 @@ def refresh(root=ROOT, rebuild_only=False):
                 report["warnings"].append("Personalization skipped: " + str(exc))
             coverage = json.loads((stage / "coverage.json").read_text())
             report["journal_membership"] = coverage["journal_membership"]
-            previous = json.loads((root / "coverage.json").read_text())
-            report["entry_change"] = coverage["total_entries"] - previous["total_entries"]
+            report["entry_change"] = coverage["total_entries"] - previous.get("total_entries", 0)
             report["added_source_records"] = sum(s["added"] for s in report["sources"])
             report["changed_source_records"] = sum(s["changed"] for s in report["sources"])
             backup = run / "previous"

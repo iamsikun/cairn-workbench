@@ -37,6 +37,52 @@ class FlexiblePeriodTests(unittest.TestCase):
 
 
 class RefreshTests(unittest.TestCase):
+    def test_first_refresh_stages_and_publishes_without_an_existing_edition(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "new" / "catalog"
+
+            def build(_):
+                stage = updater.catalog.ROOT
+                self.assertTrue((stage / "journals.json").exists())
+                updater.catalog.atomic_json(
+                    stage / "coverage.json",
+                    {"total_entries": 1, "journal_membership": {}},
+                )
+                (stage / "catalog.html").write_text("first verified edition")
+
+            with (
+                patch.object(updater, "refresh_service", return_value=[]),
+                patch.object(updater.catalog, "harvest_repec"),
+                patch.object(updater.catalog, "harvest_publisher"),
+                patch("cairn_catalog.publisher_archives.harvest_jmlr"),
+                patch.object(updater.catalog, "build", side_effect=build),
+                patch.object(updater.catalog, "validate"),
+                patch.object(updater.build_browser, "build", return_value={"assets": "fixture"}),
+                patch.object(updater.build_browser, "prune_assets", return_value=[]),
+                patch.object(updater.verify_offline, "verify", return_value=1),
+                patch.object(updater.personalize, "run", return_value={}),
+            ):
+                result = updater.refresh(root)
+            self.assertEqual(result["mode"], "initial")
+            self.assertEqual(result["entry_change"], 1)
+            self.assertEqual((root / "catalog.html").read_text(), "first verified edition")
+            self.assertTrue((root / "update-state.json").exists())
+            self.assertEqual(
+                json.loads((root / "journals.json").read_text()), updater.catalog.JOURNALS
+            )
+
+    def test_failed_first_build_does_not_claim_a_published_edition(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "new-catalog"
+            with patch.object(updater.catalog, "build", side_effect=RuntimeError("build failed")):
+                with self.assertRaisesRegex(RuntimeError, "build failed"):
+                    updater.refresh(root, rebuild_only=True)
+            self.assertFalse((root / "coverage.json").exists())
+            self.assertFalse((root / "update-state.json").exists())
+            self.assertEqual(
+                json.loads((root / "update-report.json").read_text())["status"], "failed"
+            )
+
     def test_concurrent_source_update_prevents_stale_publication(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
