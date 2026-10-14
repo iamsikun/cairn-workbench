@@ -60,8 +60,8 @@ jobs:
     env:
       CAIRN_WORKSPACE: ${{ github.workspace }}/kb
       CAIRN_WORKBENCH_CONFIG: ${{ github.workspace }}/kb/${{ inputs.config }}
-      CAIRN_GARDEN_STATE: ${{ runner.temp }}/garden
-      CAIRN_CATALOG_DIR: ${{ runner.temp }}/catalog
+      CAIRN_GARDEN_STATE: ${{ github.workspace }}/garden
+      CAIRN_CATALOG_DIR: ${{ github.workspace }}/catalog
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
@@ -114,7 +114,7 @@ jobs:
         if: inputs.catalog && (steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true' || inputs.mode == 'catalog')
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/catalog
+          path: ${{ github.workspace }}/catalog
           key: cairn-catalog-${{ github.run_id }}
           restore-keys: cairn-catalog-
 
@@ -134,7 +134,7 @@ jobs:
         if: steps.catalog.outputs.saved == 'true'
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/catalog
+          path: ${{ github.workspace }}/catalog
           key: cairn-catalog-${{ github.run_id }}
 
       - name: Install the agent CLI
@@ -169,8 +169,8 @@ jobs:
         with:
           name: garden-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            ${{ runner.temp }}/garden/logs
-            ${{ runner.temp }}/garden/workspaces/*/runs
+            ${{ github.workspace }}/garden/logs
+            ${{ github.workspace }}/garden/workspaces/*/runs
           retention-days: 14
           if-no-files-found: ignore
 
