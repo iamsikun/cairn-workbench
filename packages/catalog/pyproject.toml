@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cairn-catalog"
-version = "0.6.0"
+version = "0.6.1"
 description = "A public journal catalog with an offline browser that feeds a Cairn knowledge base"
 requires-python = ">=3.12"
 dependencies = ["cairn-workbench", "PyYAML>=6.0.2,<7", "requests>=2.32,<3"]

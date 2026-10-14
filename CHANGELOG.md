@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.6.1 — gardening reports and unattended runs
+
+Garden reports move out of the research notes into their own folder. The gardener can run on
+GitHub-hosted runners for a knowledge base kept in a private GitHub repository. The Cairn core
+and its MCP tools are unchanged.
+
+- Daily digests and weekly reviews are saved in `<workspace>/gardening/` (`daily/`,
+  `weekly/`, `maintenance/`, `archive/`) instead of `research/notes/`.
+  - Cairn's search, topics and metrics no longer see them.
+  - Their links to notes are relative Markdown links that work on GitHub and in Obsidian.
+  - The folder is set with `[garden] reports`.
+- `gardening/index.md` lists every run: outcome, findings, report link and run id. A failed or
+  skipped run never looks like a delivered report, and a check that found nothing due is
+  listed once per mode.
+- `cairn-garden migrate-reports` moves existing reports, with `--dry-run`, a journal, resume
+  after an interruption, a refusal when a destination conflicts, and `--rollback`. Daily and
+  weekly runs refuse to start until reports have been moved.
+- Reports are recognized by slug and title. A research note such as "Garden design" is no
+  longer skipped by lint, metrics or Zotero sync.
+- Apply, proposal metrics, digest archiving, lint and the private history all use the report
+  folder. Readiness and the Zotero write gate find migrated reports.
+- With `zotero_backend = "web"`, the gardener uses the Zotero Web API for reads and writes, and
+  no Zotero app is needed.
+  - Writes are read back.
+  - Throttling is waited out.
+  - A creation whose outcome is unknown is reconciled by identifier, never duplicated.
+  - The scheduled write gate accepts Web evidence tied to the key's library.
+- `workspace_id` makes state and evidence independent of the checkout path.
+- `cairn-garden ci` and the reusable workflow `.github/workflows/garden.yml` garden a private
+  knowledge base repository on GitHub Actions:
+  - state lives on a `garden-state` branch;
+  - reports and state are published in one atomic push, and nothing is ever force-pushed;
+  - a step summary shows execution, publication and completion;
+  - `ci template` prints the thin caller workflow.
+  See `packages/gardener/docs/github-actions.md`.
+- The weekly review warns about a stale journal catalog (`catalog_max_age_days`), or fails with
+  `catalog_required = true`.
+- `cairn-garden lint` accepts a repository's `.git`, `.github`, `.gitignore`, `.gitattributes`,
+  `cairn-workbench.toml` and `catalog-preferences.yaml`.
+- New code and instructions mean new release and configuration hashes: run daily and weekly
+  once before `readiness` and the Zotero write gate pass again. The Zotero extension is
+  unchanged.
+
 ## 0.6.0 — optional catalog and gardener packages
 
 The journal catalog and the kb-gardener tooling that lived inside a knowledge base are now
