@@ -212,8 +212,37 @@ jobs:
         run: cairn-garden ci publish --branch "${{ inputs.state-branch }}"
 
       - name: Summary
-        if: always() && steps.restore.outcome == 'success' && steps.enable_writes.outcome != 'failure'
+        if: always() && steps.restore.outcome == 'success' && inputs.mode != 'catalog' && steps.enable_writes.outcome != 'failure'
         run: cairn-garden ci summary --mode "${{ inputs.mode }}"
+
+      - name: Catalog summary
+        if: always() && steps.restore.outcome == 'success' && inputs.mode == 'catalog'
+        env:
+          CATALOG_OUTCOME: ${{ steps.catalog.outcome }}
+          PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          path = Path(os.environ['CAIRN_CATALOG_DIR']) / 'update-report.json'
+          report = json.loads(path.read_text()) if path.exists() else {}
+          complete = (report.get('status') == 'success'
+                      and os.environ['CATALOG_OUTCOME'] == 'success'
+                      and os.environ['PUBLISH_OUTCOME'] == 'success')
+          lines = ['## Cairn journal catalog', '',
+                   f"- refresh: {report.get('status', 'no completed refresh')}",
+                   f"- publication: {os.environ['PUBLISH_OUTCOME']}",
+                   f"- offline verification: {report.get('offline_verification', 'not completed')}"]
+          lines += [f'- warning: {warning}' for warning in report.get('warnings', [])]
+          if report.get('error'):
+              lines.append(f"- error: {report['error']}")
+          lines += ['', '**Overall: ' + ('complete' if complete else 'incomplete') + '**']
+          summary = '\n'.join(lines) + '\n'
+          print(summary)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
+              output.write(summary)
+          raise SystemExit(0 if complete else 1)
+          PY
 
       - name: Keep diagnostics
         if: always()
