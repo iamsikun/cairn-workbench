@@ -70,6 +70,7 @@ Add these as repository secrets (Settings → Secrets and variables → Actions)
 |---|---|---|
 | `CLAUDE_CODE_OAUTH_TOKEN` | Created with `claude setup-token`; uses your Claude subscription | Or use `ANTHROPIC_API_KEY` (billed per token). For `agent = "codex"`, use `CODEX_API_KEY` and set the workflow input `agent-cli: "@openai/codex"`. |
 | `ZOTERO_API_KEY` | A key from zotero.org/settings/keys | Personal library: read and write access. No group or notes access. |
+| `OPENALEX_API_KEY` | Optional free key from openalex.org/settings/api | Required by OpenAlex for pagination beyond the first page. Without it, OpenAlex coverage remains incomplete and the catalog reports that limitation; Crossref and publisher harvesting still run. |
 
 Two notes on the agent and the token:
 
@@ -124,6 +125,12 @@ itself:
 the job's 240-minute timeout. Run `mode: catalog` manually once to prime the cache. Caches
 unused for seven days are evicted. The weekly refresh normally keeps the cache alive; otherwise
 the next refresh rebuilds it.
+
+The full catalog includes hundreds of thousands of exported notes and offline browser assets.
+Before restoring or building it, the workflow removes unused Android, .NET, Swift, Haskell and
+CodeQL SDKs from its disposable GitHub-hosted Ubuntu runner and requires 30 GiB of free space.
+Node, Python, Git and the knowledge base are retained. Do not copy this cleanup step to a
+self-hosted runner.
 
 ## 4. Publication and your own edits
 

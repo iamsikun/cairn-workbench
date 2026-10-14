@@ -50,6 +50,8 @@ on:
         required: false
       ZOTERO_API_KEY:
         required: false
+      OPENALEX_API_KEY:
+        required: false
 
 jobs:
   garden:
@@ -66,6 +68,7 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
       ZOTERO_API_KEY: ${{ secrets.ZOTERO_API_KEY }}
+      OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
       WORKBENCH: git+https://github.com/iamsikun/cairn-workbench@${{ inputs.version }}
     steps:
       - name: Check out the knowledge base
@@ -109,6 +112,20 @@ jobs:
             echo "run_$period=$run" >> "$GITHUB_OUTPUT"
             echo "$period=$due" >> "$GITHUB_OUTPUT"
           done
+
+      # This workflow only uses GitHub-hosted Ubuntu runners. The full catalog and its
+      # staged replacement need more space than the image leaves beside unused SDKs.
+      - name: Reserve space for the journal catalog
+        if: inputs.catalog && (steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true' || inputs.mode == 'catalog')
+        run: |
+          sudo rm -rf -- /usr/local/lib/android /usr/share/dotnet /usr/share/swift /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          python3 - <<'PY'
+          import os, shutil
+          free = shutil.disk_usage(os.environ['GITHUB_WORKSPACE']).free / 2**30
+          print(f'Available space for catalog: {free:.1f} GiB')
+          if free < 30:
+              raise SystemExit('Catalog requires at least 30 GiB free for a staged edition')
+          PY
 
       - name: Restore the journal catalog
         if: inputs.catalog && (steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true' || inputs.mode == 'catalog')
@@ -180,6 +197,7 @@ jobs:
           path: |
             ${{ github.workspace }}/garden/logs
             ${{ github.workspace }}/garden/workspaces/*/runs
+            ${{ github.workspace }}/catalog/update-report.json
           retention-days: 14
           if-no-files-found: ignore
 
