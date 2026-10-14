@@ -160,6 +160,16 @@ def test_failed_push_is_not_delivered(repo):
     assert "NOT published" in text and "**Overall: incomplete**" in text
 
 
+def test_note_changes_alone_are_published(repo):
+    cfg, kb, remote = repo
+    ci.restore(cfg, kb, "garden-state", "origin", allow_empty=True)
+    g.kb_open(cfg).save(kind="note", title="Catalog entry point", body="Refreshed by the catalog.")
+    assert ci.publish(cfg, kb, "garden-state", "origin", None)["published"]
+    assert "research/notes/catalog-entry-point.md" in git(
+        remote, "ls-tree", "-r", "--name-only", "main"
+    )
+
+
 def test_changes_outside_the_gardeners_scope_are_refused(repo):
     cfg, kb, _ = repo
     ci.restore(cfg, kb, "garden-state", "origin", allow_empty=True)

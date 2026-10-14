@@ -205,7 +205,7 @@ def publish(cfg, repo: Path, branch: str, remote: str, target: str | None, attem
         run_id = max(latest.values(), key=lambda m: m.get("id", ""))["id"]
     target = target or git(repo, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
     if paths:
-        git(repo, "add", "-A", "--", *scope)
+        git(repo, "add", "-A", "--", *paths)
         git(repo, *BOT, "commit", "-q", "-m", f"garden: {run_id}")
     tree = worktree(cfg)
     if not tree.exists():
