@@ -287,12 +287,23 @@ def sync_entrypoints(root):
     kb = catalog.open_kb()
     coverage = json.loads((root / "coverage.json").read_text())
     graph = json.loads((root / "entity-coverage.json").read_text())
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        run_url = (
+            f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}"
+            f"/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+        )
+        links = f"[Cloud catalog refresh and diagnostics]({run_url})\n"
+    else:
+        links = (
+            f"[Open the saved local catalog]({root / 'catalog.html'}) · "
+            f"[Refresh result]({root / 'update-report.json'})\n"
+        )
     block = (
         "<!-- catalog-refresh:start -->\n"
         f"Latest catalog snapshot: **{coverage['as_of']}**. "
         f"**{coverage['total_entries']:,} entries · {coverage['total_issues']:,} issues · {coverage['total_abstracts']:,} source abstracts.** "
         f"{graph['identified_author_entities']:,} source-identified authors; {graph['identified_institutions']:,} identified institutions.\n\n"
-        f"[Open the saved local catalog]({root / 'catalog.html'}) · [Refresh result]({root / 'update-report.json'})\n"
+        f"{links}"
         "<!-- catalog-refresh:end -->"
     )
     for slug in ["journal-catalog", "author-institution-catalog"]:

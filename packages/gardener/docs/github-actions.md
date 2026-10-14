@@ -123,6 +123,10 @@ review also checks freshness itself:
 - with `catalog_required = true`, a stale catalog fails the run;
 - a missing catalog is reported as an unavailable source.
 
+The generated status block in existing catalog notes links to the GitHub run for cloud
+refreshes. Temporary runner paths are not useful after the job exits. Local refreshes retain
+their local catalog links, and either mode preserves note content outside that status block.
+
 **First catalog build.** The first build downloads the full public catalog and is bounded by
 the job's 240-minute timeout. Run `mode: catalog` manually once to prime the cache. Caches
 unused for seven days are evicted. The weekly refresh normally keeps the cache alive; otherwise
