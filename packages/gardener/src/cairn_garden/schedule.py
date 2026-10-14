@@ -77,7 +77,7 @@ def install(catalog: bool = False) -> dict:
         raise SystemExit(
             "Schedules remain disabled: run and verify daily and weekly on this release first."
         )
-    if cfg.get("zotero_backend") == "local":
+    if cfg.get("zotero_backend") in ("local", "web"):
         workflow.enable_scheduled_writes(cfg)
     folder = agents_folder()
     folder.mkdir(parents=True, exist_ok=True)

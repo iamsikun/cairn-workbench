@@ -24,6 +24,7 @@ import sys
 import tempfile
 import time
 import tomllib
+import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
@@ -48,6 +49,7 @@ HOME = Path(
 # The Zotero extension reads its credential from this fixed path (see bridge/bootstrap.js).
 BRIDGE_CREDENTIALS = Path.home() / ".config" / "kb-gardener" / "zotero-local.json"
 ZOTERO = os.environ.get("CAIRN_GARDEN_ZOTERO", "http://127.0.0.1:23119/api/users/0")
+ZOTERO_WEB = os.environ.get("CAIRN_GARDEN_ZOTERO_WEB", "https://api.zotero.org")
 DEFAULTS = {
     "workspace": None,
     "collection": "research",
@@ -84,6 +86,9 @@ DEFAULTS = {
     "zotero_skip_notes": ["journal-catalog", "author-institution-catalog"],
     "zotero_write_limit": 25,
     "reports": "gardening",
+    "workspace_id": None,
+    "catalog_max_age_days": 8,
+    "catalog_required": False,
 }
 # References a note must not point to: private or temporary folders and the raw resources folder.
 FORBIDDEN = re.compile(
@@ -133,12 +138,28 @@ def catalog_dir() -> Path:
     return catalog_paths.data_dir()
 
 
+def workspace_key(cfg) -> str:
+    """A stable name for the workspace: `workspace_id`, else its folder name and path hash.
+
+    Set `workspace_id` when the same knowledge base is checked out at different paths, as on
+    GitHub-hosted runners, so state and evidence follow the knowledge base, not the path.
+    """
+    if cfg.get("workspace_id"):
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", str(cfg["workspace_id"])):
+            raise ValueError("workspace_id may hold letters, digits, '.', '_' and '-'")
+        return str(cfg["workspace_id"])
+    root = workspace(cfg).resolve()
+    return root.name + "-" + hashlib.sha256(str(root).encode()).hexdigest()[:8]
+
+
+def workspace_identity(cfg) -> str:
+    """What run receipts record as their workspace."""
+    return "id:" + cfg["workspace_id"] if cfg.get("workspace_id") else str(workspace(cfg).resolve())
+
+
 def workspace_state(cfg) -> Path:
     """Per-workspace state: discovery ledger, run receipts, write gate and locks."""
-    root = workspace(cfg).resolve()
-    return (
-        HOME / "workspaces" / (root.name + "-" + hashlib.sha256(str(root).encode()).hexdigest()[:8])
-    )
+    return HOME / "workspaces" / workspace_key(cfg)
 
 
 def state_dir(cfg) -> Path:
@@ -376,8 +397,18 @@ PAPER_URL = re.compile(
 SKIP_TYPES = {"attachment", "note", "annotation"}
 
 
+# With `zotero_backend = "web"` every read goes to the Zotero Web API instead of local Zotero.
+READ_WEB: dict = {"cfg": None}
+
+
+def configure_zotero(cfg) -> None:
+    READ_WEB["cfg"] = cfg if cfg.get("zotero_backend") == "web" else None
+
+
 def zotero_get(path: str, **params):
     query = urllib.parse.urlencode(params)
+    if READ_WEB["cfg"] is not None:
+        return zotero_web(READ_WEB["cfg"], "GET", path + (f"?{query}" if query else ""))
     return fetch_json(f"{ZOTERO}/{path}" + (f"?{query}" if query else ""), timeout=10)
 
 
@@ -726,27 +757,103 @@ def zotero_api_key() -> str | None:
     return path.read_text().strip() if path.exists() else None
 
 
+def zotero_library(cfg) -> str:
+    return f"users/{int(cfg['zotero_user_id'])}"
+
+
+def pause(seconds: float) -> None:
+    time.sleep(seconds)
+
+
 def zotero_web(cfg, method: str, path: str, body=None, version=None, write_token=None):
-    """The Zotero Web API (the local API cannot write). Needs zotero_user_id and an API key."""
+    """The Zotero Web API for the configured user library; `/path` addresses the API root.
+
+    Throttling (429, 503 with Retry-After or Backoff) is waited out a bounded number of
+    times. Every request here is safe to repeat after one: a throttled request was not
+    processed, a PATCH carries the item version and a POST carries its write token.
+    """
     headers = {
-        "Zotero-API-Key": zotero_api_key(),
+        "Zotero-API-Key": zotero_api_key() or "",
         "Zotero-API-Version": "3",
         "Content-Type": "application/json",
+        "User-Agent": user_agent(),
     }
     if version is not None:
         headers["If-Unmodified-Since-Version"] = str(version)
     if write_token:
         headers["Zotero-Write-Token"] = write_token
     data = json.dumps(body).encode() if body is not None else None
-    request = urllib.request.Request(
-        f"https://api.zotero.org/users/{cfg['zotero_user_id']}/{path}",
-        data=data,
-        headers=headers,
-        method=method,
-    )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        text = response.read()
-        return json.loads(text) if text else {}
+    url = ZOTERO_WEB + (path if path.startswith("/") else f"/{zotero_library(cfg)}/{path}")
+    waited = 0.0
+    for attempt in range(5):
+        request = urllib.request.Request(url, data=data, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                text = response.read()
+                backoff = float(response.headers.get("Backoff") or 0)
+                if backoff:
+                    pause(min(backoff, 60))  # The server asks clients to slow down.
+                return json.loads(text) if text else {}
+        except urllib.error.HTTPError as error:
+            if error.code not in (429, 503) or attempt == 4:
+                raise
+            delay = float(error.headers.get("Retry-After") or error.headers.get("Backoff") or 5)
+            if waited + delay > 300:
+                raise
+            waited += delay
+            pause(delay)
+    raise RuntimeError("unreachable")
+
+
+class WebWriter:
+    """Writes through the Zotero Web API; its identity evidence is the key's user and access."""
+
+    def __init__(self, cfg, check: bool = True):
+        self.cfg = cfg
+        self.status = {"library": zotero_library(cfg)}
+        if check:
+            key = zotero_web(cfg, "GET", "/keys/current")
+            access = (key.get("access") or {}).get("user") or {}
+            self.status.update(key_user_id=key.get("userID"), write=bool(access.get("write")))
+            if key.get("userID") != int(cfg["zotero_user_id"]):
+                raise ValueError("the Zotero API key belongs to a different user library")
+            if not access.get("write"):
+                raise ValueError("the Zotero API key has no write access to the library")
+
+    def add(self, key, targets, reserve):
+        """Add collections with read-back; None means the daily budget is spent."""
+        for _ in range(3):
+            current = zotero_web(self.cfg, "GET", f"items/{key}")
+            before = set(current["data"].get("collections", []))
+            if set(targets) <= before:
+                return "already present", sorted(before), sorted(before)
+            if not reserve():
+                return None
+            try:
+                zotero_web(
+                    self.cfg,
+                    "PATCH",
+                    f"items/{key}",
+                    {"collections": sorted(before | set(targets))},
+                    version=current["version"],
+                )
+            except urllib.error.HTTPError as error:
+                if error.code == 412:
+                    continue  # Changed meanwhile: read again, never overwrite.
+                raise
+            after = set(zotero_web(self.cfg, "GET", f"items/{key}")["data"].get("collections", []))
+            if not (set(targets) | before) <= after:
+                raise RuntimeError("read-back does not show the new collections")
+            return "added", sorted(before), sorted(after)
+        raise RuntimeError("the item kept changing; retried on the next run")
+
+    def readback(self, key, ident, targets):
+        data = zotero_web(self.cfg, "GET", f"items/{key}")["data"]
+        if ident not in item_ids(data) or data.get("deleted"):
+            raise RuntimeError("read-back does not show the created item's identifier")
+        if not set(targets) <= set(data.get("collections", [])):
+            raise RuntimeError("read-back does not show the created item's collections")
+        return sorted(data.get("collections", []))
 
 
 def zotero_writer(cfg):
@@ -761,8 +868,13 @@ def zotero_writer(cfg):
             return LocalWriter(cfg, BRIDGE_CREDENTIALS.parent, ZOTERO), "local", None
         except Exception as error:
             return None, "local", str(error)
-    available = bool(zotero_api_key() and cfg.get("zotero_user_id"))
-    return None, "web", None if available else "Zotero Web API writes are unconfigured"
+    if not (zotero_api_key() and cfg.get("zotero_user_id")):
+        return None, "web", "Zotero Web API writes are unconfigured"
+    try:
+        # An explicit Web backend proves its key and library; "auto" keeps 0.6.0 behavior.
+        return WebWriter(cfg, check=backend == "web"), "web", None
+    except Exception as error:
+        return None, "web", f"Zotero Web API unavailable: {error}"
 
 
 def sync_local(writer, additions, creations, metadata, ledger, path, reserve, cfg):
@@ -840,6 +952,137 @@ def sync_local(writer, additions, creations, metadata, ledger, path, reserve, cf
                     "verified": True,
                     "before_collections": result["before_collections"],
                     "collections": result["collections"],
+                }
+            )
+        except Exception as error:
+            failed.append({"id": ident, "error": str(error)})
+    return done, failed
+
+
+def sync_web(cfg, writer, index, additions, creations, metadata, ledger, path, reserve):
+    """Web API writes, each confirmed by reading the item back.
+
+    A creation is first looked up by identifier in the whole library, so an item created by
+    a run whose ledger was lost is found rather than created twice. A POST whose outcome is
+    unknown stays pending; it is retried with a new write token only after 12 hours, and only
+    if the library still does not hold the identifier.
+    """
+    done, failed = [], []
+    for ident, receipt in ledger["creations"].items():
+        key = index.find([ident]) if receipt.get("status") == "pending" else None
+        if key and receipt.get("backend", "web") == "web":
+            receipt.update(status="confirmed", key=key, reconciled=now(cfg).isoformat())
+            atomic_json(path, ledger)  # An unknown outcome turned out to be a creation.
+    for add in additions:
+        try:
+            result = writer.add(add["item"], add["add"], reserve)
+            if result is None:
+                break
+            status, before, after = result
+            done.append(
+                {
+                    "operation": "add",
+                    "item": add["item"],
+                    "status": status,
+                    "to": add["collections"],
+                    "verified": True,
+                    "before_collections": before,
+                    "collections": after,
+                }
+            )
+        except Exception as error:
+            failed.append({"item": add["item"], "error": str(error)})
+    remote = None
+    for new in creations:
+        ident = new["id"]
+        if not new["verified"]:
+            failed.append({"id": ident, "error": "identifier not externally verified; not created"})
+            continue
+        receipt = ledger["creations"].get(ident)
+        if receipt and receipt.get("backend") == "local":
+            failed.append(
+                {"id": ident, "error": "prior local creation must be reconciled before the Web API"}
+            )
+            continue
+        try:
+            if remote is None:
+                remote = remote_zotero_index(cfg)
+            key = remote.find([ident]) or (receipt or {}).get("key")
+            if key:
+                result = writer.add(key, new["targets"], reserve)
+                if result is None:
+                    break
+                status, before, after = result
+                ledger["creations"][ident] = {
+                    **(receipt or {}),
+                    "backend": "web",
+                    "key": key,
+                    "status": "confirmed",
+                }
+                atomic_json(path, ledger)
+                done.append(
+                    {
+                        "operation": "add",
+                        "id": ident,
+                        "key": key,
+                        "status": status,
+                        "in": new["collections"],
+                        "verified": True,
+                        "before_collections": before,
+                        "collections": after,
+                    }
+                )
+                continue
+            if ident in index.duplicates or ident in remote.duplicates:
+                failed.append(
+                    {"id": ident, "error": "ambiguous duplicate identity; resolve in Zotero"}
+                )
+                continue
+            if receipt and receipt.get("status") == "pending":
+                age = now(cfg) - datetime.fromisoformat(receipt.get("at") or now(cfg).isoformat())
+                if age < timedelta(hours=12):
+                    failed.append(
+                        {
+                            "id": ident,
+                            "error": "pending creation not yet reconciled; no repeat POST",
+                        }
+                    )
+                    continue
+            if not reserve():
+                break
+            data = {**metadata[ident], "collections": new["targets"]}
+            receipt = {
+                "backend": "web",
+                "status": "pending",
+                "token": uuid.uuid4().hex,
+                "at": now(cfg).isoformat(),
+            }
+            ledger["creations"][ident] = receipt
+            atomic_json(path, ledger)  # Pending before sending: an unknown outcome is never lost.
+            result = zotero_web(cfg, "POST", "items", [data], write_token=receipt["token"])
+            if result.get("failed"):
+                raise RuntimeError(json.dumps(result["failed"]))
+            successful = next(iter(result.get("successful", {}).values()), {})
+            key = successful.get("key") or next(iter(result.get("success", {}).values()), None)
+            if not key:
+                raise RuntimeError("creation response has no key; reconcile before retrying")
+            receipt.update(key=key)
+            atomic_json(path, ledger)
+            collections = writer.readback(key, ident, new["targets"])
+            receipt.update(status="confirmed")
+            atomic_json(path, ledger)
+            done.append(
+                {
+                    "operation": "create",
+                    "id": ident,
+                    "created": ident,
+                    "title": data["title"],
+                    "key": key,
+                    "status": "created",
+                    "in": new["collections"],
+                    "verified": True,
+                    "before_collections": [],
+                    "collections": collections,
                 }
             )
         except Exception as error:
@@ -998,6 +1241,8 @@ def cited_sources(note, notes, index):
 
 
 def remote_zotero_index(cfg):
+    if READ_WEB["cfg"] is not None:
+        return ZoteroIndex.load()  # Reads already come from the Web API.
     items, start = [], 0
     while True:
         batch = zotero_web(cfg, "GET", f"items/top?limit=100&start={start}")
@@ -1019,7 +1264,8 @@ def cmd_zotero_sync(args, cfg):
                 "backend": cfg.get("zotero_backend"),
                 "done": [],
                 "failed": [],
-                "note": "Local Zotero library is unavailable",
+                "note": "Zotero library is unavailable"
+                + (" through the Web API" if READ_WEB["cfg"] else " (is Zotero running?)"),
             }
         )
         return
@@ -1079,7 +1325,7 @@ def cmd_zotero_sync(args, cfg):
                 }
             )
     writer, backend, write_error = zotero_writer(cfg)
-    can_write = write_error is None
+    can_write = write_error is None and writer is not None
     path = state_dir(cfg) / "zotero-writes.json"
     ledger = read_json(path, {"days": {}, "creations": {}})
     day = now(cfg).date().isoformat()
@@ -1097,86 +1343,14 @@ def cmd_zotero_sync(args, cfg):
         atomic_json(path, ledger)  # Reserve before sending: unknown outcomes consume budget.
         return True
 
-    def add_membership(key, targets):
-        current = zotero_web(cfg, "GET", f"items/{key}")
-        before = set(current["data"].get("collections", []))
-        after = before | set(targets)
-        if after == before:
-            return "already present"
-        if not reserve():
-            return "daily budget exhausted"
-        zotero_web(
-            cfg, "PATCH", f"items/{key}", {"collections": sorted(after)}, version=current["version"]
-        )
-        return "added"
-
     if not args.dry_run and can_write and backend == "local":
         done, failed = sync_local(
             writer, additions, creations, metadata, ledger, path, reserve, cfg
         )
     if not args.dry_run and can_write and backend == "web":
-        for add in additions:
-            try:
-                status = add_membership(add["item"], add["add"])
-                done.append({"item": add["item"], "status": status, "to": add["collections"]})
-            except Exception as error:
-                failed.append({"item": add["item"], "error": str(error)})
-        remote = None
-        for new in creations:
-            ident = new["id"]
-            if not new["verified"]:
-                failed.append(
-                    {"id": ident, "error": "identifier not externally verified; not created"}
-                )
-                continue
-            try:
-                if remote is None:
-                    remote = remote_zotero_index(cfg)
-                receipt = ledger["creations"].get(ident)
-                key = remote.find([ident]) or (receipt or {}).get("key")
-                if key:
-                    status = add_membership(key, new["targets"])
-                    ledger["creations"][ident] = {"key": key, "status": "confirmed"}
-                    atomic_json(path, ledger)
-                    done.append({"id": ident, "key": key, "status": status})
-                    continue
-                if receipt:  # Unknown POST outcome: reconcile; never blindly recreate.
-                    failed.append(
-                        {
-                            "id": ident,
-                            "error": "pending creation not yet reconciled; no repeat POST",
-                        }
-                    )
-                    continue
-                if ident in index.duplicates or ident in remote.duplicates:
-                    failed.append(
-                        {"id": ident, "error": "ambiguous duplicate identity; resolve in Zotero"}
-                    )
-                    continue
-                if budget <= 0:
-                    break
-                data = {**metadata[ident], "collections": new["targets"]}
-                receipt = {
-                    "status": "pending",
-                    "token": uuid.uuid4().hex,
-                    "at": now(cfg).isoformat(),
-                }
-                ledger["creations"][ident] = receipt
-                reserve()  # Persists both the pending creation and daily attempt count.
-                result = zotero_web(cfg, "POST", "items", [data], write_token=receipt["token"])
-                if result.get("failed"):
-                    raise RuntimeError(json.dumps(result["failed"]))
-                successful = next(iter(result.get("successful", {}).values()), {})
-                key = successful.get("key") or next(iter(result.get("success", {}).values()), None)
-                if not key:
-                    raise RuntimeError("creation response has no key; reconcile before retrying")
-                receipt.update(key=key, status="confirmed")
-                atomic_json(path, ledger)
-                done.append(
-                    {"created": ident, "title": data["title"], "key": key, "in": new["collections"]}
-                )
-            except Exception as error:
-                failed.append({"id": ident, "error": str(error)})
+        done, failed = sync_web(
+            cfg, writer, index, additions, creations, metadata, ledger, path, reserve
+        )
     out(
         {
             "zotero_available": True,
@@ -1208,6 +1382,27 @@ def cmd_zotero_sync(args, cfg):
 def fts_query(terms: list[str]) -> str:
     phrases = ['"' + re.sub(r'["*^:()]', " ", t).strip() + '"' for t in terms]
     return " OR ".join(p for p in phrases if p != '""')
+
+
+def catalog_freshness(cfg) -> dict:
+    """Whether the journal catalog exists and its last successful update is recent enough."""
+    folder = catalog_dir()
+    state = read_json(folder / "update-state.json", {}) if folder.exists() else {}
+    last = state.get("last_success_at")
+    age = None
+    if last:
+        stamp = datetime.fromisoformat(str(last).replace("Z", "+00:00"))
+        stamp = stamp if stamp.tzinfo else stamp.replace(tzinfo=UTC)
+        age = round((datetime.now(UTC) - stamp).total_seconds() / 86400, 2)
+    available = (folder / "catalog.sqlite").exists()
+    limit = cfg.get("catalog_max_age_days", 8)
+    return {
+        "available": available,
+        "last_success_at": last,
+        "age_days": age,
+        "max_age_days": limit,
+        "fresh": bool(available and age is not None and age <= limit),
+    }
 
 
 def catalog_candidates(cfg, terms, since: str, limit: int, offset=0) -> dict:
@@ -2352,7 +2547,7 @@ def cmd_archive_digests(args, cfg):
 
 
 def git(cfg, *argv, check=True):
-    git_dir = HOME / "history" / (workspace(cfg).name + ".git")
+    git_dir = HOME / "history" / ((cfg.get("workspace_id") or workspace(cfg).name) + ".git")
     base = ["git", f"--git-dir={git_dir}", f"--work-tree={workspace(cfg)}"]
     if not git_dir.exists():
         git_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -2447,6 +2642,7 @@ def main(argv=None):
     p.add_argument("key", nargs="?")
     args = parser.parse_args(argv)
     cfg = config()
+    configure_zotero(cfg)
     handler = globals()["cmd_" + args.cmd.replace("-", "_")]
     try:
         with engine_lock(cfg):

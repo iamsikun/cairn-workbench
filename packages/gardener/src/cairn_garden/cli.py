@@ -18,6 +18,8 @@ migrate [--dry-run] [--workspace PATH] [--resources-to PATH] | migrate --rollbac
                                knowledge base, into this layout
 migrate-reports [--dry-run] [--maintenance SLUG ...] | migrate-reports --rollback JOURNAL
                                move garden reports out of the research notes into gardening/
+ci restore | publish | due | catalog-fresh | summary | state-export | state-import | template
+                               unattended runs on GitHub Actions (`cairn-garden ci -h`)
 """
 
 from __future__ import annotations
@@ -128,6 +130,10 @@ def main(argv: list[str] | None = None) -> int:
             result = migrate.run(args.workspace, args.resources_to)
         _print(result)
         return 0 if not result.get("problems") else 1
+    if command == "ci":
+        from . import ci
+
+        return ci.main(rest)
     if command == "migrate-reports":
         import argparse
 

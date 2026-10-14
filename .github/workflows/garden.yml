@@ -1,0 +1,179 @@
+# Reusable workflow: garden a private Cairn knowledge base on a GitHub-hosted runner.
+#
+# The knowledge base repository calls it from a thin workflow that `cairn-garden ci template`
+# prints. Nothing here depends on a Mac, local Zotero or a home folder: the workbench is
+# installed at a pinned release, the agent CLI authenticates with a secret, Zotero is reached
+# through the Web API, and the gardener's state lives on the knowledge base's `garden-state`
+# branch. See packages/gardener/docs/github-actions.md.
+name: Cairn garden (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: cairn-workbench release tag to install, e.g. v0.6.1
+        required: true
+        type: string
+      mode:
+        description: auto (whatever is due), daily, weekly or catalog
+        type: string
+        default: auto
+      scheduled:
+        description: run a period only when it is due
+        type: boolean
+        default: true
+      allow-empty-state:
+        description: first run only - start without garden state
+        type: boolean
+        default: false
+      catalog:
+        description: keep the journal catalog in the Actions cache and refresh it weekly
+        type: boolean
+        default: true
+      agent-cli:
+        description: npm package of the agent CLI
+        type: string
+        default: "@anthropic-ai/claude-code"
+      config:
+        description: settings file in the knowledge base repository
+        type: string
+        default: cairn-workbench.toml
+      state-branch:
+        type: string
+        default: garden-state
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: false
+      ANTHROPIC_API_KEY:
+        required: false
+      CODEX_API_KEY:
+        required: false
+      ZOTERO_API_KEY:
+        required: false
+
+jobs:
+  garden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    permissions:
+      contents: write
+    env:
+      CAIRN_WORKSPACE: ${{ github.workspace }}/kb
+      CAIRN_WORKBENCH_CONFIG: ${{ github.workspace }}/kb/${{ inputs.config }}
+      CAIRN_GARDEN_STATE: ${{ runner.temp }}/garden
+      CAIRN_CATALOG_DIR: ${{ runner.temp }}/catalog
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
+      ZOTERO_API_KEY: ${{ secrets.ZOTERO_API_KEY }}
+      WORKBENCH: git+https://github.com/iamsikun/cairn-workbench@${{ inputs.version }}
+    steps:
+      - name: Check out the knowledge base
+        uses: actions/checkout@v4
+        with:
+          path: kb
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install cairn-workbench ${{ inputs.version }}
+        run: |
+          uv tool install "cairn-workbench @ $WORKBENCH"
+          uv tool install "cairn-garden @ $WORKBENCH#subdirectory=packages/gardener" \
+            --with-executables-from cairn-catalog
+
+      - name: Restore garden state
+        id: restore
+        run: >-
+          cairn-garden ci restore --branch "${{ inputs.state-branch }}"
+          ${{ inputs.allow-empty-state && '--allow-empty' || '' }}
+
+      - name: Decide what is due
+        id: due
+        env:
+          MODE: ${{ inputs.mode }}
+          SCHEDULED: ${{ inputs.scheduled }}
+        run: |
+          for period in daily weekly; do
+            run=false; due=false
+            if [ "$MODE" = auto ] || [ "$MODE" = "$period" ]; then
+              run=true
+              if [ "$SCHEDULED" != true ] || cairn-garden ci due "$period" > /dev/null; then
+                due=true
+              fi
+            fi
+            echo "run_$period=$run" >> "$GITHUB_OUTPUT"
+            echo "$period=$due" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Restore the journal catalog
+        if: inputs.catalog && (steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true' || inputs.mode == 'catalog')
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/catalog
+          key: cairn-catalog-${{ github.run_id }}
+          restore-keys: cairn-catalog-
+
+      # The weekly review reads the catalog: refresh it first when it is older than
+      # catalog_max_age_days. The review itself checks freshness again (catalog_required).
+      - name: Refresh the journal catalog
+        id: catalog
+        if: inputs.catalog && (steps.due.outputs.weekly == 'true' || inputs.mode == 'catalog')
+        continue-on-error: true
+        run: |
+          if [ "${{ inputs.mode }}" = catalog ] || ! cairn-garden ci catalog-fresh > /dev/null; then
+            cairn-catalog update
+            echo "saved=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Save the journal catalog
+        if: steps.catalog.outputs.saved == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/catalog
+          key: cairn-catalog-${{ github.run_id }}
+
+      - name: Install the agent CLI
+        if: steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true'
+        run: npm install --global "${{ inputs.agent-cli }}"
+
+      - name: Daily digest
+        id: daily
+        if: steps.due.outputs.run_daily == 'true'
+        continue-on-error: true
+        run: cairn-garden daily ${{ inputs.scheduled && '--scheduled' || '' }}
+
+      - name: Weekly review
+        id: weekly
+        if: steps.due.outputs.run_weekly == 'true'
+        continue-on-error: true
+        run: cairn-garden weekly ${{ inputs.scheduled && '--scheduled' || '' }}
+
+      # Reports, note changes and state are pushed together or not at all.
+      - name: Publish reports and state
+        id: publish
+        if: always() && steps.restore.outcome == 'success'
+        run: cairn-garden ci publish --branch "${{ inputs.state-branch }}"
+
+      - name: Summary
+        if: always() && steps.restore.outcome == 'success'
+        run: cairn-garden ci summary --mode "${{ inputs.mode }}"
+
+      - name: Keep diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: garden-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/garden/logs
+            ${{ runner.temp }}/garden/workspaces/*/runs
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Fail when a workflow did not complete
+        if: steps.daily.outcome == 'failure' || steps.weekly.outcome == 'failure' || steps.catalog.outcome == 'failure'
+        run: exit 1

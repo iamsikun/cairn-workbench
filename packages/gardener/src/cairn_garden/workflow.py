@@ -7,6 +7,7 @@ import contextlib
 import hashlib
 import io
 import json
+import os
 import shutil
 import subprocess
 import time
@@ -48,7 +49,16 @@ def release_hash():
 
 
 def config_hash(cfg):
-    return hashlib.sha256(json.dumps(cfg, sort_keys=True).encode()).hexdigest()
+    """With a workspace_id the checkout path is not part of the configuration."""
+    values = {k: v for k, v in cfg.items() if not (k == "workspace" and cfg.get("workspace_id"))}
+    return hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
+
+
+# Unattended runs (such as GitHub Actions) authenticate the agent CLI with a token instead.
+AGENT_TOKENS = {
+    "claude": ("CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY"),
+    "codex": ("CODEX_API_KEY", "OPENAI_API_KEY"),
+}
 
 
 def execute(*argv):
@@ -74,6 +84,8 @@ def health(cfg):
     binary = shutil.which(agent)
     if not binary:
         errors.append(f"agent executable unavailable: {agent}")
+    elif any(os.environ.get(name) for name in AGENT_TOKENS.get(agent, ())):
+        pass
     elif agent == "claude":
         try:
             auth = subprocess.run(
@@ -96,7 +108,7 @@ def health(cfg):
         "ready": not errors,
         "errors": errors,
         "warnings": warnings,
-        "workspace": str(g.workspace(cfg).resolve()),
+        "workspace": g.workspace_identity(cfg),
         "collection": cfg["collection"],
         "agent": agent,
         "executable": binary,
@@ -324,7 +336,7 @@ def run(
         "release": release_hash(),
         "config": config_hash(cfg),
         "status": "running",
-        "workspace": str(g.workspace(cfg).resolve()),
+        "workspace": g.workspace_identity(cfg),
         "period": reports.period(mode, g.now(cfg)),
         "started_at": g.now(cfg).isoformat(),
         "steps": {},
@@ -377,6 +389,17 @@ def run(
                 step("snapshot", "snapshot", "--days", "7")
                 since = (g.now(cfg).date() - timedelta(days=7)).isoformat()
                 step("new-papers", "new-papers", "--since", since)
+                catalog = facts["catalog"] = g.catalog_freshness(cfg)
+                if not catalog["fresh"]:
+                    problem = (
+                        f"journal catalog is stale (last update {catalog['last_success_at']})"
+                        if catalog["available"]
+                        else "journal catalog is missing"
+                    )
+                    if cfg.get("catalog_required"):
+                        raise RuntimeError(problem + "; run `cairn-catalog update` first")
+                    if catalog["available"]:
+                        manifest["warnings"].append(problem)
                 step("zotero-gaps")
                 storage = step("storage", "storage", "--apply")
                 if storage.get("failed"):
@@ -409,12 +432,12 @@ def run(
                 manifest["warnings"].append("Zotero writes unconfigured; changes remain pending")
             sync = facts["zotero-sync"]
             if (
-                cfg.get("zotero_backend") == "local"
+                cfg.get("zotero_backend") in ("local", "web")
                 and not sync.get("dry_run")
                 and not sync.get("can_write")
             ):
                 raise RuntimeError(
-                    sync.get("note") or "Local Zotero unavailable; write workflow remains pending"
+                    sync.get("note") or "Zotero is unavailable; write workflow remains pending"
                 )
             if sync.get("failed"):
                 raise RuntimeError("Zotero write/read-back failures; workflow is incomplete")
@@ -594,12 +617,10 @@ def write_verification(cfg):
             and receipt.get("mode") == mode
             and receipt.get("release") == release_hash()
             and receipt.get("config") == config_hash(cfg)
-            and sync.get("backend") == "local"
+            and identity_verified(cfg, sync, bridge_hash)
             and sync.get("can_write")
             and not sync.get("dry_run")
             and not sync.get("failed")
-            and sync.get("bridge", {}).get("build") == bridge_hash()
-            and sync.get("bridge", {}).get("user_id") == cfg.get("zotero_user_id")
             and any(x.get("status") == "created" and x.get("verified") for x in operations)
             and any(x.get("status") == "added" and x.get("verified") for x in operations)
             and live
@@ -608,6 +629,23 @@ def write_verification(cfg):
             and (mode != "weekly" or receipt.get("html_verified"))
         )
     return verified
+
+
+def identity_verified(cfg, sync, bridge_hash):
+    """The library written to is the configured one, through the configured backend."""
+    status = sync.get("bridge") or {}
+    if sync.get("backend") == "local":
+        return status.get("build") == bridge_hash() and status.get("user_id") == cfg.get(
+            "zotero_user_id"
+        )
+    return bool(
+        sync.get("backend") == "web"
+        and cfg.get("zotero_backend") == "web"
+        and cfg.get("zotero_user_id")
+        and status.get("library") == g.zotero_library(cfg)
+        and status.get("key_user_id") == int(cfg["zotero_user_id"])
+        and status.get("write")
+    )
 
 
 def scheduled_writes_enabled(cfg):
@@ -626,8 +664,10 @@ def enable_scheduled_writes(cfg):
             "Scheduled writes remain disabled: both real workflows must verify an import and a collection update"
         )
     writer, backend, error = g.zotero_writer(cfg)
-    if error or backend != "local":
-        raise RuntimeError(error or "Local Zotero is required for this write gate")
+    if error or not (
+        backend == "local" or (backend == "web" and cfg.get("zotero_backend") == "web")
+    ):
+        raise RuntimeError(error or "set zotero_backend to local or web for this write gate")
     gate = {
         "release": release_hash(),
         "config": config_hash(cfg),
@@ -669,6 +709,7 @@ def main(argv=None):
     cfg = g.config()
     if args.agent:
         cfg["agent"] = args.agent
+    g.configure_zotero(cfg)
     try:
         if args.mode == "enable-zotero-writes":
             g.out(enable_scheduled_writes(cfg))
