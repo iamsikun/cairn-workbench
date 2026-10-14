@@ -12,7 +12,11 @@ from pathlib import Path
 
 import requests
 
+from .catalog import Client
+
 BASE = "https://jmlr.org/papers/"
+CLIENT = Client(0.12)
+CLIENT.session.headers["Accept"] = "text/html"
 MONTHS = {
     m.lower(): n
     for n, m in enumerate(
@@ -65,13 +69,7 @@ def atomic(path, value):
 
 
 def get(url):
-    response = requests.get(
-        url,
-        headers={"User-Agent": "CairnJournalCatalog/1.0 (public bibliographic metadata)"},
-        timeout=60,
-    )
-    response.raise_for_status()
-    return response.text
+    return CLIENT.get(url).text
 
 
 def abs_link_and_authors(dd, index_url):
