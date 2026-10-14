@@ -138,7 +138,7 @@ jobs:
           key: cairn-catalog-${{ github.run_id }}
 
       - name: Install the agent CLI
-        if: steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true'
+        if: steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true' || inputs.mode == 'enable-zotero-writes'
         run: npm install --global "${{ inputs.agent-cli }}"
 
       - name: Daily digest
@@ -156,8 +156,11 @@ jobs:
       # After a manual daily and weekly run each proved a Zotero import and a collection update
       # on this release and configuration, scheduled runs may write to Zotero.
       - name: Enable scheduled Zotero writes
+        id: enable_writes
         if: inputs.mode == 'enable-zotero-writes'
-        run: cairn-garden enable-zotero-writes
+        run: |
+          cairn-garden readiness
+          cairn-garden enable-zotero-writes
 
       # Reports, note changes and state are pushed together or not at all.
       - name: Publish reports and state
@@ -166,7 +169,7 @@ jobs:
         run: cairn-garden ci publish --branch "${{ inputs.state-branch }}"
 
       - name: Summary
-        if: always() && steps.restore.outcome == 'success'
+        if: always() && steps.restore.outcome == 'success' && steps.enable_writes.outcome != 'failure'
         run: cairn-garden ci summary --mode "${{ inputs.mode }}"
 
       - name: Keep diagnostics
