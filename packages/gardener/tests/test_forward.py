@@ -3,20 +3,18 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from cairn_garden import workflow as w
-from test_regressions import g, invoke, kb, save_paper
+from test_regressions import g, invoke, kb, report, save_paper
 from test_workflows import draft
 
 
 def test_daily_rerun_preserves_user_metadata(setup):
     first = w.run(setup, "daily", renderer=draft)
-    note = kb().resolve(first["report"])
-    kb().save(
-        kind="note",
-        title=note.title,
-        body=note.body + "\nUser: keep this observation.",
-        topics=["research-catalogs", "Personal synthesis"],
-        aliases=["My reading log"],
-        fields={"owner": "user", "priority": "important"},
+    note = report(first["report_id"])
+    g.reports.save(
+        setup,
+        first["report_id"],
+        note.body + "\nUser: keep this observation.",
+        {"aliases": ["My reading log"], "owner": "user", "priority": "important"},
         revision=note.revision,
     )
 
@@ -27,10 +25,10 @@ def test_daily_rerun_preserves_user_metadata(setup):
         }, {"agent": "claude"}
 
     again = w.run(setup, "daily", renderer=empty)
-    current = kb().resolve(again["report"])
+    current = report(again["report_id"])
     assert "User: keep this observation." in current.body
-    assert "personal-synthesis" in current.topics
     assert current.aliases == ["My reading log"]
+    assert current.meta["runs"] == [first["id"], again["id"]]
     assert current.meta.get("owner") == "user"
 
 

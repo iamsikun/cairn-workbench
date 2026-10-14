@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from cairn_garden import schedule
 from cairn_garden import workflow as w
-from test_regressions import g, index, invoke, kb, save_paper
+from test_regressions import g, index, invoke, kb, report, save_paper
 
 
 def draft(cfg, mode, folder, facts, model=None):
@@ -22,7 +22,10 @@ def test_daily_weekly_persist_reports_history_and_delivery(setup):
     daily = w.run(setup, "daily", renderer=draft)
     weekly = w.run(setup, "weekly", renderer=draft, verify_html=True)
     assert daily["status"] == weekly["status"] == "success_with_warnings"
-    assert kb().resolve(daily["report"]) and kb().resolve(weekly["report"])
+    assert report(daily["report_id"]) and report(weekly["report_id"])
+    assert daily["report_id"] == "daily/garden-digest-" + daily["period"] + ".md"
+    assert not list((Path(setup["workspace"]) / "research/notes").glob("garden-*"))
+    assert "gardening/" in g.git(setup, "show", "--stat", "--format=").stdout
     assert g.load_state(setup)["last_run_weekly"] == weekly["id"]
     entry = g.read_json(g.state_dir(setup) / "discoveries.json", {})["candidates"][
         "doi:10.1234/one"
@@ -77,8 +80,10 @@ def test_test_runs_cannot_enable_schedules(setup, monkeypatch):
 
 def test_rerun_preserves_user_edits(setup):
     first = w.run(setup, "daily", renderer=draft)
-    note = kb().resolve(first["report"])
-    g.save_note(kb(), note, note.body + "\nUser: keep this question.")
+    note = report(first["report_id"])
+    g.reports.save(
+        setup, first["report_id"], note.body + "\nUser: keep this question.", {}, note.revision
+    )
 
     # A new daily recommendation normally comes from pending candidates.
     def empty_draft(*args, **kwargs):
@@ -88,7 +93,7 @@ def test_rerun_preserves_user_edits(setup):
         }, {"agent": "claude"}
 
     again = w.run(setup, "daily", renderer=empty_draft)
-    assert "User: keep this question." in kb().resolve(again["report"]).body
+    assert "User: keep this question." in report(again["report_id"]).body
 
 
 @pytest.mark.parametrize(

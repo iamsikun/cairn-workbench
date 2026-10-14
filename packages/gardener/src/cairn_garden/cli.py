@@ -16,6 +16,8 @@ zotero-bridge --output FILE.xpi [--credentials]
 migrate [--dry-run] [--workspace PATH] [--resources-to PATH] | migrate --rollback JOURNAL
                                move a kb-gardener install and in-workspace catalog out of the
                                knowledge base, into this layout
+migrate-reports [--dry-run] [--maintenance SLUG ...] | migrate-reports --rollback JOURNAL
+                               move garden reports out of the research notes into gardening/
 """
 
 from __future__ import annotations
@@ -124,6 +126,30 @@ def main(argv: list[str] | None = None) -> int:
             result = migrate.plan(args.workspace, args.resources_to)
         else:
             result = migrate.run(args.workspace, args.resources_to)
+        _print(result)
+        return 0 if not result.get("problems") else 1
+    if command == "migrate-reports":
+        import argparse
+
+        from . import engine, migrate_reports
+
+        parser = argparse.ArgumentParser(
+            prog="cairn-garden migrate-reports", description=migrate_reports.__doc__
+        )
+        parser.add_argument("--dry-run", action="store_true")
+        parser.add_argument("--maintenance", action="append", default=[], metavar="SLUG")
+        parser.add_argument("--rollback", type=Path, metavar="JOURNAL")
+        args = parser.parse_args(rest)
+        cfg = engine.config()
+        try:
+            if args.rollback:
+                result = migrate_reports.rollback(cfg, args.rollback)
+            elif args.dry_run:
+                result = migrate_reports.preview(cfg, args.maintenance)
+            else:
+                result = migrate_reports.run(cfg, args.maintenance)
+        except Exception as error:
+            result = {"error": type(error).__name__, "problems": [str(error)]}
         _print(result)
         return 0 if not result.get("problems") else 1
     if command == "zotero-bridge":

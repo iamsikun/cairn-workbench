@@ -15,6 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from . import engine as g
+from . import reports
 
 PACKAGE = Path(__file__).resolve().parent
 SKILL = PACKAGE / "skill"
@@ -126,7 +127,7 @@ def render(cfg, mode, folder, facts, model=None):
         "Weekly proposals are unchecked and include actionable reasons; include manual handoffs and source outages. "
         "Every weekly checkbox needs a stable ID and an action comment: use executable link/retag/topic/paper "
         "actions when applicable, or an explicit manual action for human work. "
-        "Metrics exclude garden reports; lint counts all notes. Discovery complete describes source pagination; "
+        "The report is saved in the gardening folder, not as a research note; metrics count research notes only. Discovery complete describes source pagination; "
         "truncated describes the bounded review window, not a source failure. Storage always protects the latest "
         "database recovery in addition to the requested number of recent editions. "
         "Preserve current uncertain or missing evidence explicitly. Keep the report concise and useful."
@@ -324,6 +325,7 @@ def run(
         "config": config_hash(cfg),
         "status": "running",
         "workspace": str(g.workspace(cfg).resolve()),
+        "period": reports.period(mode, g.now(cfg)),
         "started_at": g.now(cfg).isoformat(),
         "steps": {},
         "warnings": [],
@@ -351,6 +353,12 @@ def run(
 
     try:
         with g.engine_lock(cfg, "run", blocking=False):
+            legacy = reports.legacy(g.kb_open(cfg).notes())
+            if legacy:
+                raise RuntimeError(
+                    f"{len(legacy)} garden reports are still research notes; "
+                    "run `cairn-garden migrate-reports` first"
+                )
             step("before", "commit", "-m", f"before {mode}: {run_id}")
             baseline = step("initial-lint", "lint")
             sync_args = ["zotero-sync"]
@@ -433,37 +441,29 @@ def run(
             kb = g.kb_open(cfg)
             validate_draft(kb, draft, mode, facts)
             stamp = g.now(cfg)
-            title = (
-                "Garden digest " + stamp.date().isoformat()
-                if mode == "daily"
-                else "Garden weekly " + stamp.strftime("%G-W%V")
-            )
-            previous = kb.resolve(title)
+            rid = reports.report_id(mode, stamp)
+            previous = reports.get(cfg, rid)
             # A rerun must not replace a user's edits or previous approvals.
             marker = f"<!-- gardener-run:{run_id} -->"
             body = draft["body"].strip() + "\n\n" + marker
+            body = reports.portable(cfg, body, reports.path_of(cfg, rid), kb.notes())
             if previous:
                 body = (
                     previous.body.rstrip()
                     + f"\n\n## Update {stamp.strftime('%H:%M %Z')}\n\n"
                     + body
                 )
-            saved = (
-                g.save_note(
-                    kb,
-                    previous,
-                    body,
-                    topics=list(dict.fromkeys(previous.topics + ["research-catalogs"])),
-                )
-                if previous
-                else kb.save(kind="note", title=title, body=body, topics=["research-catalogs"])
-            )
-            persisted = kb.resolve(saved["slug"])
+            meta = {"title": reports.title(mode, stamp), "kind": f"garden-{mode}"}
+            meta["period"] = reports.period(mode, stamp)
+            meta["runs"] = [*(previous.meta.get("runs") or [] if previous else []), run_id]
+            reports.save(cfg, rid, body, meta, revision=previous.revision if previous else None)
+            persisted = reports.get(cfg, rid)
             if persisted is None or marker not in persisted.body:
                 raise RuntimeError("report persistence could not be verified")
             g.atomic_json(
                 folder / "report.json",
                 {
+                    "id": rid,
                     "slug": persisted.slug,
                     "revision": persisted.revision,
                     "body": persisted.body,
@@ -473,13 +473,25 @@ def run(
             final_lint = step("final-lint", "lint")
             if any(link not in baseline["broken_links"] for link in final_lint["broken_links"]):
                 raise RuntimeError("published report introduced broken links")
-            step("after", "commit", "-m", f"{mode}: verified report {persisted.slug}")
+            if any(link not in baseline["report_links"] for link in final_lint["report_links"]):
+                raise RuntimeError("published report has broken report links")
+            step("after", "commit", "-m", f"{mode}: verified report {rid}")
+            sync = facts["zotero-sync"]
+            stats = facts["metrics"]["current"]["proposals"]
             manifest.update(
                 status="success_with_warnings" if manifest["warnings"] else "success",
                 completed_at=g.now(cfg).isoformat(),
-                report=saved["slug"],
+                report=persisted.slug,
+                report_id=rid,
                 revision=persisted.revision,
                 agent=agent,
+                findings={
+                    "recommended": len(draft["selected"]),
+                    "zotero_writes": manifest["zotero"]["created"] + manifest["zotero"]["added"],
+                    "zotero_pending": len(sync.get("to_add", [])) + len(sync.get("to_create", [])),
+                    "applied": len(facts.get("apply", {}).get("applied", [])),
+                    "open": stats["open"],
+                },
             )
             g.atomic_json(
                 path, manifest
@@ -515,10 +527,20 @@ def run(
             completed_at=g.now(cfg).isoformat(),
         )
         g.atomic_json(path, manifest)
+        log_run(cfg, manifest)
         raise
     if manifest["status"] == "skipped":
         g.atomic_json(path, manifest)
+    log_run(cfg, manifest)
     return manifest
+
+
+def log_run(cfg, manifest):
+    """The readable index is a convenience: it never masks the run's own outcome."""
+    try:
+        reports.record_run(cfg, manifest)
+    except Exception as error:
+        manifest.setdefault("warnings", []).append(f"garden index not updated: {error}")
 
 
 def readiness(cfg):
@@ -530,7 +552,7 @@ def readiness(cfg):
         folder = g.state_dir(cfg) / "runs" / str(run_id)
         receipt = g.read_json(folder / "manifest.json", {})
         report = g.read_json(folder / "report.json", {})
-        live = g.kb_open(cfg).resolve(report.get("slug", "missing-report"))
+        live = reports.locate(cfg, report)
         runs[mode] = bool(
             receipt.get("status") in ("success", "success_with_warnings")
             and receipt.get("release") == current["release"]
@@ -564,7 +586,7 @@ def write_verification(cfg):
         receipt = g.read_json(folder / "manifest.json", {})
         sync = g.read_json(folder / "zotero-sync.json", {})
         report = g.read_json(folder / "report.json", {})
-        live = g.kb_open(cfg).resolve(report.get("slug", "missing-report"))
+        live = reports.locate(cfg, report)
         operations = sync.get("done", [])
         verified[mode] = bool(
             receipt.get("status") in ("success", "success_with_warnings")
@@ -656,7 +678,11 @@ def main(argv=None):
             g.out(result)
             return 0 if result["ready"] else 1
         if args.scheduled and not due(cfg, args.mode):
-            g.out({"status": "not_due", "mode": args.mode})
+            last = g.load_state(cfg).get("last_digest" if args.mode == "daily" else "last_weekly")
+            outcome = f"not due; last completed {last}" if last else "not due yet"
+            with contextlib.suppress(Exception):
+                reports.record_check(cfg, args.mode, outcome)
+            g.out({"status": "not_due", "mode": args.mode, "last_completed": last})
             return 0
         result = run(
             cfg,

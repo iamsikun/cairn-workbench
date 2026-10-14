@@ -11,6 +11,7 @@ import json
 
 import pytest
 from cairn_garden import engine as g
+from cairn_garden import reports
 
 
 def invoke(*args):
@@ -22,6 +23,10 @@ def invoke(*args):
 
 def kb():
     return g.kb_open(g.config())
+
+
+def report(rid):
+    return reports.get(g.config(), rid)
 
 
 def save_paper(body="Original reading.", source="arxiv:1706.03762", title="Original paper"):
@@ -59,8 +64,9 @@ def index(items=None):
 
 def checklist(action, number="42"):
     body = "- [x] **N1** Approved action <!-- action: " + json.dumps(action) + " -->"
-    result = kb().save(kind="note", title="Garden weekly 2026-W" + number, body=body)
-    return result["slug"]
+    rid = f"weekly/garden-weekly-2026-w{number}.md"
+    reports.save(g.config(), rid, body, {"title": "Garden weekly 2026-W" + number})
+    return rid
 
 
 def test_source_line_keeps_user_annotation(ws):
@@ -204,20 +210,21 @@ def test_topic_action_retries_unfinished_seeds(ws, monkeypatch):
     monkeypatch.setattr(g, "run_action", fail_once)
     assert invoke("apply")["needs_agent"]
     invoke("apply")
-    assert kb().resolve("Seed paper") is not None, kb().resolve(name).body
+    assert kb().resolve("Seed paper") is not None, report(name).body
 
 
 def test_apply_does_not_overwrite_concurrent_checklist_edits(ws, monkeypatch):
     name = checklist({"op": "topic", "title": "Example", "body": "Example description."})
 
     def action_with_concurrent_edit(kb_, cfg, action):
-        current = kb_.resolve(name)
-        g.save_note(kb_, current, current.body + "\n\nUser added this new decision.")
+        current = report(name)
+        body = current.body + "\n\nUser added this new decision."
+        reports.save(cfg, name, body, {}, revision=current.revision)
         return "done"
 
     monkeypatch.setattr(g, "run_action", action_with_concurrent_edit)
     invoke("apply")
-    assert "User added this new decision." in kb().resolve(name).body
+    assert "User added this new decision." in report(name).body
 
 
 def test_dry_run_identifies_manual_work(ws):
@@ -227,10 +234,11 @@ def test_dry_run_identifies_manual_work(ws):
 
 
 def test_approved_proposal_without_json_reaches_agent(ws):
-    kb().save(
-        kind="note",
-        title="Garden weekly 2026-W42",
-        body="- [x] **M1** Consolidate the repeated explanation, preserving my observations.",
+    reports.save(
+        g.config(),
+        "weekly/garden-weekly-2026-w42.md",
+        "- [x] **M1** Consolidate the repeated explanation, preserving my observations.",
+        {"title": "Garden weekly 2026-W42"},
     )
     assert len(invoke("apply")["needs_agent"]) == 1
 

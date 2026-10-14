@@ -232,21 +232,23 @@ kind: note
 - [ ] **L1** Unticked link <!-- action: {"op":"link","from":"transformers","to":"attention-is-all-you-need","reason":"x"} -->
 - [x] **M1** Merge two notes <!-- action: {"op":"manual"} -->
 """
-    (ws / "research/notes/garden-weekly-2026-w42.md").write_text(checklist)
+    (ws / "gardening/weekly").mkdir(parents=True)
+    (ws / "gardening/weekly/garden-weekly-2026-w42.md").write_text(checklist)
     result = run(capsys, "apply")
     assert len(result["applied"]) == 1 and len(result["needs_agent"]) == 1
     topic = (ws / "research/topics/kv-cache-compression.md").read_text()
     assert "[[transformers]]" in topic
     seed = (ws / "research/papers/gqa.md").read_text()
     assert "arxiv:2305.13245" in seed and "kv-cache-compression" in seed
-    note = (ws / "research/notes/garden-weekly-2026-w42.md").read_text()
+    note = (ws / "gardening/weekly/garden-weekly-2026-w42.md").read_text()
     assert "- [x] ✅ **N1**" in note and "- [ ] **L1**" in note
     assert "## Related" not in (ws / "research/topics/transformers.md").read_text()
     assert run(capsys, "apply")["applied"] == []  # Applied items are not run twice.
 
 
 def test_link_action_adds_related_section(ws, capsys):
-    (ws / "research/notes/garden-weekly-2026-w43.md").write_text(
+    (ws / "gardening/weekly").mkdir(parents=True)
+    (ws / "gardening/weekly/garden-weekly-2026-w43.md").write_text(
         "---\ntitle: Garden weekly 2026-W43\nkind: note\n---\n"
         '- [x] **L1** link <!-- action: {"op":"link","from":"transformers","to":"attention-is-all-you-need","reason":"the founding paper"} -->\n'
     )

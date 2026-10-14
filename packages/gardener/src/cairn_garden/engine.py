@@ -34,6 +34,8 @@ from zoneinfo import ZoneInfo
 
 from cairn_catalog import paths as catalog_paths
 
+from . import reports
+
 # Shared with the catalog: top-level `workspace` and `collection`, gardener settings in [garden].
 CONFIG_FILE = catalog_paths.config_file()
 # Runtime state, logs and the private note history, outside the knowledge base.
@@ -81,6 +83,7 @@ DEFAULTS = {
     "zotero_collections": {},
     "zotero_skip_notes": ["journal-catalog", "author-institution-catalog"],
     "zotero_write_limit": 25,
+    "reports": "gardening",
 }
 # References a note must not point to: private or temporary folders and the raw resources folder.
 FORBIDDEN = re.compile(
@@ -91,7 +94,6 @@ BARE_PATH = re.compile(
     r"(?:file://)?(?:/private/tmp|/tmp|/Users/[^\s)>`]*?)/[^\s)>`]+|(?:research/resources|\.codex/attachments)/[^\s)>`]+"
 )
 ZOTERO_KEY = re.compile(r"(?<![A-Z0-9])([A-Z0-9]{8})(?:-[A-Z0-9]{8})?(?:\.txt|-children\.json)")
-GARDEN_PREFIX = "garden-"
 META_SKIP = {"title", "kind", "topics", "aliases", "created", "updated"}
 
 
@@ -273,16 +275,18 @@ def forbidden_refs(note) -> list[dict]:
     return refs
 
 
+# A knowledge base may be its own private Git repository, gardened by GitHub Actions.
+REPOSITORY_FILES = {".git", ".github", ".gitignore", ".gitattributes", "cairn-workbench.toml"}
+
+
 def foreign_entries(cfg) -> list[str]:
-    """Anything in the workspace besides notes and Cairn's own files: tools, data or run state."""
+    """Anything in the workspace besides notes, reports and Cairn's own files: tools, data or state."""
     store = cairn()
     root = workspace(cfg)
     ignored = {".DS_Store"}
-    found = [
-        p.name
-        for p in root.iterdir()
-        if p.name not in {store.MARKER, ".cairn.lock", "html", *store.COLLECTIONS, *ignored}
-    ]
+    allowed = {store.MARKER, ".cairn.lock", "html", *store.COLLECTIONS, *ignored, *REPOSITORY_FILES}
+    allowed.add(reports.root(cfg).relative_to(root).parts[0])
+    found = [p.name for p in root.iterdir() if p.name not in allowed]
     for collection in store.COLLECTIONS:
         if (root / collection).is_dir():
             found += [
@@ -308,9 +312,10 @@ def cmd_lint(args, cfg):
         "incomplete_papers": [],
         "forbidden_refs": [],
         "reading_positions": [],
+        "report_links": [],
     }
     for note in notes.values():
-        if note.slug.startswith(GARDEN_PREFIX):
+        if reports.is_legacy_report(note):
             continue
         for slug in note.topics + note.body_links:
             if slug not in notes:
@@ -338,6 +343,21 @@ def cmd_lint(args, cfg):
                 )
         for ref in forbidden_refs(note):
             report["forbidden_refs"].append({"note": note.slug, "kind": note.kind, **ref})
+    # Reports link notes (and each other) with relative Markdown links; notes may link reports.
+    base = reports.root(cfg).resolve()
+    for rid, other in {**reports.reports(cfg), reports.INDEX: None}.items():
+        path = reports.path_of(cfg, rid)
+        if other is None and not path.exists():
+            continue
+        body = other.body if other else path.read_text("utf-8")
+        for target, resolved in reports.local_links(path, body):
+            if not resolved.exists():
+                report["report_links"].append({"report": rid, "target": target})
+    for note in notes.values():
+        for target, resolved in reports.local_links(note.path, note.body):
+            if resolved.is_relative_to(base) and not resolved.exists():
+                report["report_links"].append({"note": note.slug, "target": target})
+    report["legacy_reports"] = reports.legacy(notes)
     # The knowledge base holds knowledge only; tools and data belong in cairn-workbench's folders.
     report["foreign_entries"] = foreign_entries(cfg)
     report["summary"] = {k: len(v) for k, v in report.items() if isinstance(v, list)}
@@ -525,7 +545,7 @@ class ZoteroIndex:
 
 
 def remote_titles(cfg, idents) -> dict[str, str]:
-    """Titles for DOI/arXiv identifiers, cached in .gardener/titles.json (arXiv in one batch)."""
+    """Titles for DOI/arXiv identifiers, cached in the state folder (arXiv in one batch)."""
     path = state_dir(cfg) / "titles.json"
     cache = json.loads(path.read_text()) if path.exists() else {}
     arxiv = [i[6:] for i in idents if i.startswith("arxiv:") and i not in cache]
@@ -677,7 +697,7 @@ def cmd_fix_links(args, cfg):
     titles = {}
     changes, unresolved = [], []
     for note in notes.values():
-        if note.slug.startswith(GARDEN_PREFIX):
+        if reports.is_legacy_report(note):
             continue
         body, edits, missing, key = fix_body(note, index, titles)
         unresolved += missing
@@ -1006,7 +1026,7 @@ def cmd_zotero_sync(args, cfg):
     mapping = topic_collections(cfg, notes, index)
     wanted, unmapped = {}, set()
     for note in notes.values():
-        if note.slug.startswith(GARDEN_PREFIX) or note.slug in cfg.get("zotero_skip_notes", []):
+        if reports.is_legacy_report(note) or note.slug in cfg.get("zotero_skip_notes", []):
             continue
         homes = [note.slug] if note.kind == "topic" else note.topics
         targets = {c for c in (collection_for(t, notes, mapping) for t in homes) if c}
@@ -1460,7 +1480,7 @@ def acknowledge_digest(cfg, note, selected, reviewed=()):
             raise ValueError(f"digest has no source citation for {ident}")
     for ident in selected:
         ledger["candidates"][ident].update(
-            status="delivered", delivered_at=now(cfg).isoformat(), digest=note.slug
+            status="delivered", delivered_at=now(cfg).isoformat(), digest=reports.ident(cfg, note)
         )
     for ident in reviewed:
         if ident in ledger["candidates"]:
@@ -1528,7 +1548,7 @@ def cmd_snapshot(args, cfg):
             backlinks.setdefault(slug, []).append(note.slug)
     rows = []
     for note in notes.values():
-        if note.slug.startswith(GARDEN_PREFIX) and not args.include_garden:
+        if reports.is_legacy_report(note) and not args.include_garden:
             continue
         rows.append(
             {
@@ -1547,14 +1567,18 @@ def cmd_snapshot(args, cfg):
                 "chars": len(note.body),
             }
         )
-    out(
-        {
-            "collection": cfg["collection"],
-            "recent_since": since,
-            "topics": kb.list_topics(),
-            "notes": rows,
-        }
-    )
+    result = {
+        "collection": cfg["collection"],
+        "recent_since": since,
+        "topics": kb.list_topics(),
+        "notes": rows,
+    }
+    if args.include_garden:
+        result["reports"] = [
+            {"id": rid, "title": n.title, "updated": str(n.meta.get("updated"))}
+            for rid, n in reports.reports(cfg).items()
+        ]
+    out(result)
 
 
 # verify ----------------------------------------------------------------------------------------
@@ -1972,21 +1996,20 @@ def cmd_html_audit(args, cfg):
 # metrics ---------------------------------------------------------------------------------------
 
 
-def proposal_stats(notes) -> dict:
+def proposal_stats(cfg) -> dict:
     stats = {"accepted": 0, "open": 0, "applied": 0, "rejected": 0, "attempted": 0, "failed": 0}
-    for note in notes.values():
-        if note.slug.startswith("garden-weekly-"):
-            stats["accepted"] += len(re.findall(r"^\s*- \[x\]", note.body, re.M | re.I))
-            stats["open"] += len(re.findall(r"^\s*- \[ \]", note.body, re.M))
-            stats["applied"] += len(re.findall(r"^\s*- \[x\] ✅", note.body, re.M | re.I))
-            stats["rejected"] += len(re.findall(r"^\s*- \[-\]", note.body, re.M))
+    for note in reports.reports(cfg, "weekly").values():
+        stats["accepted"] += len(re.findall(r"^\s*- \[x\]", note.body, re.M | re.I))
+        stats["open"] += len(re.findall(r"^\s*- \[ \]", note.body, re.M))
+        stats["applied"] += len(re.findall(r"^\s*- \[x\] ✅", note.body, re.M | re.I))
+        stats["rejected"] += len(re.findall(r"^\s*- \[-\]", note.body, re.M))
     return stats
 
 
 def cmd_metrics(args, cfg):
     kb = kb_open(cfg)
     notes = kb.notes()
-    real = {s: n for s, n in notes.items() if not s.startswith(GARDEN_PREFIX)}
+    real = {s: n for s, n in notes.items() if not reports.is_legacy_report(n)}
     inbound: dict[str, int] = {}
     for note in real.values():
         for slug in {*note.topics, *note.body_links}:
@@ -2007,7 +2030,7 @@ def cmd_metrics(args, cfg):
             1 for n in real.values() for s in n.topics + n.body_links if s not in notes
         ),
         "forbidden_refs": sum(len(forbidden_refs(n)) for n in real.values()),
-        "proposals": proposal_stats(notes),
+        "proposals": proposal_stats(cfg),
     }
     actions = read_json(state_dir(cfg) / "actions.json", {})
     row["proposals"]["attempted"] = len(actions)
@@ -2223,19 +2246,20 @@ def approved_lines(body):
 
 
 def cmd_apply(args, cfg):
+    """Run ticked proposals of the weekly reports (or of one named report)."""
     kb = kb_open(cfg)
-    names = (
-        [args.note]
-        if args.note
-        else sorted(s for s in kb.notes() if s.startswith("garden-weekly-"))
-    )
+    if args.note:
+        found = reports.find(cfg, args.note)
+        names = [reports.ident(cfg, found)] if found else []
+    else:
+        names = sorted(reports.reports(cfg, "weekly"))
     applied, planned, manual, invalid = [], [], [], []
-    for name in names:
-        initial = kb.resolve(name)
+    for rid in names:
+        initial = reports.get(cfg, rid)
         if initial is None:
             continue
         for line in approved_lines(initial.body):
-            entry = {"note": initial.slug, "item": line[:200]}
+            entry = {"report": rid, "item": line[:200]}
             match = ACTION.match(line)
             if not match:
                 manual.append({**entry, "result": "needs agent: no executable action"})
@@ -2245,7 +2269,7 @@ def cmd_apply(args, cfg):
                 if validate_action(kb, action) == "manual":
                     manual.append({**entry, "result": "needs agent: manual action"})
                     continue
-                current = kb.resolve(initial.slug)
+                current = reports.get(cfg, rid)
                 if current.body.splitlines().count(line) != 1:
                     raise ValueError("approval changed or is ambiguous; re-review required")
                 if args.dry_run:
@@ -2254,7 +2278,7 @@ def cmd_apply(args, cfg):
                 result = run_action(kb, cfg, action)
                 # Merge just this status into the current body, with its matching revision.
                 for attempt in range(3):
-                    current = kb.resolve(initial.slug)
+                    current = reports.get(cfg, rid)
                     lines = current.body.splitlines()
                     if lines.count(line) != 1:
                         raise ValueError(
@@ -2263,7 +2287,7 @@ def cmd_apply(args, cfg):
                     replacement = f"{match.group(1)}- [x] ✅ {match.group(2).rstrip()} _(applied {now(cfg).date().isoformat()}: {result})_"
                     lines[lines.index(line)] = replacement
                     try:
-                        save_note(kb, current, "\n".join(lines))
+                        reports.save(cfg, rid, "\n".join(lines), {}, revision=current.revision)
                         break
                     except cairn().CairnError:
                         if attempt == 2:
@@ -2286,32 +2310,34 @@ def cmd_apply(args, cfg):
 
 
 def cmd_archive_digests(args, cfg):
-    """Move daily digests older than N days out of the collection (into .gardener/archive)."""
-    kb = kb_open(cfg)
+    """Move daily digests older than N days to the reports' archive/daily/ folder.
+
+    A digest that a note or another report links to stays where it is, so links keep working.
+    """
     cutoff = (date.today() - timedelta(days=cfg["digest_days_kept"])).isoformat()
-    archive = state_dir(cfg) / "archive"
+    notes = kb_open(cfg).notes()
     moved, retained = [], []
-    notes = kb.notes()
-    referenced = {slug for n in notes.values() for slug in n.body_links + n.topics}
-    for note in notes.values():
-        match = re.match(r"garden-digest-(\d{4}-\d{2}-\d{2})$", note.slug)
-        if match and match.group(1) < cutoff:
-            if note.slug in referenced:
-                retained.append(note.slug)
-                continue
-            moved.append(note.slug)
-            if not args.dry_run:
-                archive.mkdir(exist_ok=True)
-                with kb.lock():
-                    fresh = kb.notes()
-                    if fresh[note.slug].revision != note.revision or any(
-                        note.slug in n.body_links + n.topics for n in fresh.values()
-                    ):
-                        raise ValueError("digest changed or gained a reference during archiving")
-                    destination = archive / note.path.name
-                    if destination.exists() and destination.read_bytes() != note.path.read_bytes():
-                        raise ValueError("different archived revision already exists")
-                    note.path.replace(destination)
+    for rid, note in reports.reports(cfg, "daily").items():
+        match = re.match(r"garden-digest-(\d{4}-\d{2}-\d{2})", note.slug)
+        if not match or match.group(1) >= cutoff:
+            continue
+        if reports.referenced(cfg, note, notes):
+            retained.append(rid)
+            continue
+        target = "archive/" + rid
+        moved.append({"from": rid, "to": target})
+        if args.dry_run:
+            continue
+        with engine_lock(cfg, "reports"):
+            fresh = reports.get(cfg, rid)
+            if fresh is None or fresh.revision != note.revision:
+                raise ValueError("digest changed during archiving")
+            destination = reports.path_of(cfg, target)
+            if destination.exists() and destination.read_bytes() != note.path.read_bytes():
+                raise ValueError("different archived revision already exists")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            note.path.replace(destination)
+        reports.relink_index(cfg, rid, target)
     out(
         {
             "cutoff": cutoff,
@@ -2349,6 +2375,8 @@ def cmd_commit(args, cfg):
         for f in store.FOLDERS.values()
         if (workspace(cfg) / c / f).exists()
     ]
+    if reports.root(cfg).exists():
+        paths.append(reports.root(cfg).relative_to(workspace(cfg)).as_posix())
     git(cfg, "add", "-A", "--", *paths)
     if not git(cfg, "diff", "--cached", "--quiet", check=False).returncode:
         out({"committed": False, "reason": "no note changes"})
