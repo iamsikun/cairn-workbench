@@ -123,10 +123,13 @@ These take `-w PATH` or read `$CAIRN_WORKSPACE`.
 - [`cairn-catalog`](packages/catalog/README.md): a local catalog of public journal
   metadata with an offline browser. Import selected papers into the knowledge base.
 - [`cairn-garden`](packages/gardener/README.md): daily digests and weekly reviews of the
-  knowledge base, drafted by your own agent, with proposals you approve.
+  knowledge base, drafted by your own agent, with proposals you approve. It runs on your Mac
+  or, for a knowledge base kept in a private GitHub repository, on GitHub Actions.
 
 Their data, state and settings live outside the knowledge base, configured in
-`~/.config/cairn-workbench/config.toml`.
+`~/.config/cairn-workbench/config.toml`. The one exception is the gardener's readable
+reports, in the knowledge base's `gardening/` folder beside the collections. Cairn's own
+tools never read that folder.
 
 ## Development
 

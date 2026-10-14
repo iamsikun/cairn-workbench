@@ -297,7 +297,14 @@ def forbidden_refs(note) -> list[dict]:
 
 
 # A knowledge base may be its own private Git repository, gardened by GitHub Actions.
-REPOSITORY_FILES = {".git", ".github", ".gitignore", ".gitattributes", "cairn-workbench.toml"}
+REPOSITORY_FILES = {
+    ".git",
+    ".github",
+    ".gitignore",
+    ".gitattributes",
+    "cairn-workbench.toml",
+    "catalog-preferences.yaml",
+}
 
 
 def foreign_entries(cfg) -> list[str]:

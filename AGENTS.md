@@ -33,8 +33,12 @@ above are the core's.
   reports. Its state, logs and note history live in the state folder, never in the
   knowledge base. Keep `bridge/` byte-identical unless a new Zotero extension is intended:
   any change requires reinstalling the extension in Zotero.
-- The knowledge base holds knowledge only. Code, views, caches, run state and raw evidence
-  stay out of it.
+- The knowledge base holds knowledge, plus the gardener's readable reports in `gardening/`
+  beside the collections. Code, views, caches, run state and raw evidence stay out of it. The
+  core never reads `gardening/`.
+- The gardener's GitHub Actions support is `.github/workflows/garden.yml`, a reusable
+  workflow that a private knowledge base calls, plus `cairn-garden ci`. It is not this
+  repository's CI.
 
 Develop with `uv` and synthetic data in temporary folders. Never read a real knowledge
 base, home directory or credentials. Never change real client settings: run `connect` only

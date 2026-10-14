@@ -38,8 +38,11 @@ Runs use a kernel-owned lock, released on process exit.
 
 Schedules check every 15 minutes and catch up after sleep: daily after 07:30 and weekly Monday
 after 10:30 in the configured timezone (default America/Chicago). Successful periods are not rerun.
-Run evidence, logs and the private Git history of the notes live in the gardener's state folder
-(`~/.local/state/cairn-workbench/garden/`), never in the workspace. Source outages are warnings with retained checkpoints; agent,
+Readable reports and their log live in the workspace's `gardening/` folder, beside (not inside)
+the research collection. Run evidence, logs and the private Git history of the notes live in the
+gardener's state folder (`~/.local/state/cairn-workbench/garden/`), never in the workspace.
+Unattended runs on GitHub Actions keep that state on the knowledge base's `garden-state` branch
+(`cairn-garden ci`). Source outages are warnings with retained checkpoints; agent,
 persistence, history or missing-asset failures prevent completion. Local Zotero writes use the authenticated desktop extension described in
 [references/local-zotero.md](references/local-zotero.md). Scheduled writes require separate real
 import and collection-update evidence from both workflows on this exact release/configuration.
@@ -53,7 +56,7 @@ The engine is the `cairn-garden` command (package `cairn-garden` in cairn-workbe
 
 | Command | Purpose |
 |---|---|
-| `lint` | Broken links, orphans, empty topics, incomplete papers, forbidden local references, reading positions, and anything in the workspace that is not a note (`foreign_entries`) |
+| `lint` | Broken links, orphans, empty topics, incomplete papers, forbidden local references, reading positions, broken report links, reports still among the research notes (`legacy_reports`), and anything in the workspace that is not a note or report (`foreign_entries`) |
 | `zotero-sync [--dry-run]` | Put every paper a note cites into the Zotero collection of its topic; create verified missing items (local extension or explicitly selected Web API) |
 | `fix-links [--dry-run]` | Point papers that are in Zotero to their Zotero item and PDF; replace local file references |
 | `new-papers [--record]` | New papers from the journal catalog, arXiv and Zotero, pre-filtered by the user's topics |
@@ -64,7 +67,8 @@ The engine is the `cairn-garden` command (package `cairn-garden` in cairn-workbe
 | `html-audit [--verify]` | Sizes and staleness of the catalog HTML views and asset bundles |
 | `metrics [--dry-run]` | Record health metrics; shows last week's for comparison |
 | `apply [note] [--dry-run]` | Run ticked proposals that carry an action |
-| `archive-digests` | Move daily digests older than 14 days out of the collection |
+| `archive-digests` | Move unreferenced daily digests older than 14 days to `gardening/archive/` |
+| `migrate-reports [--dry-run]` | Move reports saved as research notes by 0.6.0 into `gardening/` |
 | `commit -m MSG` | Record note changes in the private history (in the state folder) |
 
 For reading and writing notes, prefer the Cairn MCP tools when they are connected (`search`,
@@ -77,8 +81,8 @@ For reading and writing notes, prefer the Cairn MCP tools when they are connecte
   (`zotero://select/library/items/KEY`) and PDF, not by a web URL. A paper not yet in Zotero uses
   its DOI/arXiv/publisher URL until `zotero-sync` adds it. Never write `/private/tmp`, `/tmp`,
   `research/resources/...`, `~/.codex/attachments` or `file://` paths into a note.
-- **The workspace holds knowledge, not tools.** Code, skills, views, catalog data, raw evidence and
-  run state live outside it, in cairn-workbench's packages and their data and state folders. Report
+- **The workspace holds knowledge, not tools.** Besides notes it holds only the readable garden
+  reports in `gardening/`. Code, skills, views, catalog data, raw evidence and run state live outside it, in cairn-workbench's packages and their data and state folders. Report
   `foreign_entries` from `lint` instead of adding to them.
 - **Only verified papers.** Every paper you recommend must come from a tool result (`new-papers`,
   `zotero-gaps`, the catalog) or pass `verify`. Never cite from memory alone.

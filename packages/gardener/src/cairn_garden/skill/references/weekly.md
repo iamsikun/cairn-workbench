@@ -3,7 +3,7 @@
 Run `cairn-garden weekly` for the complete verified pass. Before drafting, the runner records
 history, applies executable approved proposals, gathers a seven-day snapshot and discovery
 window, finds Zotero gaps, prunes eligible storage, runs the installed offline HTML verifier,
-archives unreferenced old digests, syncs Zotero and repairs links, and records metrics. It then saves
+archives unreferenced old digests to `gardening/archive/`, syncs Zotero and repairs links, and records metrics. It then saves
 and checks the report and records history before acknowledging completion.
 
 When given `facts.json`, these steps have already happened; draft the report only. Source metadata
@@ -38,6 +38,8 @@ Choose useful proposals from these areas, omitting empty sections:
 8. **Health:** compare current metrics with an actual week-old baseline. If none exists, say the
    baseline is still accumulating. Distinguish approved, applied, failed and manual proposals.
 
-The runner saves `Garden weekly YYYY-Www`, appending on reruns so approvals and user edits survive.
+The runner saves `gardening/weekly/garden-weekly-YYYY-wWW.md`, appending on reruns so approvals and
+user edits survive. A stale journal catalog is a warning in the report (a failure with
+`catalog_required`).
 Only validated JSON actions run automatically when approved. Manual work remains visible and is
 never marked applied by a dry run or by an unattended drafting agent.

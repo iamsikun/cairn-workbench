@@ -17,6 +17,7 @@ pagination, and pending Zotero writes. If a scheduled write gate is closed, repo
 Local write failures prevent workflow completion. Put larger organizational questions under “For the weekly review.”
 Preserve annotations, attribution, versioned citations and reading positions.
 
-The runner owns persistence under `Garden digest YYYY-MM-DD`. A rerun appends an update and
+The runner owns persistence in `gardening/daily/garden-digest-YYYY-MM-DD.md` and records the run
+in `gardening/index.md`. A rerun appends an update and
 preserves previous observations. Discovery and delivery are separate: failed reports do not lose
 papers, and undelivered candidates remain in the queue. The weekly window includes daily picks.

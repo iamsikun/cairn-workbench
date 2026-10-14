@@ -15,7 +15,7 @@ on:
         required: true
         type: string
       mode:
-        description: auto (whatever is due), daily, weekly or catalog
+        description: auto (whatever is due), daily, weekly, catalog or enable-zotero-writes
         type: string
         default: auto
       scheduled:
@@ -152,6 +152,12 @@ jobs:
         if: steps.due.outputs.run_weekly == 'true'
         continue-on-error: true
         run: cairn-garden weekly ${{ inputs.scheduled && '--scheduled' || '' }}
+
+      # After a manual daily and weekly run each proved a Zotero import and a collection update
+      # on this release and configuration, scheduled runs may write to Zotero.
+      - name: Enable scheduled Zotero writes
+        if: inputs.mode == 'enable-zotero-writes'
+        run: cairn-garden enable-zotero-writes
 
       # Reports, note changes and state are pushed together or not at all.
       - name: Publish reports and state

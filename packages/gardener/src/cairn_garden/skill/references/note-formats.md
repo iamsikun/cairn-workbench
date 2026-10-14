@@ -1,6 +1,10 @@
 # Note formats
 
-Both notes are kind `note`, live in `research/notes/`, and list `[[research-catalogs]]` as topic.
+Both are garden reports, not research notes. The runner saves them in the workspace's
+`gardening/` folder (`daily/garden-digest-YYYY-MM-DD.md`, `weekly/garden-weekly-YYYY-wWW.md`),
+outside the research collection, so Cairn's search and topics never show them. Write `[[slug]]`
+links to research notes in the draft as usual; the runner turns them into relative Markdown
+links (`../../research/papers/slug.md`) that work on GitHub and in Obsidian.
 
 ## Daily digest
 

@@ -322,7 +322,7 @@ on:
       mode:
         description: auto runs whatever is due; catalog refreshes the journal catalog
         type: choice
-        options: [auto, daily, weekly, catalog]
+        options: [auto, daily, weekly, catalog, enable-zotero-writes]
         default: auto
       scheduled:
         description: only run a period that is due

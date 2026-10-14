@@ -1,9 +1,10 @@
 # Applying approved proposals
 
-The user approves an item by ticking it (`- [ ]` → `- [x]`) in a `garden-weekly-*` note, in any
-editor or by asking an agent to tick it.
+The user approves an item by ticking it (`- [ ]` → `- [x]`) in a weekly report,
+`gardening/weekly/garden-weekly-*.md`, in any editor or by asking an agent to tick it. Reports
+are plain Markdown files, not Cairn notes: edit them directly, not through the MCP tools.
 
-1. Run `cairn-garden apply` (all weekly notes) or `cairn-garden apply garden-weekly-2026-w42` (one note). It runs every
+1. Run `cairn-garden apply` (all weekly reports) or `cairn-garden apply garden-weekly-2026-w42` (one report). It runs every
    ticked item that carries an action comment and marks it `✅ … (applied DATE: result)`.
    Use `--dry-run` to preview.
 2. Items in `needs_agent` have no action or one the engine cannot run (merges, splits, rewrites,
