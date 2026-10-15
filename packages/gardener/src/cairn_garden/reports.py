@@ -166,6 +166,24 @@ def local_links(path: Path, body: str) -> list[tuple[str, Path]]:
     return found
 
 
+def relocated(text: str, source: Path, destination: Path) -> str:
+    """The file's relative .md links, rewritten so they still resolve from its new folder."""
+
+    def swap(match):
+        raw = match.group(2)
+        target = raw.strip("<>")
+        path, hashmark, anchor = target.partition("#")
+        if not path.endswith(".md") or re.match(r"^[a-z][a-z0-9+.-]*:", path, re.I):
+            return match.group(0)
+        if path.startswith("/"):
+            return match.group(0)
+        moved = relative((source.parent / path).resolve(), destination) + hashmark + anchor
+        moved = f"<{moved}>" if raw.startswith("<") else moved
+        return f"[{match.group(1)}]({moved})"
+
+    return g.MD_LINK.sub(swap, text)
+
+
 def is_legacy_report(note) -> bool:
     """A digest or weekly review saved as a research note by cairn-garden 0.6.0 or earlier."""
     return bool(

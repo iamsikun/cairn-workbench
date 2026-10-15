@@ -2535,10 +2535,13 @@ def cmd_archive_digests(args, cfg):
             if fresh is None or fresh.revision != note.revision:
                 raise ValueError("digest changed during archiving")
             destination = reports.path_of(cfg, target)
-            if destination.exists() and destination.read_bytes() != note.path.read_bytes():
+            text = reports.relocated(note.path.read_text("utf-8"), note.path, destination)
+            if destination.exists() and destination.read_text("utf-8") != text:
                 raise ValueError("different archived revision already exists")
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            note.path.replace(destination)
+            # Written first, then the original removed: an interruption leaves an identical
+            # archived copy that the next run accepts.
+            cairn()._write(destination, text)
+            note.path.unlink()
         reports.relink_index(cfg, rid, target)
     out(
         {

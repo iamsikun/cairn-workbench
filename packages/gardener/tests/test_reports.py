@@ -104,6 +104,27 @@ def test_archive_keeps_linked_digests_and_finds_archived_ones(ws):
     assert invoke("lint")["report_links"] == []
 
 
+def test_archived_digest_keeps_its_links_working(setup):
+    cfg = setup
+    kb().save(kind="paper", title="Attention", body="x", fields={"source": "arxiv:1706.03762"})
+    rid = "daily/garden-digest-2000-01-01.md"
+    body = reports.portable(
+        cfg,
+        "Read [[attention]] and [the web](https://example.org/a.md).",
+        reports.path_of(cfg, rid),
+    )
+    reports.save(cfg, rid, body, {"title": "Garden digest 2000-01-01"})
+    invoke("archive-digests")
+    archived = reports.get(cfg, "archive/" + rid).body
+    assert "(../../../research/papers/attention.md)" in archived
+    assert "(https://example.org/a.md)" in archived
+    assert invoke("lint")["report_links"] == []
+    # The weekly review archives digests between its two lints and must still pass.
+    reports.save(cfg, "daily/garden-digest-2000-01-02.md", body, {"title": "Older digest"})
+    assert w.run(cfg, "weekly", renderer=draft)["status"] != "failed"
+    assert reports.get(cfg, "archive/daily/garden-digest-2000-01-02.md")
+
+
 def test_lint_allows_reports_and_repository_files_only(ws):
     cfg = g.config()
     reports.save(
