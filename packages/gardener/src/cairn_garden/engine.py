@@ -908,8 +908,7 @@ def sync_local(writer, additions, creations, metadata, ledger, path, reserve, cf
     for new in creations:
         ident = new["id"]
         if not new["verified"]:
-            failed.append({"id": ident, "error": "identifier not externally verified; not created"})
-            continue
+            continue  # never created; reported as `unverified`, not as a write failure
         receipt = ledger["creations"].get(ident)
         if receipt and receipt.get("backend") != "local":
             failed.append(
@@ -1003,8 +1002,7 @@ def sync_web(cfg, writer, index, additions, creations, metadata, ledger, path, r
     for new in creations:
         ident = new["id"]
         if not new["verified"]:
-            failed.append({"id": ident, "error": "identifier not externally verified; not created"})
-            continue
+            continue  # never created; reported as `unverified`, not as a write failure
         receipt = ledger["creations"].get(ident)
         if receipt and receipt.get("backend") == "local":
             failed.append(
@@ -1370,6 +1368,7 @@ def cmd_zotero_sync(args, cfg):
             "to_create": creations,
             "done": done,
             "failed": failed,
+            "unverified": [c["id"] for c in creations if not c["verified"]],
             "daily_writes_used": ledger["days"].get(day, 0),
             "daily_write_limit": cfg["zotero_write_limit"],
             "unmapped_notes": sorted(unmapped),

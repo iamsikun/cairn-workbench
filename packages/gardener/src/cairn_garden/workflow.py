@@ -441,6 +441,11 @@ def run(
                 )
             if sync.get("failed"):
                 raise RuntimeError("Zotero write/read-back failures; workflow is incomplete")
+            if sync.get("unverified") and sync.get("can_write") and not sync.get("dry_run"):
+                manifest["warnings"].append(
+                    "not created in Zotero, metadata could not be verified: "
+                    + ", ".join(sync["unverified"])
+                )
             manifest["zotero"] = {
                 "backend": sync.get("backend"),
                 "bridge": sync.get("bridge"),

@@ -118,6 +118,15 @@ def test_web_only_sync_creates_with_read_back_and_no_local_zotero(web):
     assert again["done"] == [] and not again["to_create"] and web.posts() == 1
 
 
+def test_unverifiable_metadata_is_skipped_without_failing_the_sync(web, monkeypatch):
+    # A DataCite DOI or a metadata outage: never created, reported, other writes continue.
+    save_paper(source="doi:10.5281/zenodo.1", title="Dataset release")
+    monkeypatch.setattr(g, "remote_metadata", lambda i: dict(METADATA) if i == PAPER else None)
+    result = invoke("zotero-sync")
+    assert not result["failed"] and result["unverified"] == ["doi:10.5281/zenodo.1"]
+    assert [x["status"] for x in result["done"]] == ["created"] and web.posts() == 1
+
+
 def test_web_reads_serve_discovery_and_link_repair(web):
     invoke("zotero-sync")
     g.configure_zotero(g.config())
