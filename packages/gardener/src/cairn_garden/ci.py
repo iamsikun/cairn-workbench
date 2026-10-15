@@ -179,8 +179,15 @@ def restore(cfg, repo: Path, branch: str, remote: str, allow_empty: bool) -> dic
 
 
 def changed(repo) -> list[str]:
-    lines = git(repo, "status", "--porcelain", "--untracked-files=all").stdout.splitlines()
-    return [line[3:].split(" -> ")[-1].strip('"') for line in lines]
+    """Changed paths, verbatim: -z keeps non-ASCII and spaced names unquoted."""
+    entries = git(repo, "status", "--porcelain", "-z", "--untracked-files=all").stdout.split("\0")
+    paths, entries = [], iter(entries)
+    for entry in entries:
+        if entry:
+            paths.append(entry[3:])
+            if "R" in entry[:2] or "C" in entry[:2]:
+                paths.append(next(entries))  # the rename's source follows its target
+    return paths
 
 
 def publish(cfg, repo: Path, branch: str, remote: str, target: str | None, attempts=3) -> dict:

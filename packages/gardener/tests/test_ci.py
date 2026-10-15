@@ -180,6 +180,17 @@ def test_note_changes_alone_are_published(repo):
     )
 
 
+def test_notes_with_non_ascii_and_spaced_names_are_published(repo):
+    cfg, kb, remote = repo
+    ci.restore(cfg, kb, "garden-state", "origin", allow_empty=True)
+    g.kb_open(cfg).save(kind="note", title="Pólya urns and Erdős", body="Accented title.")
+    (kb / "research" / "notes" / "two words.md").write_text("A spaced file name.\n")
+    assert ci.publish(cfg, kb, "garden-state", "origin", None)["published"]
+    names = git(remote, "-c", "core.quotePath=false", "ls-tree", "-r", "--name-only", "main")
+    assert "research/notes/pólya-urns-and-erdős.md" in names
+    assert "research/notes/two words.md" in names
+
+
 def test_changes_outside_the_gardeners_scope_are_refused(repo):
     cfg, kb, _ = repo
     ci.restore(cfg, kb, "garden-state", "origin", allow_empty=True)
