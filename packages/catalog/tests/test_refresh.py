@@ -1,5 +1,6 @@
 import gzip
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,6 +8,8 @@ from unittest.mock import patch
 
 from cairn_catalog import entities
 from cairn_catalog import update_catalog as updater
+
+from cairn.store import KB, init
 
 
 class FlexiblePeriodTests(unittest.TestCase):
@@ -37,6 +40,103 @@ class FlexiblePeriodTests(unittest.TestCase):
 
 
 class RefreshTests(unittest.TestCase):
+    def test_catalog_entrypoint_links_survive_the_hosted_runner(self):
+        for hosted in (False, True):
+            with self.subTest(hosted=hosted), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp) / "catalog"
+                root.mkdir()
+                workspace = Path(temp) / "kb"
+                init(workspace)
+                kb = KB(workspace)
+                kb.save(
+                    kind="note",
+                    title="Journal catalog",
+                    body=(
+                        "# Journal catalog\n\n<!-- catalog-refresh:start -->\n"
+                        "old generated status\n<!-- catalog-refresh:end -->\n\n"
+                        "My own catalog observations.\n"
+                    ),
+                )
+                updater.catalog.atomic_json(
+                    root / "coverage.json",
+                    {
+                        "as_of": "2026-10-14",
+                        "total_entries": 3,
+                        "total_issues": 2,
+                        "total_abstracts": 1,
+                    },
+                )
+                updater.catalog.atomic_json(
+                    root / "entity-coverage.json",
+                    {"identified_author_entities": 4, "identified_institutions": 5},
+                )
+                env = {
+                    "GITHUB_ACTIONS": "true" if hosted else "false",
+                    "GITHUB_SERVER_URL": "https://github.com",
+                    "GITHUB_REPOSITORY": "fixture/private-kb",
+                    "GITHUB_RUN_ID": "123",
+                }
+                with (
+                    patch.dict(os.environ, env),
+                    patch.object(updater.catalog, "open_kb", return_value=kb),
+                ):
+                    updater.sync_entrypoints(root)
+                body = kb.get("journal-catalog")["body"]
+                self.assertIn("My own catalog observations.", body)
+                self.assertIn("**3 entries", body)
+                if hosted:
+                    self.assertIn("https://github.com/fixture/private-kb/actions/runs/123", body)
+                    self.assertNotIn(str(root), body)
+                else:
+                    self.assertIn(str(root / "catalog.html"), body)
+                    self.assertIn(str(root / "update-report.json"), body)
+
+    def test_first_refresh_stages_and_publishes_without_an_existing_edition(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "new" / "catalog"
+
+            def build(_):
+                stage = updater.catalog.ROOT
+                self.assertTrue((stage / "journals.json").exists())
+                updater.catalog.atomic_json(
+                    stage / "coverage.json",
+                    {"total_entries": 1, "journal_membership": {}},
+                )
+                (stage / "catalog.html").write_text("first verified edition")
+
+            with (
+                patch.object(updater, "refresh_service", return_value=[]),
+                patch.object(updater.catalog, "harvest_repec"),
+                patch.object(updater.catalog, "harvest_publisher"),
+                patch("cairn_catalog.publisher_archives.harvest_jmlr"),
+                patch.object(updater.catalog, "build", side_effect=build),
+                patch.object(updater.catalog, "validate"),
+                patch.object(updater.build_browser, "build", return_value={"assets": "fixture"}),
+                patch.object(updater.build_browser, "prune_assets", return_value=[]),
+                patch.object(updater.verify_offline, "verify", return_value=1),
+                patch.object(updater.personalize, "run", return_value={}),
+            ):
+                result = updater.refresh(root)
+            self.assertEqual(result["mode"], "initial")
+            self.assertEqual(result["entry_change"], 1)
+            self.assertEqual((root / "catalog.html").read_text(), "first verified edition")
+            self.assertTrue((root / "update-state.json").exists())
+            self.assertEqual(
+                json.loads((root / "journals.json").read_text()), updater.catalog.JOURNALS
+            )
+
+    def test_failed_first_build_does_not_claim_a_published_edition(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "new-catalog"
+            with patch.object(updater.catalog, "build", side_effect=RuntimeError("build failed")):
+                with self.assertRaisesRegex(RuntimeError, "build failed"):
+                    updater.refresh(root, rebuild_only=True)
+            self.assertFalse((root / "coverage.json").exists())
+            self.assertFalse((root / "update-state.json").exists())
+            self.assertEqual(
+                json.loads((root / "update-report.json").read_text())["status"], "failed"
+            )
+
     def test_concurrent_source_update_prevents_stale_publication(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

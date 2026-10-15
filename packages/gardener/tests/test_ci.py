@@ -103,8 +103,18 @@ def test_budget_actions_and_gate_survive_a_fresh_runner(repo, tmp_path, monkeypa
     assert g.read_json(g.state_dir(cfg) / "actions.json", {})["abc"]["status"] == "applied"
 
 
-def test_remote_commit_during_a_run_is_kept(repo, tmp_path):
+@pytest.mark.parametrize("hosted_identity", [False, True])
+def test_remote_commit_during_a_run_is_kept(repo, tmp_path, monkeypatch, hosted_identity):
     cfg, kb, remote = repo
+    if hosted_identity:
+        monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+        monkeypatch.setenv("GIT_CONFIG_KEY_0", "user.useConfigOnly")
+        monkeypatch.setenv("GIT_CONFIG_VALUE_0", "true")
+        workflow = yaml.safe_load((ROOT / ".github/workflows/garden.yml").read_text())
+        for role in ("AUTHOR", "COMMITTER"):
+            for field in ("NAME", "EMAIL"):
+                key = f"GIT_{role}_{field}"
+                monkeypatch.setenv(key, workflow["jobs"]["garden"]["env"][key])
     ci.restore(cfg, kb, "garden-state", "origin", allow_empty=True)
     laptop = clone(remote, tmp_path / "laptop")
     (laptop / "research/notes").mkdir(parents=True, exist_ok=True)

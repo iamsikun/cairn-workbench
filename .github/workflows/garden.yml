@@ -50,6 +50,8 @@ on:
         required: false
       ZOTERO_API_KEY:
         required: false
+      OPENALEX_API_KEY:
+        required: false
 
 jobs:
   garden:
@@ -66,7 +68,14 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
       ZOTERO_API_KEY: ${{ secrets.ZOTERO_API_KEY }}
+      OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
       WORKBENCH: git+https://github.com/iamsikun/cairn-workbench@${{ inputs.version }}
+      # A rebase creates a new commit, too; the per-command identity in ci publish
+      # only covers its initial commits on otherwise unconfigured hosted runners.
+      GIT_AUTHOR_NAME: cairn-garden
+      GIT_AUTHOR_EMAIL: cairn-garden@users.noreply.github.com
+      GIT_COMMITTER_NAME: cairn-garden
+      GIT_COMMITTER_EMAIL: cairn-garden@users.noreply.github.com
     steps:
       - name: Check out the knowledge base
         uses: actions/checkout@v4
@@ -110,6 +119,20 @@ jobs:
             echo "$period=$due" >> "$GITHUB_OUTPUT"
           done
 
+      # This workflow only uses GitHub-hosted Ubuntu runners. The full catalog and its
+      # staged replacement need more space than the image leaves beside unused SDKs.
+      - name: Reserve space for the journal catalog
+        if: inputs.catalog && (steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true' || inputs.mode == 'catalog')
+        run: |
+          sudo rm -rf -- /usr/local/lib/android /usr/share/dotnet /usr/share/swift /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          python3 - <<'PY'
+          import os, shutil
+          free = shutil.disk_usage(os.environ['GITHUB_WORKSPACE']).free / 2**30
+          print(f'Available space for catalog: {free:.1f} GiB')
+          if free < 30:
+              raise SystemExit('Catalog requires at least 30 GiB free for a staged edition')
+          PY
+
       - name: Restore the journal catalog
         if: inputs.catalog && (steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true' || inputs.mode == 'catalog')
         uses: actions/cache/restore@v4
@@ -130,15 +153,8 @@ jobs:
             echo "saved=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Save the journal catalog
-        if: steps.catalog.outputs.saved == 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ github.workspace }}/catalog
-          key: cairn-catalog-${{ github.run_id }}
-
       - name: Install the agent CLI
-        if: steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true'
+        if: steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true' || inputs.mode == 'enable-zotero-writes'
         run: npm install --global "${{ inputs.agent-cli }}"
 
       - name: Daily digest
@@ -153,21 +169,82 @@ jobs:
         continue-on-error: true
         run: cairn-garden weekly ${{ inputs.scheduled && '--scheduled' || '' }}
 
+      # Weekly storage maintenance must reach the next runner, too. Saving before
+      # the review would restore the pruned recovery editions every week.
+      - name: Save the journal catalog
+        if: steps.catalog.outputs.saved == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ github.workspace }}/catalog
+          key: cairn-catalog-${{ github.run_id }}
+
       # After a manual daily and weekly run each proved a Zotero import and a collection update
       # on this release and configuration, scheduled runs may write to Zotero.
       - name: Enable scheduled Zotero writes
+        id: enable_writes
         if: inputs.mode == 'enable-zotero-writes'
-        run: cairn-garden enable-zotero-writes
+        run: |
+          cairn-garden readiness
+          cairn-garden enable-zotero-writes
 
       # Reports, note changes and state are pushed together or not at all.
+      - name: Preserve a recovery snapshot before publication
+        if: always() && steps.restore.outcome == 'success'
+        run: |
+          cairn-garden ci state-export "$RUNNER_TEMP/garden-recovery"
+          python3 - <<'PY'
+          import os, tarfile, tomllib
+          from pathlib import Path
+          workspace = Path(os.environ['CAIRN_WORKSPACE']).resolve()
+          config = tomllib.loads(Path(os.environ['CAIRN_WORKBENCH_CONFIG']).read_text())
+          folders = [config.get('collection', 'research'), config.get('garden', {}).get('reports', 'gardening')]
+          archive = Path(os.environ['RUNNER_TEMP']) / 'garden-recovery/knowledge-base.tar.gz'
+          with tarfile.open(archive, 'w:gz') as bundle:
+              for name in folders:
+                  path = (workspace / name).resolve()
+                  if not path.is_relative_to(workspace) or path == workspace:
+                      raise ValueError('Recovery folder must stay inside the knowledge base')
+                  if path.exists():
+                      bundle.add(path, arcname=path.relative_to(workspace))
+          PY
+
       - name: Publish reports and state
         id: publish
         if: always() && steps.restore.outcome == 'success'
         run: cairn-garden ci publish --branch "${{ inputs.state-branch }}"
 
       - name: Summary
-        if: always() && steps.restore.outcome == 'success'
+        if: always() && steps.restore.outcome == 'success' && inputs.mode != 'catalog' && steps.enable_writes.outcome != 'failure'
         run: cairn-garden ci summary --mode "${{ inputs.mode }}"
+
+      - name: Catalog summary
+        if: always() && steps.restore.outcome == 'success' && inputs.mode == 'catalog'
+        env:
+          CATALOG_OUTCOME: ${{ steps.catalog.outcome }}
+          PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          path = Path(os.environ['CAIRN_CATALOG_DIR']) / 'update-report.json'
+          report = json.loads(path.read_text()) if path.exists() else {}
+          complete = (report.get('status') == 'success'
+                      and os.environ['CATALOG_OUTCOME'] == 'success'
+                      and os.environ['PUBLISH_OUTCOME'] == 'success')
+          lines = ['## Cairn journal catalog', '',
+                   f"- refresh: {report.get('status', 'no completed refresh')}",
+                   f"- publication: {os.environ['PUBLISH_OUTCOME']}",
+                   f"- offline verification: {report.get('offline_verification', 'not completed')}"]
+          lines += [f'- warning: {warning}' for warning in report.get('warnings', [])]
+          if report.get('error'):
+              lines.append(f"- error: {report['error']}")
+          lines += ['', '**Overall: ' + ('complete' if complete else 'incomplete') + '**']
+          summary = '\n'.join(lines) + '\n'
+          print(summary)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
+              output.write(summary)
+          raise SystemExit(0 if complete else 1)
+          PY
 
       - name: Keep diagnostics
         if: always()
@@ -177,6 +254,8 @@ jobs:
           path: |
             ${{ github.workspace }}/garden/logs
             ${{ github.workspace }}/garden/workspaces/*/runs
+            ${{ github.workspace }}/catalog/update-report.json
+            ${{ runner.temp }}/garden-recovery
           retention-days: 14
           if-no-files-found: ignore
 

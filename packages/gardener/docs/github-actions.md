@@ -30,6 +30,7 @@ Mac.
 | Completed periods, delivered discoveries, the Zotero write budget and creation ledger, applied proposals, the write gate, compact run receipts | `garden/` on the `garden-state` branch | Git history of that branch, never merged |
 | Journal catalog (database, snapshots, pages) | the Actions cache | Best effort; it can be rebuilt |
 | Agent output, gathered evidence, logs | a run artifact | 14 days |
+| Recovery copy of the collection, reports and exported state before publication | the same private run artifact | 14 days; for diagnosing and recovering a failed publish, never a substitute for the state branch |
 | Credentials | repository secrets | Never written anywhere |
 
 Correctness never depends on the cache or the artifacts. If they expire, a run rebuilds the
@@ -70,6 +71,7 @@ Add these as repository secrets (Settings → Secrets and variables → Actions)
 |---|---|---|
 | `CLAUDE_CODE_OAUTH_TOKEN` | Created with `claude setup-token`; uses your Claude subscription | Or use `ANTHROPIC_API_KEY` (billed per token). For `agent = "codex"`, use `CODEX_API_KEY` and set the workflow input `agent-cli: "@openai/codex"`. |
 | `ZOTERO_API_KEY` | A key from zotero.org/settings/keys | Personal library: read and write access. No group or notes access. |
+| `OPENALEX_API_KEY` | Optional free key from openalex.org/settings/api | Required by OpenAlex for pagination beyond the first page. Without it, OpenAlex coverage remains incomplete and the catalog reports that limitation; Crossref and publisher harvesting still run. |
 
 Two notes on the agent and the token:
 
@@ -113,17 +115,28 @@ to Zotero is never cancelled for a newer one.
 
 **The weekly review and the catalog.** The weekly review first restores the catalog from the
 Actions cache. If the catalog is older than `catalog_max_age_days`, it runs
-`cairn-catalog update` and saves the result to the cache. The review then checks freshness
-itself:
+`cairn-catalog update`. The refreshed catalog is cached after the review, so its storage
+cleanup is retained by the next runner rather than restoring old recovery editions. The
+review also checks freshness itself:
 
 - a stale catalog is a warning in the report and the run log;
 - with `catalog_required = true`, a stale catalog fails the run;
 - a missing catalog is reported as an unavailable source.
 
+The generated status block in existing catalog notes links to the GitHub run for cloud
+refreshes. Temporary runner paths are not useful after the job exits. Local refreshes retain
+their local catalog links, and either mode preserves note content outside that status block.
+
 **First catalog build.** The first build downloads the full public catalog and is bounded by
 the job's 240-minute timeout. Run `mode: catalog` manually once to prime the cache. Caches
 unused for seven days are evicted. The weekly refresh normally keeps the cache alive; otherwise
 the next refresh rebuilds it.
+
+The full catalog includes hundreds of thousands of exported notes and offline browser assets.
+Before restoring or building it, the workflow removes unused Android, .NET, Swift, Haskell and
+CodeQL SDKs from its disposable GitHub-hosted Ubuntu runner and requires 30 GiB of free space.
+Node, Python, Git and the knowledge base are retained. Do not copy this cleanup step to a
+self-hosted runner.
 
 ## 4. Publication and your own edits
 
@@ -139,6 +152,11 @@ state are pushed in **one atomic push**: either both arrive or neither does.
   version. Delete the side branch once you have taken what you want from it.
 - **The push failed for any other reason.** The job fails and the summary says
   "NOT published". Nothing is presented as delivered.
+
+The workflow supplies a bot Git identity for rebases as well as the initial commits. Before
+publication it saves the collection, reports and the supported state export in the private
+diagnostic artifact. This preserves the actual receipts and write ledger if publication fails;
+keep these files intact when recovering, rather than rebuilding verification flags by hand.
 
 On your own machine, `git pull --rebase` before editing and push soon after. Ticking a proposal
 is an ordinary edit to `gardening/weekly/…`; the next weekly run applies it.

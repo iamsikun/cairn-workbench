@@ -2,12 +2,41 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+import requests
 from cairn_catalog import publisher_archives
 
 
 class PublisherArchiveTests(unittest.TestCase):
+    def test_temporary_connection_failure_retries_the_same_article(self):
+        url = "https://jmlr.org/papers/v1/example.html"
+        response = Mock(status_code=200, text="verified article HTML")
+        with (
+            patch.object(
+                publisher_archives.CLIENT.session,
+                "get",
+                side_effect=[requests.ConnectionError("temporary DNS failure"), response],
+            ) as get,
+            patch.object(publisher_archives.time, "sleep"),
+        ):
+            self.assertEqual(publisher_archives.get(url), "verified article HTML")
+        self.assertEqual(get.call_count, 2)
+        self.assertTrue(all(call.args == (url,) for call in get.call_args_list))
+
+    def test_persistent_connection_failure_remains_a_failure_after_bounded_retries(self):
+        with (
+            patch.object(
+                publisher_archives.CLIENT.session,
+                "get",
+                side_effect=requests.ConnectionError("DNS unavailable"),
+            ) as get,
+            patch.object(publisher_archives.time, "sleep"),
+        ):
+            with self.assertRaisesRegex(requests.ConnectionError, "DNS unavailable"):
+                publisher_archives.get("https://jmlr.org/papers/v1/example.html")
+        self.assertEqual(get.call_count, 8)
+
     def test_abstract_excludes_download_links_and_footer(self):
         source = '<h3>Abstract</h3><p class="abstract">An original abstract with <em>markup</em>.</p><p>[pdf] copyright footer</p>'
         self.assertEqual(
