@@ -21,6 +21,7 @@ import time
 import unicodedata
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -70,7 +71,7 @@ class Client:
             try:
                 r = self.session.get(url, params=params, timeout=90)
                 if r.status_code == 429 or r.status_code >= 500:
-                    retry_after = float(r.headers.get("Retry-After", 0) or 0)
+                    retry_after = retry_after_seconds(r.headers.get("Retry-After"))
                     if r.status_code == 429 and retry_after > 60:
                         self.unavailable = (
                             f"HTTP 429 from {url}; Retry-After {retry_after:g} seconds. "
@@ -78,9 +79,7 @@ class Client:
                         )
                         self.unavailable_until = time.monotonic() + retry_after
                         raise RuntimeError(self.unavailable)
-                    delay = min(
-                        60, max(float(r.headers.get("Retry-After", 0) or 0), 2 ** (attempt + 1))
-                    )
+                    delay = min(60, max(retry_after, 2 ** (attempt + 1)))
                     print(f"Retry {r.status_code}: {url} in {delay:g}s", flush=True)
                     time.sleep(delay)
                     continue
@@ -99,6 +98,20 @@ class Client:
         import requests
 
         return (requests.ConnectionError, requests.Timeout)
+
+
+def retry_after_seconds(value) -> float:
+    """Retry-After in seconds or as an HTTP date (RFC 9110); 0 when absent or unreadable."""
+    if not value:
+        return 0.0
+    try:
+        return max(0.0, float(value))
+    except ValueError:
+        pass
+    try:
+        return max(0.0, (parsedate_to_datetime(value) - datetime.now(UTC)).total_seconds())
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def harvest_service(service, refresh=False, only=None, root=None, journals=None, client=None):

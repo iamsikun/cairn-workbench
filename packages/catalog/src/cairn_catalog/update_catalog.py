@@ -387,12 +387,24 @@ def refresh(root=ROOT, rebuild_only=False):
                     for s in report["sources"]
                     if s.get("warning")
                 )
+                # One archive's outage is a warning, as for Crossref, OpenAlex and AEA: it must not
+                # discard everything else this refresh harvested.
                 if any(j["id"] == "jmlr" for j in catalog.JOURNALS):
                     from .publisher_archives import harvest_jmlr
 
-                    harvest_jmlr(stage)
+                    try:
+                        harvest_jmlr(stage)
+                    except Exception as exc:
+                        report["warnings"].append(
+                            "JMLR archive unavailable; previous records retained: " + str(exc)
+                        )
                 with build_at(stage, today.isoformat()):
-                    catalog.harvest_repec(SimpleNamespace(refresh=True))
+                    try:
+                        catalog.harvest_repec(SimpleNamespace(refresh=True))
+                    except Exception as exc:
+                        report["warnings"].append(
+                            "RePEc unavailable; previous records retained: " + str(exc)
+                        )
                     try:
                         catalog.harvest_publisher(SimpleNamespace())
                     except Exception as exc:

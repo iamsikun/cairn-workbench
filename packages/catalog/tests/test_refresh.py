@@ -3,6 +3,8 @@ import json
 import os
 import tempfile
 import unittest
+from datetime import UTC, datetime, timedelta
+from email.utils import format_datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -124,6 +126,46 @@ class RefreshTests(unittest.TestCase):
             self.assertEqual(
                 json.loads((root / "journals.json").read_text()), updater.catalog.JOURNALS
             )
+
+    def test_archive_outages_are_warnings_not_a_failed_refresh(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "catalog"
+
+            def build(_):
+                stage = updater.catalog.ROOT
+                updater.catalog.atomic_json(
+                    stage / "coverage.json", {"total_entries": 1, "journal_membership": {}}
+                )
+                (stage / "catalog.html").write_text("edition")
+
+            down = ConnectionError("archive down")
+            with (
+                patch.object(updater, "refresh_service", return_value=[]),
+                patch.object(updater.catalog, "harvest_repec", side_effect=down),
+                patch.object(updater.catalog, "harvest_publisher"),
+                patch("cairn_catalog.publisher_archives.harvest_jmlr", side_effect=down),
+                patch.object(updater.catalog, "build", side_effect=build),
+                patch.object(updater.catalog, "validate"),
+                patch.object(updater.build_browser, "build", return_value={"assets": "fixture"}),
+                patch.object(updater.build_browser, "prune_assets", return_value=[]),
+                patch.object(updater.verify_offline, "verify", return_value=1),
+                patch.object(updater.personalize, "run", return_value={}),
+            ):
+                result = updater.refresh(root)
+            report = json.loads((root / "update-report.json").read_text())
+            self.assertEqual(report["status"], "success", result)
+            warnings = " ".join(report["warnings"])
+            self.assertIn("JMLR archive unavailable", warnings)
+            self.assertIn("RePEc unavailable", warnings)
+
+    def test_retry_after_accepts_seconds_and_http_dates(self):
+        later = datetime.now(UTC) + timedelta(seconds=30)
+        self.assertEqual(updater.catalog.retry_after_seconds("5"), 5)
+        self.assertAlmostEqual(
+            updater.catalog.retry_after_seconds(format_datetime(later, usegmt=True)), 30, delta=2
+        )
+        self.assertEqual(updater.catalog.retry_after_seconds("soon"), 0)
+        self.assertEqual(updater.catalog.retry_after_seconds(None), 0)
 
     def test_failed_first_build_does_not_claim_a_published_edition(self):
         with tempfile.TemporaryDirectory() as temp:
