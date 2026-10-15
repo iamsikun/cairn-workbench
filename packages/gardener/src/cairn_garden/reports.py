@@ -81,7 +81,7 @@ def reports(cfg, folder: str | None = None) -> dict:
     found = {}
     for path in sorted(base.rglob("*.md")) if base.is_dir() else []:
         rid = path.relative_to(base).as_posix()
-        if rid == INDEX or rid.split("/")[0] not in FOLDERS:
+        if rid == INDEX or rid.split("/")[0] not in FOLDERS or path.name.startswith("."):
             continue
         if folder is None or rid.startswith(folder + "/"):
             found[rid] = g.cairn().parse(path)
