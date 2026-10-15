@@ -205,7 +205,8 @@ def moves(cfg) -> dict:
 def locate(cfg, receipt: dict):
     """The live report a run receipt (report.json) refers to, wherever it lives now."""
     if receipt.get("id"):
-        return get(cfg, receipt["id"])
+        # Old digests move to archive/ (archive-digests); the write gate still reads them.
+        return get(cfg, receipt["id"]) or get(cfg, "archive/" + receipt["id"])
     slug = receipt.get("slug")
     if not slug:
         return None

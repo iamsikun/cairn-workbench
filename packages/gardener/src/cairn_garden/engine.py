@@ -2516,7 +2516,7 @@ def cmd_archive_digests(args, cfg):
 
     A digest that a note or another report links to stays where it is, so links keep working.
     """
-    cutoff = (date.today() - timedelta(days=cfg["digest_days_kept"])).isoformat()
+    cutoff = (now(cfg).date() - timedelta(days=cfg["digest_days_kept"])).isoformat()
     notes = kb_open(cfg).notes()
     moved, retained = [], []
     for rid, note in reports.reports(cfg, "daily").items():

@@ -162,3 +162,12 @@ def test_reports_folder_must_stay_inside_the_workspace(ws):
     for bad in ("/tmp/elsewhere", "../outside", "research", ".hidden"):
         with pytest.raises(ValueError):
             reports.root({**g.config(), "reports": bad})
+
+
+def test_receipts_find_their_report_after_archiving(ws):
+    cfg = g.config()
+    rid = "daily/garden-digest-2000-01-01.md"
+    reports.save(cfg, rid, "Old. <!-- gardener-run:r1 -->", {"title": "Old"})
+    invoke("archive-digests")
+    # The scheduled-write gate reads the verified run's report through its receipt.
+    assert "gardener-run:r1" in reports.locate(cfg, {"id": rid}).body
