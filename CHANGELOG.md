@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.6.2 — fixes for unattended gardening
+
+Fixes found while running the gardener on GitHub-hosted runners. The Cairn core and its MCP
+tools are unchanged.
+
+- Hosted runners (#4):
+  - A catalog refresh starts from an empty runner.
+  - The workflow reserves disk space for the full catalog and passes `OPENALEX_API_KEY`.
+  - Gate activation installs the agent CLI.
+  - Publication rebases with a bot identity.
+  - Run diagnostics keep a recovery copy of the reports and state.
+  - Catalog status links to durable run pages.
+- Archived digests keep working links. Archiving moved a digest one folder deeper without
+  rewriting its relative links, so the weekly review failed once a digest was archived.
+- The scheduled Zotero write gate stays open after the verified run's digest is archived.
+  Before, scheduled syncs silently became read-only about two weeks after writes were enabled.
+- Notes whose file names are not plain ASCII, such as accented paper titles, are published.
+  Before, publication failed and the run's state never advanced.
+- A paper whose metadata cannot be verified, such as a DataCite DOI or a paper during a
+  Crossref outage, is still never created in Zotero. It is now a warning (`unverified`)
+  instead of failing the whole run.
+- Catalog fixes:
+  - A JMLR or RePEc outage is a warning and no longer discards the rest of a catalog refresh.
+  - `Retry-After` given as an HTTP date is honoured.
+- On Actions, the catalog is refreshed on every weekly review, not every other one, and a
+  refreshed catalog is cached even when a later step fails. `cairn-garden ci catalog-fresh`
+  takes `--max-age`.
+- Temporary files inside the report folder are not taken for reports.
+
+A new release reopens the readiness and Zotero write gates. Run daily and weekly once, then
+`enable-zotero-writes`.
+
 ## 0.6.1 — gardening reports and unattended runs
 
 Garden reports move out of the research notes into their own folder. The gardener can run on
