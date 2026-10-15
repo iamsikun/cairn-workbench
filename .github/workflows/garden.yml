@@ -141,14 +141,16 @@ jobs:
           key: cairn-catalog-${{ github.run_id }}
           restore-keys: cairn-catalog-
 
-      # The weekly review reads the catalog: refresh it first when it is older than
-      # catalog_max_age_days. The review itself checks freshness again (catalog_required).
+      # The weekly review reads the catalog: refresh it first unless an earlier run refreshed it
+      # within this weekly cycle. A week-old catalog is 7 days minus the refresh's duration old,
+      # which would pass catalog_max_age_days (8) and leave every other review on a 2-week-old
+      # catalog. The review itself checks catalog_max_age_days again (catalog_required).
       - name: Refresh the journal catalog
         id: catalog
         if: inputs.catalog && (steps.due.outputs.weekly == 'true' || inputs.mode == 'catalog')
         continue-on-error: true
         run: |
-          if [ "${{ inputs.mode }}" = catalog ] || ! cairn-garden ci catalog-fresh > /dev/null; then
+          if [ "${{ inputs.mode }}" = catalog ] || ! cairn-garden ci catalog-fresh --max-age 6 > /dev/null; then
             cairn-catalog update
             echo "saved=true" >> "$GITHUB_OUTPUT"
           fi
@@ -170,9 +172,10 @@ jobs:
         run: cairn-garden weekly ${{ inputs.scheduled && '--scheduled' || '' }}
 
       # Weekly storage maintenance must reach the next runner, too. Saving before
-      # the review would restore the pruned recovery editions every week.
+      # the review would restore the pruned recovery editions every week. A refreshed catalog
+      # is saved even when a later step fails or the job times out.
       - name: Save the journal catalog
-        if: steps.catalog.outputs.saved == 'true'
+        if: always() && steps.catalog.outputs.saved == 'true'
         uses: actions/cache/save@v4
         with:
           path: ${{ github.workspace }}/catalog

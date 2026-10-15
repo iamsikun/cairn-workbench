@@ -114,9 +114,10 @@ never change the knowledge base or its state at the same time, and a run that ma
 to Zotero is never cancelled for a newer one.
 
 **The weekly review and the catalog.** The weekly review first restores the catalog from the
-Actions cache. If the catalog is older than `catalog_max_age_days`, it runs
-`cairn-catalog update`. The refreshed catalog is cached after the review, so its storage
-cleanup is retained by the next runner rather than restoring old recovery editions. The
+Actions cache. Unless the catalog was refreshed within the last six days (earlier in this weekly
+cycle), it runs `cairn-catalog update`, so every review reads a catalog refreshed that week. The
+refreshed catalog is cached after the review, so its storage cleanup is retained by the next
+runner rather than restoring old recovery editions. It is cached even when the review fails. The
 review also checks freshness itself:
 
 - a stale catalog is a warning in the report and the run log;

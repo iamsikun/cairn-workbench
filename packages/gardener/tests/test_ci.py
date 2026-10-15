@@ -297,6 +297,16 @@ def test_stale_catalog_warns_and_required_catalog_fails(setup, monkeypatch):
         w.run({**setup, "catalog_required": True}, "weekly", renderer=draft)
 
 
+def test_last_weeks_catalog_is_refreshed_before_the_next_review(setup):
+    stale_catalog(6.9)  # refreshed in last Monday's slot, finished a little after it began
+    assert g.catalog_freshness(setup)["fresh"]  # the review alone would accept it
+    assert ci.main(["catalog-fresh", "--max-age", "6"]) == 3
+    stale_catalog(1)  # a retry later in the same weekly cycle keeps it
+    assert ci.main(["catalog-fresh", "--max-age", "6"]) == 0
+    workflow = (ROOT / ".github/workflows/garden.yml").read_text()
+    assert "ci catalog-fresh --max-age 6" in workflow
+
+
 def test_summary_reports_pending_approvals(setup):
     w.run(setup, "weekly", renderer=draft)
     text = ci.summary(setup, None, {"published": True, "pushed": []})
