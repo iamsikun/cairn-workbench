@@ -20,6 +20,8 @@ migrate-reports [--dry-run] [--maintenance SLUG ...] | migrate-reports --rollbac
                                move garden reports out of the research notes into gardening/
 ci restore | publish | due | catalog-fresh | summary | state-export | state-import | template
                                unattended runs on GitHub Actions (`cairn-garden ci -h`)
+sync setup | run | status | remove
+                               local Git sync and a daily macOS calendar schedule
 """
 
 from __future__ import annotations
@@ -134,6 +136,11 @@ def main(argv: list[str] | None = None) -> int:
         from . import ci
 
         return ci.main(rest)
+    if command == "sync":
+        agent_path()
+        from . import sync
+
+        return sync.main(rest)
     if command == "migrate-reports":
         import argparse
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Optional local Git sync is part of the gardener setup: `cairn-garden sync setup`
+  installs one daily macOS calendar job (07:15 by default), with wake-from-sleep
+  catch-up, manual runs, status, rotating logs and removal.
+- Sync snapshots local edits, merges remote changes and pushes without force. It
+  protects staged work, coordinates with note/gardener writers, preflights conflicts
+  and retries a racing cloud commit. Remote settings are pinned per checkout.
+- `sync setup --dry-run` previews setup without writes or network calls.
+  `--replace-plist` retires a selected custom scheduler without deleting its files.
+
 ## 0.6.2 — fixes for unattended gardening
 
 Fixes found while running the gardener on GitHub-hosted runners. The Cairn core and its MCP

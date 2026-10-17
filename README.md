@@ -131,6 +131,18 @@ Their data, state and settings live outside the knowledge base, configured in
 reports, in the knowledge base's `gardening/` folder beside the collections. Cairn's own
 tools never read that folder.
 
+If GitHub Actions gardens your private KB, add local Git sync during setup:
+
+```sh
+cairn-garden sync setup --dry-run       # preview the existing repo/remote and daily job
+cairn-garden sync setup                 # once daily at 07:15, before the cloud daily run
+cairn-garden sync status
+```
+
+This optional macOS job commits local edits, merges cloud changes and pushes, with
+conflicts left for review. It catches up after sleep and runs without Codex open.
+See [local sync setup and controls](packages/gardener/docs/local-sync.md).
+
 ## Development
 
 ```sh
