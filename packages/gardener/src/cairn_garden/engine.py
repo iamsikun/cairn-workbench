@@ -89,7 +89,8 @@ DEFAULTS = {
     "workspace_id": None,
     "catalog_max_age_days": 8,
     "catalog_required": False,
-    "aster_max_age_days": 2,
+    # aster_max_age_days (default 2) is read with .get: a new default would change the
+    # configuration hash and reopen the Zotero write gate.
 }
 # References a note must not point to: private or temporary folders and the raw resources folder.
 FORBIDDEN = re.compile(
