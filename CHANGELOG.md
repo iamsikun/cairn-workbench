@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.6.3 — local Git sync and steadier cloud gardening
+
+The gardener gains an optional Mac sync for a KB gardened on GitHub Actions, and fixes
+found in the first days of cloud runs. The Cairn core and its MCP tools are unchanged.
 
 - Optional local Git sync is part of the gardener setup: `cairn-garden sync setup`
   installs a macOS job that syncs at 07:15 and 13:15 by default (`--at`, repeatable), with
