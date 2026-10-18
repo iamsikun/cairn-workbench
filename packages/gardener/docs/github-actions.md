@@ -196,8 +196,10 @@ ones.
 4. **Run `mode: weekly` manually** with `scheduled: false`.
 5. **Run `mode: enable-zotero-writes`** once a daily and a weekly run have each created an item
    and added an item to a collection, both verified by read-back. Until then, scheduled runs
-   sync Zotero read-only, and changing the release, the configuration or the library closes the
-   gate again.
+   sync Zotero read-only. Changing the Zotero write code, the configuration or the library
+   closes the gate again; a release that leaves the write code alone keeps it open. A closed
+   gate that was open before is reported as "Scheduled Zotero writes are paused", with the
+   reason, in the run's warnings, its step summary and an annotation on the run page.
 6. **Let the schedule run.** Check `gardening/index.md` and the step summaries for a few days.
 
 To go back to the Mac:

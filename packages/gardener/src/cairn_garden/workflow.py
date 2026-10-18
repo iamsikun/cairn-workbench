@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import hashlib
+import inspect
 import io
 import json
 import os
@@ -45,6 +46,43 @@ def release_hash():
     ):
         digest.update(str(path.relative_to(PACKAGE)).encode())
         digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+# The Zotero write path the scheduled write gate verified: identity, writes, read-back.
+WRITER = (
+    "zotero_get",
+    "zotero_paged",
+    "item_ids",
+    "ZoteroIndex",
+    "zotero_api_key",
+    "zotero_library",
+    "pause",
+    "zotero_web",
+    "WebWriter",
+    "zotero_writer",
+    "sync_local",
+    "sync_web",
+    "topic_collections",
+    "collection_for",
+    "remote_metadata",
+    "creator",
+    "note_metadata",
+    "cited_sources",
+    "remote_zotero_index",
+    "cmd_zotero_sync",
+)
+
+
+def writer_hash():
+    """Unlike the release, only a change to the write path reopens the write gate."""
+    from . import zotero_local
+
+    digest = hashlib.sha256()
+    for name in WRITER:
+        digest.update(inspect.getsource(getattr(g, name)).encode())
+    digest.update(inspect.getsource(zotero_local).encode())
+    digest.update(zotero_local.bridge_hash().encode())
     return digest.hexdigest()
 
 
@@ -334,6 +372,7 @@ def run(
         "id": run_id,
         "mode": mode,
         "release": release_hash(),
+        "writer": writer_hash(),
         "config": config_hash(cfg),
         "status": "running",
         "workspace": g.workspace_identity(cfg),
@@ -376,7 +415,12 @@ def run(
             sync_args = ["zotero-sync"]
             if scheduled and not scheduled_writes_enabled(cfg):
                 sync_args.append("--dry-run")
-                manifest["warnings"].append("Scheduled Zotero writes are gated; sync is read-only")
+                paused = write_gate_closed(cfg)
+                manifest["warnings"].append(
+                    f"{WRITES_PAUSED}: {paused}"
+                    if paused
+                    else "Scheduled Zotero writes are gated; sync is read-only"
+                )
             if zotero_limit is not None:
                 sync_args += ["--limit", str(zotero_limit)]
             if mode == "daily":
@@ -620,7 +664,7 @@ def write_verification(cfg):
             receipt.get("status") in ("success", "success_with_warnings")
             and receipt.get("executor") == "agent"
             and receipt.get("mode") == mode
-            and receipt.get("release") == release_hash()
+            and receipt.get("writer") == writer_hash()
             and receipt.get("config") == config_hash(cfg)
             and identity_verified(cfg, sync, bridge_hash)
             and sync.get("can_write")
@@ -656,9 +700,29 @@ def identity_verified(cfg, sync, bridge_hash):
 def scheduled_writes_enabled(cfg):
     gate = g.read_json(g.state_dir(cfg) / "zotero-writes-enabled.json", {})
     return bool(
-        gate.get("release") == release_hash()
+        gate.get("writer") == writer_hash()
         and gate.get("config") == config_hash(cfg)
         and all(write_verification(cfg).values())
+    )
+
+
+WRITES_PAUSED = "Scheduled Zotero writes are paused"
+
+
+def write_gate_closed(cfg):
+    """Why writes enabled earlier are paused now; None if they were never enabled."""
+    gate = g.read_json(g.state_dir(cfg) / "zotero-writes-enabled.json", {})
+    if not gate:
+        return None
+    if gate.get("writer") != writer_hash():
+        reason = "the Zotero write code changed since they were enabled"
+    elif gate.get("config") != config_hash(cfg):
+        reason = "the configuration changed since they were enabled"
+    else:
+        reason = "the verified runs can no longer be checked"
+    return (
+        reason + "; run a manual daily and weekly that each create and add a Zotero item, "
+        "then mode enable-zotero-writes"
     )
 
 
@@ -675,6 +739,7 @@ def enable_scheduled_writes(cfg):
         raise RuntimeError(error or "set zotero_backend to local or web for this write gate")
     gate = {
         "release": release_hash(),
+        "writer": writer_hash(),
         "config": config_hash(cfg),
         "at": g.now(cfg).isoformat(),
         "bridge": writer.status,

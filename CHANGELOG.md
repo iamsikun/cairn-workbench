@@ -15,6 +15,12 @@
   and retries a racing cloud commit. Remote settings are pinned per checkout.
 - `sync setup --dry-run` previews setup without writes or network calls.
   `--replace-plist` retires a selected custom scheduler without deleting its files.
+- The scheduled Zotero write gate follows the Zotero write code, not the whole release.
+  Before, every upgrade, including 0.6.2 itself, silently turned scheduled writes back into
+  dry runs until a manual daily and weekly each wrote to Zotero again. One re-verification
+  is still needed after this release, since earlier gates did not record the write code.
+- Writes that were enabled and are now paused say so, with the reason, in the run warnings
+  and as an annotation on the GitHub Actions run page.
 
 ## 0.6.2 — fixes for unattended gardening
 

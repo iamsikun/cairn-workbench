@@ -227,3 +227,38 @@ def test_scheduled_web_run_stays_read_only_until_enabled(web, setup):
     )
     assert "Scheduled Zotero writes are gated; sync is read-only" in result["warnings"]
     assert web.posts() == 0
+
+
+def test_write_gate_survives_unrelated_releases_but_not_writer_changes(web, monkeypatch):
+    cfg = g.config()
+    verified = {"daily": True, "weekly": True}
+    monkeypatch.setattr(w, "write_verification", lambda cfg: verified)
+    monkeypatch.setattr(
+        w, "readiness", lambda cfg: {"ready": True, "zotero_write_verification": verified}
+    )
+    state = g.load_state(cfg)
+    state.update(zotero_verified_daily="daily-run", zotero_verified_weekly="weekly-run")
+    g.save_state(cfg, state)
+    w.enable_scheduled_writes(cfg)
+    assert w.scheduled_writes_enabled(cfg)
+    # A release that leaves the write path alone (docs, sync, reports) keeps writes on.
+    monkeypatch.setattr(w, "release_hash", lambda: "another release")
+    assert w.scheduled_writes_enabled(cfg)
+    monkeypatch.setattr(w, "writer_hash", lambda: "changed write path")
+    assert not w.scheduled_writes_enabled(cfg)
+    assert "write code changed" in w.write_gate_closed(cfg)
+
+
+def test_paused_writes_are_reported_distinctly(web, monkeypatch):
+    g.atomic_json(g.state_dir(g.config()) / "zotero-writes-enabled.json", {"writer": "old"})
+    result = w.run(
+        g.config(),
+        "daily",
+        renderer=lambda *a, **k: (
+            {"body": "No recommendations today; nothing new was found.", "selected": []},
+            {"agent": "claude"},
+        ),
+        scheduled=True,
+    )
+    assert any(x.startswith(w.WRITES_PAUSED) for x in result["warnings"])
+    assert web.posts() == 0
