@@ -21,6 +21,12 @@
   is still needed after this release, since earlier gates did not record the write code.
 - Writes that were enabled and are now paused say so, with the reason, in the run warnings
   and as an annotation on the GitHub Actions run page.
+- The GitHub Actions template triggers hourly from 12:43 to 20:43 UTC. With five triggers a
+  day, GitHub's dropped and delayed schedules put the daily digest three to five hours late.
+  Regenerate the KB's caller with `cairn-garden ci template` when upgrading.
+- A completed run records its own "Latest scheduled checks" line in `gardening/index.md`.
+  Before, the next trigger rewrote it, which cost each run a second cloud commit and the Mac
+  an extra merge.
 
 ## 0.6.2 — fixes for unattended gardening
 

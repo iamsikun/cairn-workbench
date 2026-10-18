@@ -223,10 +223,12 @@ def triggers(day):
         utc_day = datetime(day.year, day.month, day.day, tzinfo=ZoneInfo("UTC")) + timedelta(
             days=offset
         )
-        for hour in map(int, hours.split(",")):
-            local = utc_day.replace(hour=hour, minute=int(minute)).astimezone(CHICAGO)
-            if local.date() == day:
-                found.append(local)
+        for part in hours.split(","):
+            first, _, last = part.partition("-")
+            for hour in range(int(first), int(last or first) + 1):
+                local = utc_day.replace(hour=hour, minute=int(minute)).astimezone(CHICAGO)
+                if local.date() == day:
+                    found.append(local)
     return sorted(found)
 
 

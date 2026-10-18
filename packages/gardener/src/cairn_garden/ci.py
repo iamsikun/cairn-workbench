@@ -312,9 +312,10 @@ def summary(cfg, mode: str | None, publication: dict | None) -> str:
 
 # Template ---------------------------------------------------------------------------------------
 
-# 12:40/13:40 UTC is 07:40 in Chicago in summer/winter; 15:40/16:40 is 10:40 on Mondays.
-# 19:40 catches up after a dropped or delayed trigger. `due()` decides what actually runs.
-CRON = "40 12,13,15,16,19 * * *"
+# 12:43/13:43 UTC is 07:43 in Chicago in summer/winter; 15:43/16:43 is 10:43 on Mondays.
+# GitHub drops or delays scheduled runs by hours, so every hour until 20:43 is a catch-up;
+# a trigger with nothing due takes seconds. `due()` decides what actually runs.
+CRON = "43 12-20 * * *"
 
 TEMPLATE = """\
 # Cairn garden: daily digests and weekly reviews of this knowledge base.

@@ -99,8 +99,10 @@ cairn-garden ci template > .github/workflows/cairn-garden.yml
 The template is pinned to the installed release, both in `uses:` and in `version:`. Keep the two
 equal when you upgrade.
 
-**Triggers.** It runs at 12:40, 13:40, 15:40, 16:40 and 19:40 UTC every day. In both Central
-Standard and Central Daylight Time this includes:
+**Triggers.** It runs hourly from 12:43 to 20:43 UTC every day, off the busy top and half of
+the hour. GitHub often starts scheduled runs hours late or drops them, so the hourly triggers
+are mostly catch-ups; one with nothing due takes seconds. In both Central Standard and
+Central Daylight Time this includes:
 
 - a trigger after 07:30 for the daily digest;
 - on Mondays, a trigger after 10:30 for the weekly review;
