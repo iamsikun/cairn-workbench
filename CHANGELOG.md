@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 — Aster beside the journal catalog
+
+The gardener can collect new papers with Aster as well as the journal catalog, so the two can
+be compared before the catalog is retired. Aster is opt-in: without it, runs are unchanged, and
+the Zotero write gate and configuration hash are unaffected. The Cairn core and its MCP tools
+are unchanged.
 
 - The gardener can use [Aster](https://github.com/iamsikun/aster) beside the journal catalog,
   so the two can be compared before the catalog is retired. When `aster` is installed,

@@ -1,3 +1,3 @@
 """The public journal catalog that feeds a Cairn knowledge base."""
 
-__version__ = "0.6.3"
+__version__ = "0.7.0"
