@@ -1,8 +1,8 @@
 # cairn-garden
 
 Daily and weekly gardening for a Cairn knowledge base. Each pass checks and repairs notes,
-keeps Zotero collections in step with topics, finds new papers in the journal catalog, arXiv
-and Zotero, and asks your own agent (Claude Code or Codex) to write a digest or a weekly
+keeps Zotero collections in step with topics, finds new papers in the journal catalog, Aster,
+arXiv and Zotero, and asks your own agent (Claude Code or Codex) to write a digest or a weekly
 checklist of proposals. You approve proposals by ticking them; approved actions run on the next
 pass. It is optional; the Cairn core does not need it.
 
@@ -36,6 +36,7 @@ reports = "gardening"              # the report folder, inside the workspace
 workspace_id = "my-kb"             # optional; state follows this name instead of the path
 catalog_max_age_days = 8           # the weekly review warns about an older catalog...
 catalog_required = false           # ...or fails, when true
+aster_max_age_days = 2             # the weekly review warns when Aster has not collected since
 ```
 
 `$CAIRN_WORKSPACE`, `$CAIRN_COLLECTION` and `$CAIRN_WORKBENCH_CONFIG` override the file.
@@ -49,8 +50,16 @@ cairn-garden weekly          # saved in gardening/weekly/, with proposals to tic
 cairn-garden apply           # run ticked proposals now
 cairn-garden readiness       # both real workflows passed on this release and configuration?
 cairn-garden schedule        # then install launchd jobs (macOS); --catalog adds a Monday
-                             # `cairn-catalog update`; --remove uninstalls them
+                             # `cairn-catalog update`, --aster a daily 06:45 `aster refresh`;
+                             # --remove uninstalls them
 ```
+
+**Aster.** When the [Aster](https://github.com/iamsikun/aster) command is installed (`aster` on
+`PATH`, or `$CAIRN_ASTER`), `new-papers` also asks it for papers first collected since the last
+digest whose title or abstract contains a topic term, `verify` accepts a DOI that Aster collected
+from an index, and an approved `paper` proposal takes Aster's title, authors, venue and abstract.
+Aster's own fields decide what it collects (`aster fields`). It runs beside the journal catalog,
+so both can be compared before the catalog is retired. Without Aster, nothing changes.
 
 A pass completes only when its report is saved and verified, its citations come from the
 gathered evidence, the note history is recorded and a run receipt is written. Engine commands

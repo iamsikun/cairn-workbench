@@ -89,6 +89,7 @@ DEFAULTS = {
     "workspace_id": None,
     "catalog_max_age_days": 8,
     "catalog_required": False,
+    "aster_max_age_days": 2,
 }
 # References a note must not point to: private or temporary folders and the raw resources folder.
 FORBIDDEN = re.compile(
@@ -1385,6 +1386,10 @@ def cmd_zotero_sync(args, cfg):
 # new-papers ------------------------------------------------------------------------------------
 
 
+# The journal catalog and Aster both report new journal papers; each source keeps its own cursor.
+DISCOVERY_SOURCES = ("catalog", "aster", "arxiv", "zotero")
+
+
 def fts_query(terms: list[str]) -> str:
     phrases = ['"' + re.sub(r'["*^:()]', " ", t).strip() + '"' for t in terms]
     return " OR ".join(p for p in phrases if p != '""')
@@ -1446,6 +1451,112 @@ def catalog_candidates(cfg, terms, since: str, limit: int, offset=0) -> dict:
             }
             for r in rows[:cap]
         ],
+    }
+
+
+def aster(*args, stdin=None):
+    """Run the `aster` command ($CAIRN_ASTER, else `aster` on PATH): (exit code, its JSON or
+    None), or None when it is not installed."""
+    binary = shutil.which(os.environ.get("CAIRN_ASTER") or "aster")
+    if not binary:
+        return None
+    proc = subprocess.run([binary, *args], input=stdin, capture_output=True, text=True, timeout=900)
+    try:
+        return proc.returncode, json.loads(proc.stdout) if proc.stdout.strip() else None
+    except json.JSONDecodeError:
+        return proc.returncode, None
+
+
+def aster_candidates(cfg, terms, since: str, limit: int, offset=0) -> dict:
+    """New papers that Aster collected since `since` and whose title or abstract has a term."""
+    if not terms:
+        installed = bool(shutil.which(os.environ.get("CAIRN_ASTER") or "aster"))
+        return {"available": installed, "installed": installed, "complete": True, "candidates": []}
+    recent = (now(cfg).date() - timedelta(days=120)).isoformat()
+    cap = limit * cfg.get("discovery_page_limit", 10)
+    # Aster ranks by its own fields and follows; the gardener keeps its own ledger, so items
+    # already shown in an interactive brief are still candidates here.
+    ran = aster(
+        *("candidates", "--json", "--include-shown", "--since", recent),
+        *("--first-seen-since", since, "--limit", str(cap + 1), "--match-file", "-"),
+        stdin="\n".join(terms),
+    )
+    if ran is None:
+        return {"available": False, "installed": False, "complete": True, "candidates": []}
+    code, data = ran
+    if code or not data:
+        raise RuntimeError(f"aster candidates failed with exit code {code}")
+    found = []
+    for item in data["items"]:
+        if item.get("kind") != "paper":
+            continue
+        ids, urls = item.get("ids") or {}, item.get("urls") or {}
+        doi = ids.get("doi")
+        url = (
+            f"https://doi.org/{doi}"
+            if doi
+            else f"https://arxiv.org/abs/{ids['arxiv']}"
+            if ids.get("arxiv")
+            else urls.get("landing") or next(iter(urls.values()), None)
+        )
+        found.append(
+            {
+                "source": "aster",
+                "id": item["work_id"],
+                "title": item["title"],
+                "authors": item.get("authors", [])[:6],
+                "abstract": (item.get("abstract") or "")[:1200],
+                "url": url,
+                "doi": doi,
+                "date": item.get("date"),
+                "venue": item.get("venue"),
+                "first_seen": item.get("first_seen"),
+                "fields": item.get("fields", []),
+            }
+        )
+    failed = [x["source"] for x in data.get("sources", []) if x.get("status") == "failed"]
+    return {
+        "available": True,
+        "complete": True,
+        "truncated": len(found) > cap,
+        "failed_sources": failed,
+        "candidates": found[:cap],
+    }
+
+
+def aster_lookup(doi: str) -> dict | None:
+    """The work Aster collected for a DOI from an index, or None (also for web-only findings,
+    which an agent recorded and no index confirmed)."""
+    ran = aster("lookup", doi)
+    found = (ran[1] or {}) if ran and ran[0] == 0 else {}
+    if not any(x.get("source") != "web" for x in found.get("sources", [])):
+        return None
+    return found.get("work")
+
+
+def paper_year(work: dict) -> int | None:
+    stamp = work.get("published_date") or work.get("released_date") or ""
+    return int(stamp[:4]) if stamp[:4].isdigit() else None
+
+
+def aster_freshness(cfg) -> dict:
+    """Whether Aster is installed and one of its sources succeeded recently enough."""
+    ran = aster("doctor", "--json")
+    data = (ran[1] or {}) if ran else {}
+    last = data.get("last_success")
+    age = None
+    if last:
+        stamp = datetime.fromisoformat(str(last).replace("Z", "+00:00"))
+        stamp = stamp if stamp.tzinfo else stamp.replace(tzinfo=UTC)
+        age = round((datetime.now(UTC) - stamp).total_seconds() / 86400, 2)
+    limit = cfg.get("aster_max_age_days", 2)
+    return {
+        "available": ran is not None,
+        "last_success_at": last,
+        "age_days": age,
+        "max_age_days": limit,
+        "fresh": bool(age is not None and age <= limit),
+        "problems": data.get("problems", []),
     }
 
 
@@ -1582,7 +1693,7 @@ def cmd_new_papers(args, cfg):
     ledger = rekey_discoveries(read_json(path, {"candidates": {}, "sources": {}}))
     stamp = now(cfg).isoformat()
     status = {}
-    for source in ("catalog", "arxiv", "zotero"):
+    for source in DISCOVERY_SOURCES:
         progress = ledger["sources"].get(source, {}) if args.record else {}
         resume = progress.get("pending") or {}
         start = resume.get("since") or progress.get("cursor") or since
@@ -1596,6 +1707,8 @@ def cmd_new_papers(args, cfg):
         try:
             if source == "catalog":
                 result = catalog_candidates(cfg, terms, window, limit, offset=offset)
+            elif source == "aster":
+                result = aster_candidates(cfg, terms, window, limit, offset=offset)
             elif source == "arxiv":
                 result = arxiv_candidates(cfg, terms, window, limit, offset=offset)
             else:
@@ -1811,6 +1924,19 @@ def cmd_verify(args, cfg):
                     }
                 )
                 return
+        if work := aster_lookup(doi):
+            out(
+                {
+                    "verified": True,
+                    "via": "aster",
+                    "aster_id": work["work_id"],
+                    "title": work["title"],
+                    "year": paper_year(work),
+                    "url": f"https://doi.org/{doi}",
+                    "importable": True,
+                }
+            )
+            return
         try:
             work = fetch_json(f"https://api.crossref.org/works/{urllib.parse.quote(doi)}")[
                 "message"
@@ -2414,26 +2540,34 @@ def perform_action(kb, cfg, action):
                         topics=list(dict.fromkeys(note.topics + action["topics"])),
                     )
                 return f"imported {slug} from the catalog"
+        # Aster's indexed metadata (title, authors, venue, abstract) beats the proposal's own.
+        work = aster_lookup(action["doi"]) if action.get("doi") else None
+        title = work["title"] if work else action["title"]
         url = action.get("url") or paper_url({"source": source})
         body = (
-            f"# {action['title']}\n\nProposed by kb-gardener on {now(cfg).date().isoformat()}. Not yet read.\n\n"
+            f"# {title}\n\nProposed by kb-gardener on {now(cfg).date().isoformat()}. Not yet read.\n\n"
             f"{action.get('why', '')}\n\nPaper: [{source}]({url})"
         )
+        if work and work.get("abstract"):
+            body += f"\n\n## Abstract\n\n{work['abstract']}"
         fields = {
             "source": source,
             "url": url,
-            "authors": action.get("authors"),
-            "year": action.get("year"),
+            "authors": (work or {}).get("authors") or action.get("authors"),
+            "year": paper_year(work) if work else action.get("year"),
+            "venue": (work or {}).get("venue"),
             "status": "to-read",
         }
         saved = kb.save(
             kind="paper",
-            title=action["title"],
+            title=title,
             body=body,
             topics=action.get("topics"),
             fields=fields,
         )
-        return f"created paper note {saved['slug']}"
+        return f"{'imported' if work else 'created'} paper note {saved['slug']}" + (
+            " from Aster" if work else ""
+        )
     raise ValueError("unknown action")
 
 

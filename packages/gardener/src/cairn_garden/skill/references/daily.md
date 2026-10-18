@@ -6,8 +6,9 @@ agent to draft the report, validates and saves it, and records post-change histo
 are the selected discoveries marked delivered and the daily completion receipt written.
 
 When drafting from `facts.json`, the mechanical work has already happened. Do not rerun it.
-Use the snapshot for topics and reading positions. Prefer newly added Zotero items, then catalog
-and arXiv papers that extend an existing reading chain. Select up to 5–10 useful papers, skip
+Use the snapshot for topics and reading positions. Prefer newly added Zotero items, then catalog,
+Aster and arXiv papers that extend an existing reading chain. A paper found by several sources
+appears in each block under the same identity; recommend it once. Select up to 5–10 useful papers, skip
 `already_in_kb`, and use only papers supplied in the evidence. For each, give a source link and a
 specific reason tied to an existing topic. Return `selected` as the exact discovery identities
 for the papers recommended. If none are useful, return an empty list and say why.

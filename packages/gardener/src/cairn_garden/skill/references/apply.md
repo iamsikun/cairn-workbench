@@ -23,7 +23,7 @@ Place one JSON object at the end of the item line: `<!-- action: {...} -->`.
 | `link` | `from`, `to`, `reason`, optional `both: true`, `reverse_reason` | Adds `- [[to]] — reason` under `## Related` in `from` (with a neutral backlink unless `reverse_reason` is supplied) |
 | `retag` | `note`, `add: [topic, ...]` | Adds topics to a note (creates missing topics) |
 | `topic` | `title`, `body`, `broader: [...]`, `aliases`, `seeds: [paper, ...]` | Creates the topic and a to-read note for each seed |
-| `paper` | `title`, `doi` or `source` (`arxiv:ID`), `url`, `authors`, `year`, `topics`, `why` | Imports from the journal catalog when the DOI is there, otherwise creates a to-read paper note |
+| `paper` | `title`, `doi` or `source` (`arxiv:ID`), `url`, `authors`, `year`, `topics`, `why` | Imports from the journal catalog when the DOI is there; otherwise creates a to-read paper note, with Aster's metadata and abstract when Aster has the DOI |
 
 Anything else (`merge`, `split`, `archive`, `memory`) is written as `{"op":"manual", ...}` and handled by the agent.
 

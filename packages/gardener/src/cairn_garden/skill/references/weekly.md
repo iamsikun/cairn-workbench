@@ -40,6 +40,6 @@ Choose useful proposals from these areas, omitting empty sections:
 
 The runner saves `gardening/weekly/garden-weekly-YYYY-wWW.md`, appending on reruns so approvals and
 user edits survive. A stale journal catalog is a warning in the report (a failure with
-`catalog_required`).
+`catalog_required`), as is an installed Aster that has not collected for `aster_max_age_days`.
 Only validated JSON actions run automatically when approved. Manual work remains visible and is
 never marked applied by a dry run or by an unattended drafting agent.

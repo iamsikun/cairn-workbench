@@ -304,7 +304,7 @@ def validate_draft(kb, draft, mode, facts):
     if any(slug not in kb.notes() for slug in links):
         raise ValueError("report contains a wikilink to a nonexistent note")
     candidates = {}
-    for block in ("catalog", "arxiv", "zotero"):
+    for block in g.DISCOVERY_SOURCES:
         for candidate in facts.get("new-papers", {}).get(block, {}).get("candidates", []):
             candidates[candidate["identity"]] = candidate
     for ident in draft["selected"]:
@@ -444,6 +444,11 @@ def run(
                         raise RuntimeError(problem + "; run `cairn-catalog update` first")
                     if catalog["available"]:
                         manifest["warnings"].append(problem)
+                scout = facts["aster"] = g.aster_freshness(cfg)
+                if scout["available"] and not scout["fresh"]:
+                    manifest["warnings"].append(
+                        f"Aster is stale (last success {scout['last_success_at']}); run `aster refresh`"
+                    )
                 step("zotero-gaps")
                 storage = step("storage", "storage", "--apply")
                 if storage.get("failed"):
@@ -466,12 +471,16 @@ def run(
             if any(link not in baseline["broken_links"] for link in lint["broken_links"]):
                 raise RuntimeError("maintenance introduced broken note links")
             step("metrics")
-            for source in ("catalog", "arxiv", "zotero"):
+            for source in g.DISCOVERY_SOURCES:
                 block = facts["new-papers"][source]
+                if block.get("installed") is False:
+                    continue  # Aster is optional
                 if not block.get("available") or not block.get("complete", True):
                     manifest["warnings"].append(
                         f"{source}: unavailable or incomplete; source checkpoint retained"
                     )
+            if failed := facts["new-papers"]["aster"].get("failed_sources"):
+                manifest["warnings"].append(f"aster: last refresh failed for {', '.join(failed)}")
             if not facts["zotero-sync"].get("can_write"):
                 manifest["warnings"].append("Zotero writes unconfigured; changes remain pending")
             sync = facts["zotero-sync"]
@@ -572,7 +581,7 @@ def run(
                 if mode == "daily":
                     reviewed = {
                         c["identity"]
-                        for source in ("catalog", "arxiv", "zotero")
+                        for source in g.DISCOVERY_SOURCES
                         for c in facts["new-papers"][source]["candidates"]
                     }
                     g.acknowledge_digest(cfg, persisted, draft["selected"], reviewed)

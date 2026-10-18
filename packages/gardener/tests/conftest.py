@@ -18,6 +18,9 @@ for name in (
 os.environ["CAIRN_WORKBENCH_CONFIG"] = os.path.join(_SANDBOX, "config.toml")
 os.environ["CAIRN_GARDEN_STATE"] = os.path.join(_SANDBOX, "state")
 os.environ["CAIRN_CATALOG_DIR"] = os.path.join(_SANDBOX, "catalog")
+os.environ["CAIRN_ASTER"] = os.path.join(_SANDBOX, "no-aster")  # tests install a fake one
+os.environ["ASTER_CONFIG"] = os.path.join(_SANDBOX, "aster.yaml")
+os.environ["ASTER_DATA_DIR"] = os.path.join(_SANDBOX, "aster-data")
 sys.path.insert(
     0, os.path.dirname(__file__)
 )  # shared fixtures in test_regressions and test_workflows

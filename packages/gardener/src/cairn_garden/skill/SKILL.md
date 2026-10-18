@@ -59,7 +59,7 @@ The engine is the `cairn-garden` command (package `cairn-garden` in cairn-workbe
 | `lint` | Broken links, orphans, empty topics, incomplete papers, forbidden local references, reading positions, broken report links, reports still among the research notes (`legacy_reports`), and anything in the workspace that is not a note or report (`foreign_entries`) |
 | `zotero-sync [--dry-run]` | Put every paper a note cites into the Zotero collection of its topic; create verified missing items (local extension or explicitly selected Web API) |
 | `fix-links [--dry-run]` | Point papers that are in Zotero to their Zotero item and PDF; replace local file references |
-| `new-papers [--record]` | New papers from the journal catalog, arXiv and Zotero, pre-filtered by the user's topics |
+| `new-papers [--record]` | New papers from the journal catalog, Aster, arXiv and Zotero, pre-filtered by the user's topics |
 | `zotero-gaps` | Papers in Zotero collections linked from topic notes that have no Cairn note |
 | `snapshot [--days 7]` | Compact map of all notes, links, backlinks, headings, recent changes |
 | `verify --doi X / --arxiv X / --title X` | Confirm that a paper exists before recommending it |
