@@ -8,7 +8,7 @@ apply [NOTE] [--dry-run]       run approved proposals
 lint | fix-links | new-papers | zotero-sync | zotero-gaps | snapshot | verify | storage |
 html-audit | metrics | archive-digests | commit | config
                                engine commands; each prints JSON (`cairn-garden lint -h`)
-schedule [--catalog] [--remove]
+schedule [--catalog] [--aster] [--remove]
                                install or remove the launchd jobs (after readiness passes)
 skill [--remove]               link the kb-gardener skill into Claude Code and other agents
 zotero-bridge --output FILE.xpi [--credentials]
@@ -107,7 +107,7 @@ def main(argv: list[str] | None = None) -> int:
         _print(
             schedule.remove()
             if "--remove" in rest
-            else schedule.install(catalog="--catalog" in rest)
+            else schedule.install(catalog="--catalog" in rest, aster="--aster" in rest)
         )
         return 0
     if command == "skill":

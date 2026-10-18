@@ -135,6 +135,15 @@ The generated status block in existing catalog notes links to the GitHub run for
 refreshes. Temporary runner paths are not useful after the job exits. Local refreshes retain
 their local catalog links, and either mode preserves note content outside that status block.
 
+**Aster.** Set `aster: <tag>` (an [Aster](https://github.com/iamsikun/aster) release) in the
+caller's `with:` block to collect with Aster as well. Every run that has a period due installs
+that release, restores Aster's data log from the Actions cache, runs `aster refresh` and caches
+the log again, before the digest or review reads it. Aster's settings are `aster.yaml` in the
+knowledge base repository (`aster-config` names another file); without it, Aster's default
+fields apply. A failed refresh is a warning, not a failure. Aster's data is a small log, so
+it needs neither the disk space nor the priming run of the catalog. If the cache is evicted,
+the next refresh starts again from the past week.
+
 **First catalog build.** The first build downloads the full public catalog and is bounded by
 the job's 240-minute timeout. Run `mode: catalog` manually once to prime the cache. Caches
 unused for seven days are evicted. The weekly refresh normally keeps the cache alive; otherwise

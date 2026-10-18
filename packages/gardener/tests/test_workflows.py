@@ -129,6 +129,23 @@ def test_schedule_plist_preserves_paths_and_uses_verified_runner():
     assert value["ProgramArguments"][-3:] == ["cairn_garden", "daily", "--scheduled"]
 
 
+def test_aster_refresh_job_needs_the_command(tmp_path, monkeypatch):
+    import plistlib
+
+    with pytest.raises(SystemExit, match="not installed"):
+        schedule.aster_job()
+    binary = tmp_path / "aster"
+    binary.write_text("#!/bin/sh\n")
+    binary.chmod(0o755)
+    monkeypatch.setenv("CAIRN_ASTER", str(binary))
+    monkeypatch.setenv("ASTER_DATA_DIR", str(tmp_path / "data"))
+    value = schedule.aster_job()
+    assert plistlib.loads(plistlib.dumps(value)) == value
+    assert value["ProgramArguments"] == [str(binary), "refresh"]
+    assert value["EnvironmentVariables"]["ASTER_DATA_DIR"] == str(tmp_path / "data")
+    assert schedule.ASTER_LABEL in schedule.labels()
+
+
 def test_first_source_outage_keeps_original_window(setup, monkeypatch):
     monkeypatch.setattr(
         g, "arxiv_candidates", lambda *a, **k: {"available": False, "candidates": []}

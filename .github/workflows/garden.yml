@@ -30,6 +30,14 @@ on:
         description: keep the journal catalog in the Actions cache and refresh it weekly
         type: boolean
         default: true
+      aster:
+        description: Aster release tag to install and refresh before each run, e.g. v0.2.0; empty skips Aster
+        type: string
+        default: ""
+      aster-config:
+        description: Aster settings file in the knowledge base repository (defaults if absent)
+        type: string
+        default: aster.yaml
       agent-cli:
         description: npm package of the agent CLI
         type: string
@@ -64,6 +72,8 @@ jobs:
       CAIRN_WORKBENCH_CONFIG: ${{ github.workspace }}/kb/${{ inputs.config }}
       CAIRN_GARDEN_STATE: ${{ github.workspace }}/garden
       CAIRN_CATALOG_DIR: ${{ github.workspace }}/catalog
+      ASTER_CONFIG: ${{ github.workspace }}/kb/${{ inputs.aster-config }}
+      ASTER_DATA_DIR: ${{ github.workspace }}/aster-data
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
@@ -94,6 +104,10 @@ jobs:
           uv tool install "cairn-workbench @ $WORKBENCH"
           uv tool install "cairn-garden @ $WORKBENCH#subdirectory=packages/gardener" \
             --with-executables-from cairn-catalog
+
+      - name: Install Aster ${{ inputs.aster }}
+        if: inputs.aster != ''
+        run: uv tool install "aster-scout @ git+https://github.com/iamsikun/aster@${{ inputs.aster }}"
 
       - name: Restore garden state
         id: restore
@@ -154,6 +168,31 @@ jobs:
             cairn-catalog update
             echo "saved=true" >> "$GITHUB_OUTPUT"
           fi
+
+      # Aster's log is small and only grows; each run restores the latest copy and adds to it.
+      - name: Restore Aster's data
+        if: inputs.aster != '' && (steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true')
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ github.workspace }}/aster-data
+          key: aster-data-${{ github.run_id }}
+          restore-keys: aster-data-
+
+      # A failed source is reported by the gardener as a warning; the run continues.
+      - name: Collect with Aster
+        id: aster
+        if: inputs.aster != '' && (steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true')
+        continue-on-error: true
+        run: |
+          aster refresh
+          echo "saved=true" >> "$GITHUB_OUTPUT"
+
+      - name: Save Aster's data
+        if: always() && steps.aster.outputs.saved == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ github.workspace }}/aster-data
+          key: aster-data-${{ github.run_id }}
 
       - name: Install the agent CLI
         if: steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true' || inputs.mode == 'enable-zotero-writes'

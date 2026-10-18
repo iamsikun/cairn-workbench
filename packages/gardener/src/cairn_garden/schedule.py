@@ -2,6 +2,7 @@
 
 import os
 import plistlib
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -11,6 +12,7 @@ from . import workflow
 
 LABEL = "org.cairn-workbench.garden"
 CATALOG_LABEL = "org.cairn-workbench.catalog"
+ASTER_LABEL = "org.cairn-workbench.aster"
 MODES = ("daily", "weekly")
 
 
@@ -65,8 +67,25 @@ def catalog_job() -> dict:
     }
 
 
+def aster_job() -> dict:
+    """Collect new items with Aster every morning, before the daily digest is due."""
+    binary = shutil.which(os.environ.get("CAIRN_ASTER") or "aster")
+    if not binary:
+        raise SystemExit("`aster` is not installed; install Aster first or omit --aster.")
+    log = str(g.HOME / "logs" / "launchd-aster.log")
+    keep = ("ASTER_CONFIG", "ASTER_DATA_DIR", "ASTER_CONTACT_EMAIL")
+    return {
+        "Label": ASTER_LABEL,
+        "ProgramArguments": [binary, "refresh"],
+        "StartCalendarInterval": {"Hour": 6, "Minute": 45},
+        "StandardOutPath": log,
+        "StandardErrorPath": log,
+        "EnvironmentVariables": environment() | {k: os.environ[k] for k in keep if k in os.environ},
+    }
+
+
 def labels() -> list[str]:
-    return [f"{LABEL}.{mode}" for mode in MODES] + [CATALOG_LABEL]
+    return [f"{LABEL}.{mode}" for mode in MODES] + [CATALOG_LABEL, ASTER_LABEL]
 
 
 def remove() -> dict:
@@ -81,7 +100,7 @@ def remove() -> dict:
     return {"removed": removed}
 
 
-def install(catalog: bool = False) -> dict:
+def install(catalog: bool = False, aster: bool = False) -> dict:
     project = project_environment()
     if project:
         raise SystemExit(PROJECT_ENVIRONMENT.format(project))
@@ -99,6 +118,7 @@ def install(catalog: bool = False) -> dict:
     (g.HOME / "logs").mkdir(parents=True, exist_ok=True)
     domain = f"gui/{os.getuid()}"
     jobs = [job(mode) for mode in MODES] + ([catalog_job()] if catalog else [])
+    jobs += [aster_job()] if aster else []
     for spec in jobs:
         path = folder / f"{spec['Label']}.plist"
         path.write_bytes(plistlib.dumps(spec))
@@ -113,5 +133,6 @@ def install(catalog: bool = False) -> dict:
         "daily": "07:30",
         "weekly": "Monday 10:30",
         "catalog": "Monday 09:00" if catalog else None,
+        "aster": "06:45" if aster else None,
         "poll_seconds": 900,
     }

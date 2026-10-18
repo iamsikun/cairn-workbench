@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- The gardener can use [Aster](https://github.com/iamsikun/aster) beside the journal catalog,
+  so the two can be compared before the catalog is retired. When `aster` is installed,
+  `new-papers` adds an `aster` source (papers Aster first collected since the last digest that
+  match a topic term), `verify` accepts DOIs Aster collected from an index, and approved
+  `paper` proposals take Aster's metadata and abstract. The weekly review warns when Aster is
+  older than `aster_max_age_days` (2). Without Aster, nothing changes.
+- `cairn-garden schedule --aster` adds a daily 06:45 `aster refresh`; the reusable Actions
+  workflow takes `aster: <tag>` to install, cache and refresh Aster before each run.
+
 ## 0.6.3 — local Git sync and steadier cloud gardening
 
 The gardener gains an optional Mac sync for a KB gardened on GitHub Actions, and fixes
