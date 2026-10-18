@@ -42,13 +42,13 @@ def test_index_has_one_row_per_run_and_marks_outcomes(setup, monkeypatch):
 
 def test_not_due_is_recorded_once(setup, capsys):
     w.run(setup, "daily", renderer=draft)
+    # The run itself records the check, so the next trigger changes nothing to commit.
+    first, _ = rows(setup)
+    assert "- **daily**: not due; last completed" in first
     capsys.readouterr()
     assert w.main(["daily", "--scheduled"]) == 0
-    first, _ = rows(setup)
-    w.main(["daily", "--scheduled"])
     second, lines = rows(setup)
     assert first == second and len(lines) == 1
-    assert "- **daily**: not due; last completed" in second
 
 
 def test_report_links_are_portable_and_protected(ws):

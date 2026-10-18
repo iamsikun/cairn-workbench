@@ -306,6 +306,11 @@ def record_run(cfg, manifest: dict) -> None:
 
     def change(rows, checks):
         rows[run_id] = row
+        # A completed run is also the latest check; otherwise the next trigger rewrites the
+        # line, which costs a second commit for the same run.
+        if report and manifest.get("completed_at"):
+            last = str(manifest["completed_at"])[:10]
+            checks[manifest["mode"]] = _cell(f"not due; last completed {last}")
 
     _update(cfg, change)
 
