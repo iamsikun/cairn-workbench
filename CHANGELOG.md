@@ -3,8 +3,13 @@
 ## Unreleased
 
 - Optional local Git sync is part of the gardener setup: `cairn-garden sync setup`
-  installs one daily macOS calendar job (07:15 by default), with wake-from-sleep
-  catch-up, manual runs, status, rotating logs and removal.
+  installs a macOS job that syncs at 07:15 and 13:15 by default (`--at`, repeatable), with
+  wake-from-sleep catch-up, manual runs, status, rotating logs and removal. The afternoon
+  time pulls the day's cloud digest, which GitHub often starts hours late.
+- A sync time deferred by a busy gardener or a network failure is retried hourly, instead
+  of waiting for the next day. A Cairn save in progress is waited for, not skipped.
+- Setup refuses to schedule a `uv run` project environment, which would run whatever
+  branch that checkout has open; the gardener's own `schedule` does the same.
 - Sync snapshots local edits, merges remote changes and pushes without force. It
   protects staged work, coordinates with note/gardener writers, preflights conflicts
   and retries a racing cloud commit. Remote settings are pinned per checkout.

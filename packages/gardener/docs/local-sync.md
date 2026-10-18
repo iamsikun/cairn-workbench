@@ -23,10 +23,10 @@ and does not store credentials. Notes are private if the remote repository is pr
 
 ```sh
 cairn-garden sync setup --dry-run                  # preview; no writes or network calls
-cairn-garden sync setup                           # enable daily sync at 07:15
+cairn-garden sync setup                           # enable sync at 07:15 and 13:15
 cairn-garden sync status                          # settings, loaded job, latest result, log
 cairn-garden sync run                             # deliberately sync now
-cairn-garden sync setup --at 06:45                 # change the daily time
+cairn-garden sync setup --at 06:45 --at 12:45      # change the daily times
 cairn-garden sync remove                          # unload/remove just the sync schedule
 ```
 
@@ -38,19 +38,27 @@ manual sync and setup previews also work on other Unix systems.
 
 ## Timing
 
-The default is **once daily at 07:15 in the Mac's local timezone**, before the
-gardener's default 07:30 daily period. Keep the Mac and the cloud gardener in the
-same timezone, or choose `--at` accordingly. The schedule follows the Mac's timezone
-and daylight-saving changes. There is no 15-minute polling or login-triggered sync.
+The defaults are **07:15 and 13:15 in the Mac's local timezone**. The morning sync
+pushes local notes before the gardener's 07:30 daily period; the afternoon sync pulls
+that day's digest, since GitHub often starts scheduled runs hours late. Keep the Mac
+and the cloud gardener in the same timezone, or choose `--at` accordingly (repeat it for
+several times). The schedule follows the Mac's timezone and daylight-saving changes.
 
-The user must remain logged in. A `StartCalendarInterval` missed during sleep runs
-after waking; multiple missed events become one run. It does not wake the Mac.
-A missed event while powered off or logged out waits until the next calendar event.
+Each time is a slot that must succeed once. The job also wakes hourly: if a slot was
+deferred because the gardener or a note save held a lock, or failed on the network,
+the next hourly check retries it; otherwise the check exits without touching Git. A
+Cairn save in progress is waited for up to 30 seconds rather than skipped.
+
+The user must remain logged in. A calendar event missed during sleep runs after
+waking; multiple missed events become one run. It does not wake the Mac.
 See [Apple's scheduling documentation](https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/ScheduledJobs.html).
 If the Mac wakes after the cloud gardener has started, that cloud run uses the last
-pushed notes. Network failures retain local commits and retry at the next daily
-event; use `sync run` for an earlier retry. A scheduled run skips if today's scheduled
-sync already succeeded. An explicit `sync run` always remains available.
+pushed notes. Network failures retain local commits. An explicit `sync run` is always
+available and does not count as a scheduled slot.
+
+Run setup from the installed tool (`uv tool install`), not with `uv run` inside a
+project: the job runs the interpreter that ran setup, and setup refuses a project's
+environment because the job would then follow that checkout's current branch.
 
 ## What a run does
 

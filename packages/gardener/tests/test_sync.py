@@ -149,10 +149,21 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(len(self.job.created), 0)
 
     def test_cairn_writer_lock_defers_sync(self):
+        self.job.NOTE_LOCK_WAIT = 0.3
         with (self.local / ".cairn.lock").open("a") as handle:
             fcntl.flock(handle, fcntl.LOCK_EX)
             with self.assertRaises(sync.Busy):
                 self.job.run()
+        self.job.run()
+        self.assert_clean_and_synced()
+
+    def test_brief_cairn_save_is_waited_for(self):
+        import threading
+
+        (self.local / "research/new.md").write_text("Saved while a note was being written\n")
+        handle = (self.local / ".cairn.lock").open("a")
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        threading.Timer(0.5, handle.close).start()
         self.job.run()
         self.assert_clean_and_synced()
 

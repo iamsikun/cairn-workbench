@@ -1,4 +1,4 @@
-"""Install one daily Git sync as part of the optional gardener setup."""
+"""Install the scheduled Git sync as part of the optional gardener setup."""
 
 from __future__ import annotations
 
@@ -14,6 +14,10 @@ from . import engine as g
 from . import reports, schedule, sync
 
 PREFIX = "org.cairn-workbench.sync"
+# Morning, before the cloud daily run; early afternoon, after its digest has usually landed.
+DEFAULT_TIMES = ("07:15", "13:15")
+# Hourly retries after sleep, a busy gardener or a network failure. Due slots decide what runs.
+RETRY_SECONDS = 3600
 
 
 def label(cfg):
@@ -32,12 +36,14 @@ def launchctl(*args, check=True):
 
 
 def job(cfg, at):
-    hour, minute = map(int, at.split(":"))
     return {
         "Label": label(cfg),
         "ProgramArguments": [sys.executable, "-m", "cairn_garden", "sync", "run", "--scheduled"],
         "WorkingDirectory": str(g.workspace(cfg).resolve()),
-        "StartCalendarInterval": {"Hour": hour, "Minute": minute},
+        "StartCalendarInterval": [
+            {"Hour": int(t[:2]), "Minute": int(t[3:])} for t in sorted(set(at))
+        ],
+        "StartInterval": RETRY_SECONDS,
         "ProcessType": "Background",
         "LowPriorityIO": True,
         "StandardOutPath": "/dev/null",
@@ -60,7 +66,7 @@ def job(cfg, at):
 
 
 def plan(cfg, remote, branch, at, replace_plist=None):
-    if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", at):
+    if not at or not all(re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", t) for t in at):
         raise sync.SyncError("--at must be a time such as 07:15 in the Mac's local timezone")
     root = g.kb_open(cfg).root
     worker = sync.Sync({"workspace": str(root), "remote": remote, "branch": branch})
@@ -78,7 +84,7 @@ def plan(cfg, remote, branch, at, replace_plist=None):
         "remote": remote,
         "branch": branch,
         "expected_remote_url": url,
-        "daily_time": at,
+        "times": sorted(set(at)),
         "note_folders": [f"{name}/" for name in g.cairn().COLLECTIONS]
         + [reports.root(cfg).resolve().relative_to(root).as_posix() + "/"],
     }
@@ -115,9 +121,13 @@ def unload(label):
         launchctl("bootout", service)
 
 
-def install(cfg, remote="origin", branch="main", at="07:15", dry_run=False, replace_plist=None):
+def install(
+    cfg, remote="origin", branch="main", at=DEFAULT_TIMES, dry_run=False, replace_plist=None
+):
+    at = [at] if isinstance(at, str) else list(at)
     value, replacement = plan(cfg, remote, branch, at, replace_plist)
     spec = job(cfg, at)
+    project = schedule.project_environment()
     result = {
         "dry_run": dry_run,
         "settings": value,
@@ -125,10 +135,14 @@ def install(cfg, remote="origin", branch="main", at="07:15", dry_run=False, repl
         "job": spec,
         "replace_plist": str(replacement) if replacement else None,
     }
+    if project:
+        result["warning"] = schedule.PROJECT_ENVIRONMENT.format(project)
     if dry_run:
         return result
     if sys.platform != "darwin":
         raise sync.SyncError("Local calendar scheduling requires macOS; --dry-run works anywhere")
+    if project:
+        raise sync.SyncError(result["warning"])
     state = sync.state_dir(cfg)
     state.mkdir(parents=True, exist_ok=True, mode=0o700)
     with sync.lock(state / "sync.lock"):

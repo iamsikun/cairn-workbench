@@ -11,6 +11,7 @@ import logging
 import logging.handlers
 import os
 import subprocess
+import time
 from pathlib import Path
 
 from . import engine as g
@@ -43,13 +44,23 @@ def settings(cfg):
     return value
 
 
+def times(config):
+    """Daily sync times; settings from before multiple times hold one `daily_time`."""
+    return sorted(config.get("times") or [config["daily_time"]])
+
+
 @contextlib.contextmanager
-def lock(path):
+def lock(path, wait=0.0):
+    deadline = time.monotonic() + wait
     with path.open("a") as handle:
-        try:
-            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            raise Busy("Another process holds " + str(path)) from None
+        while True:
+            try:
+                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise Busy("Another process holds " + str(path)) from None
+                time.sleep(0.2)
         try:
             yield
         finally:
@@ -57,6 +68,9 @@ def lock(path):
 
 
 class Sync:
+    # A Cairn save holds the note lock for moments; wait for it rather than skip a sync.
+    NOTE_LOCK_WAIT = 30.0
+
     def __init__(self, config, logger=None):
         self.config = config
         self.repo = Path(config["workspace"]).resolve()
@@ -171,7 +185,7 @@ class Sync:
         with contextlib.ExitStack() as stack:
             for path in self.config.get("writer_locks", []):
                 stack.enter_context(lock(Path(path)))
-            stack.enter_context(lock(self.repo / ".cairn.lock"))
+            stack.enter_context(lock(self.repo / ".cairn.lock", self.NOTE_LOCK_WAIT))
             yield
 
     def integrate(self):
@@ -257,11 +271,11 @@ def run(cfg, scheduled=False, stamp=None):
         with lock(state / "sync.lock"):
             # Read under the lock: another process may have just completed today's sync.
             status = g.read_json(status_path, {})
-            if scheduled and (
-                stamp.strftime("%H:%M") < config["daily_time"]
-                or status.get("last_scheduled_day") == stamp.date().isoformat()
-            ):
-                return {"status": "skipped", "reason": "not due or already synchronized today"}
+            # Each daily time is one slot; hourly retries run until the latest slot succeeds.
+            past = [t for t in times(config) if t <= stamp.strftime("%H:%M")]
+            slot = f"{stamp.date().isoformat()}T{past[-1]}" if past else None
+            if scheduled and (not slot or status.get("last_scheduled_slot") == slot):
+                return {"status": "skipped", "reason": "not due or already synchronized"}
             status.update(started_at=timestamp(), status="running")
             g.atomic_json(status_path, status)
             worker = Sync(config, logger)
@@ -275,7 +289,7 @@ def run(cfg, scheduled=False, stamp=None):
                     error=None,
                 )
                 if scheduled:
-                    status["last_scheduled_day"] = stamp.date().isoformat()
+                    status["last_scheduled_slot"] = slot
                 logger.info("Synchronized at %s; pushed=%s", result["head"], result["pushed"])
             except Busy as error:
                 status.update(status="busy", error=str(error))
@@ -300,16 +314,21 @@ def main(argv=None):
 
     parser = argparse.ArgumentParser(prog="cairn-garden sync", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    setup = sub.add_parser("setup", help="configure and enable the daily macOS sync")
+    setup = sub.add_parser("setup", help="configure and enable the scheduled macOS sync")
     setup.add_argument("--remote", default="origin")
     setup.add_argument("--branch", default="main")
-    setup.add_argument("--at", default="07:15", metavar="HH:MM", help="daily Mac local time")
+    setup.add_argument(
+        "--at",
+        action="append",
+        metavar="HH:MM",
+        help="daily Mac local time; repeat for several (default: 07:15 and 13:15)",
+    )
     setup.add_argument("--dry-run", action="store_true")
     setup.add_argument(
         "--replace-plist", type=Path, help="retire an explicitly selected old sync job"
     )
     once = sub.add_parser("run", help="commit, fetch, merge and push once")
-    once.add_argument("--scheduled", action="store_true", help="run only if today's sync is due")
+    once.add_argument("--scheduled", action="store_true", help="run only if a sync time is due")
     sub.add_parser("status", help="show settings, schedule and latest run")
     sub.add_parser("remove", help="disable the schedule; preserve settings and history")
     args = parser.parse_args(argv)
@@ -317,7 +336,12 @@ def main(argv=None):
         cfg = g.config()
         if args.command == "setup":
             result = sync_schedule.install(
-                cfg, args.remote, args.branch, args.at, args.dry_run, args.replace_plist
+                cfg,
+                args.remote,
+                args.branch,
+                args.at or sync_schedule.DEFAULT_TIMES,
+                args.dry_run,
+                args.replace_plist,
             )
         elif args.command == "remove":
             result = sync_schedule.remove(cfg)

@@ -18,6 +18,18 @@ def agents_folder() -> Path:
     return Path.home() / "Library/LaunchAgents"
 
 
+PROJECT_ENVIRONMENT = (
+    "This interpreter belongs to the project at {}; a schedule would run that checkout's "
+    "current branch. Run setup from the installed tool (`uv tool install`) instead."
+)
+
+
+def project_environment() -> Path | None:
+    """The project whose `uv run` environment this is, if it is not an installed tool."""
+    prefix = Path(sys.prefix)
+    return prefix.parent if (prefix.parent / "pyproject.toml").exists() else None
+
+
 def environment() -> dict:
     return {
         "HOME": str(Path.home()),
@@ -70,6 +82,9 @@ def remove() -> dict:
 
 
 def install(catalog: bool = False) -> dict:
+    project = project_environment()
+    if project:
+        raise SystemExit(PROJECT_ENVIRONMENT.format(project))
     cfg = g.config()
     check = workflow.readiness(cfg)
     if not check["ready"]:

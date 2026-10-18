@@ -72,7 +72,7 @@ The engine is the `cairn-garden` command (package `cairn-garden` in cairn-workbe
 | `commit -m MSG` | Record note changes in the private history (in the state folder) |
 
 For a KB gardened on GitHub Actions, optional `cairn-garden sync setup --dry-run`
-previews the Mac's daily Git sync. `sync setup` enables it at 07:15 Mac local time;
+previews the Mac's Git sync. `sync setup` enables it at 07:15 and 13:15 Mac local time;
 `sync run`, `sync status` and `sync remove` run, inspect and disable it. It commits
 local edits, fetches/merges the notes branch and pushes, preserving both histories
 on conflicts. It is separate from local gardening schedules and cloud `garden-state`.

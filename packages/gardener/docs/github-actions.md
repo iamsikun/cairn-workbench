@@ -21,8 +21,9 @@ The Cairn core still never runs a model. The gardener launches the agent CLI, as
 Mac.
 
 For a Mac checkout of the same KB, add the optional
-[daily local Git sync](local-sync.md) to the workbench setup. It commits and pushes
-local edits before the daily cloud run, and pulls cloud changes into the local checkout.
+[local Git sync](local-sync.md) to the workbench setup. It commits and pushes
+local edits before the daily cloud run, and pulls cloud changes into the local checkout
+after it.
 
 ## What lives where
 

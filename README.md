@@ -134,8 +134,8 @@ tools never read that folder.
 If GitHub Actions gardens your private KB, add local Git sync during setup:
 
 ```sh
-cairn-garden sync setup --dry-run       # preview the existing repo/remote and daily job
-cairn-garden sync setup                 # once daily at 07:15, before the cloud daily run
+cairn-garden sync setup --dry-run       # preview the existing repo/remote and the job
+cairn-garden sync setup                 # 07:15 and 13:15, around the cloud daily run
 cairn-garden sync status
 ```
 

@@ -39,6 +39,7 @@ def fake_launchd(tmp_path, monkeypatch):
         sync_schedule.schedule, "agents_folder", lambda: home / "Library/LaunchAgents"
     )
     monkeypatch.setattr(sync_schedule.sys, "platform", "darwin")
+    monkeypatch.setattr(sync_schedule.schedule, "project_environment", lambda: None)
     loaded = set()
 
     def call(*args, check=True):
@@ -59,7 +60,7 @@ def fake_launchd(tmp_path, monkeypatch):
 
 
 def configure(cfg):
-    value, _ = sync_schedule.plan(cfg, "origin", "main", "07:15")
+    value, _ = sync_schedule.plan(cfg, "origin", "main", ["07:15"])
     g.atomic_json(sync.state_dir(cfg) / "settings.json", value)
     return value
 
@@ -69,8 +70,11 @@ def test_preview_writes_nothing(sync_repo):
     result = sync_schedule.install(cfg, dry_run=True)
     assert result["dry_run"]
     spec = result["job"]
-    assert spec["StartCalendarInterval"] == {"Hour": 7, "Minute": 15}
-    assert "StartInterval" not in spec and not spec.get("RunAtLoad")
+    assert spec["StartCalendarInterval"] == [
+        {"Hour": 7, "Minute": 15},
+        {"Hour": 13, "Minute": 15},
+    ]
+    assert spec["StartInterval"] == 3600 and not spec.get("RunAtLoad")
     assert spec["ProgramArguments"][-3:] == ["sync", "run", "--scheduled"]
     assert result["settings"]["expected_remote_url"].endswith("origin.git")
     assert not sync.state_dir(cfg).exists()
@@ -82,16 +86,17 @@ def test_setup_status_remove_and_upgrade_use_packaged_command(sync_repo, fake_la
     result = sync_schedule.install(cfg)
     assert result["enabled"]
     path = sync_schedule.plist_path(cfg)
-    assert path.exists() and sync.settings(cfg)["daily_time"] == "07:15"
+    assert path.exists() and sync.settings(cfg)["times"] == ["07:15", "13:15"]
     state = sync_schedule.status(cfg)
     assert state["installed"] and state["loaded"] and state["last_run"] is None
     # Installing a new time replaces one job instead of creating another.
     sync_schedule.install(cfg, at="06:45")
     assert len(fake_launchd) == 1
-    assert plistlib.loads(path.read_bytes())["StartCalendarInterval"] == {"Hour": 6, "Minute": 45}
+    spec = plistlib.loads(path.read_bytes())
+    assert spec["StartCalendarInterval"] == [{"Hour": 6, "Minute": 45}]
     assert sync_schedule.remove(cfg)["removed"]
     assert not path.exists() and not fake_launchd
-    assert sync.settings(cfg)["daily_time"] == "06:45"
+    assert sync.settings(cfg)["times"] == ["06:45"]
 
 
 @pytest.mark.parametrize("at", ["24:15", "07:60", "7:15", "bad"])
@@ -124,6 +129,8 @@ def test_custom_collection_reports_and_daily_due(sync_repo):
     assert done["status"] == "success" and done["pushed"]
     assert sync.run(cfg, scheduled=True, stamp=after)["status"] == "skipped"
     assert sync_schedule.status(cfg)["last_run"]["last_success_day"] == "2026-10-16"
+    # The next day's slot is due again.
+    assert sync.run(cfg, scheduled=True, stamp=after.replace(day=17))["status"] == "success"
     # A deliberate manual sync is always available, even after today's scheduled success.
     assert sync.run(cfg, stamp=after)["status"] == "success"
 
@@ -249,3 +256,40 @@ def test_lock_file_must_be_ignored_before_setup(sync_repo):
     (g.workspace(cfg) / ".gitignore").write_text(".env\n")
     with pytest.raises(sync.SyncError, match="gitignore"):
         sync_schedule.install(cfg, dry_run=True)
+
+
+def test_each_daily_time_is_one_slot_retried_until_it_succeeds(sync_repo):
+    cfg = sync_repo
+    value = configure(cfg)
+    value["times"] = ["07:15", "13:15"]
+    g.atomic_json(sync.state_dir(cfg) / "settings.json", value)
+    morning = datetime.fromisoformat("2026-10-16T07:20:00-05:00")
+    assert sync.run(cfg, scheduled=True, stamp=morning)["status"] == "success"
+    assert sync.run(cfg, scheduled=True, stamp=morning.replace(hour=12))["status"] == "skipped"
+    # A busy gardener defers the afternoon slot; the next hourly retry completes it.
+    afternoon = morning.replace(hour=13, minute=20)
+    with g.engine_lock(cfg, "run"):
+        assert sync.run(cfg, scheduled=True, stamp=afternoon)["status"] == "busy"
+    later = afternoon.replace(hour=14)
+    assert sync.run(cfg, scheduled=True, stamp=later)["status"] == "success"
+    assert sync.run(cfg, scheduled=True, stamp=later.replace(hour=15))["status"] == "skipped"
+
+
+def test_settings_with_one_daily_time_still_work(sync_repo):
+    cfg = sync_repo
+    value = configure(cfg)
+    value.pop("times")
+    value["daily_time"] = "07:15"
+    g.atomic_json(sync.state_dir(cfg) / "settings.json", value)
+    early = datetime.fromisoformat("2026-10-16T07:00:00-05:00")
+    assert sync.run(cfg, scheduled=True, stamp=early)["status"] == "skipped"
+    assert sync.run(cfg, scheduled=True, stamp=early.replace(hour=8))["status"] == "success"
+
+
+def test_setup_refuses_a_project_environment(sync_repo, fake_launchd, monkeypatch, tmp_path):
+    monkeypatch.setattr(sync_schedule.schedule, "project_environment", lambda: tmp_path)
+    preview = sync_schedule.install(sync_repo, dry_run=True)
+    assert "uv tool install" in preview["warning"]
+    with pytest.raises(sync.SyncError, match="uv tool install"):
+        sync_schedule.install(sync_repo)
+    assert not fake_launchd and not sync_schedule.plist_path(sync_repo).exists()
