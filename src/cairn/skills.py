@@ -103,9 +103,10 @@ def run(names: list[str], remove: bool, dry_run: bool, call) -> int:
     for name, cmd, env in plan(names, remove):
         assign = [f"{k}={v}" for k, v in env.items()]
         if cmd[1].startswith("https://"):
-            print(" ".join(["curl -fsSL", cmd[1], "|", *assign, "bash -s --", *cmd[2:]]))
+            shown = ["curl -fsSL", cmd[1], "|", *assign, "bash -s --", *cmd[2:]]
         else:
-            print(" ".join([*assign, *cmd]))
+            shown = [*assign, *cmd]
+        print(" ".join(shown), flush=True)
         if dry_run:
             continue
         if name == GARDENER and not shutil.which("cairn-garden"):
