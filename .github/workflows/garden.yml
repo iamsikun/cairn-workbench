@@ -63,7 +63,8 @@ on:
 
 jobs:
   garden:
-    runs-on: ubuntu-latest
+    # A pinned image: move it on only after a green run on the new one.
+    runs-on: ubuntu-24.04
     timeout-minutes: 240
     permissions:
       contents: write
@@ -88,14 +89,17 @@ jobs:
       GIT_COMMITTER_EMAIL: cairn-garden@users.noreply.github.com
     steps:
       - name: Check out the knowledge base
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: kb
           fetch-depth: 0
 
-      - uses: astral-sh/setup-uv@v6
+      # setup-uv publishes no major tags. Nothing here has a lockfile to key its cache on.
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -154,7 +158,7 @@ jobs:
 
       - name: Restore the journal catalog
         if: inputs.catalog && (steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true' || inputs.mode == 'catalog')
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ github.workspace }}/catalog
           key: cairn-catalog-${{ github.run_id }}
@@ -177,7 +181,7 @@ jobs:
       # Aster's log is small and only grows; each run restores the latest copy and adds to it.
       - name: Restore Aster's data
         if: inputs.aster != '' && (steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true')
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ github.workspace }}/aster-data
           key: aster-data-${{ github.run_id }}
@@ -194,7 +198,7 @@ jobs:
 
       - name: Save Aster's data
         if: always() && steps.aster.outputs.saved == 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ${{ github.workspace }}/aster-data
           key: aster-data-${{ github.run_id }}
@@ -220,7 +224,7 @@ jobs:
       # is saved even when a later step fails or the job times out.
       - name: Save the journal catalog
         if: always() && steps.catalog.outputs.saved == 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ${{ github.workspace }}/catalog
           key: cairn-catalog-${{ github.run_id }}
@@ -295,7 +299,7 @@ jobs:
 
       - name: Keep diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: garden-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
           path: |

@@ -7,6 +7,9 @@
   writes re-verifies the gate by read-back; writes pause only if that fails or the library
   changes. Gates written by earlier releases, without a `writer` field, carry over.
   `zotero_strict_write_gate = true` keeps the old strict gate.
+- The reusable `garden.yml` runs its actions on Node 24 (checkout and setup-node v7, cache v6,
+  upload-artifact v7, setup-uv 10.3.0 without its unused cache) on a pinned `ubuntu-24.04`
+  runner instead of `ubuntu-latest`.
 - A garden report may show `[[...]]` inside inline code or a code block; only real links are
   checked. A report that links to a missing note names the missing slugs.
 
