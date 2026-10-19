@@ -416,6 +416,18 @@ def test_bare_invented_publisher_citation_is_rejected(setup):
         w.validate_draft(kb(), value, "daily", {})
 
 
+def test_wikilinks_in_code_are_not_checked(setup):
+    body = (
+        "Links that fix-links could not repair need manual rewriting to `[[slugs]]`.\n\n"
+        "```markdown\nSee [[example]].\n```\n"
+    )
+    w.validate_draft(kb(), {"body": body, "selected": []}, "daily", {})
+    with pytest.raises(ValueError, match="nonexistent note: missing-note"):
+        w.validate_draft(
+            kb(), {"body": body + "Read [[Missing note]].", "selected": []}, "daily", {}
+        )
+
+
 def test_weekly_proposals_require_executable_or_manual_records(setup):
     value = {
         "body": "Weekly review of the knowledge base.\n\n- [ ] Add a useful cross-reference between two notes.",

@@ -300,9 +300,12 @@ def validate_draft(kb, draft, mode, facts):
         raise ValueError("selected must list discovery identities")
     if list(g.approved_lines(draft["body"])):
         raise ValueError("a generated report cannot approve its own proposals")
-    links = [g.cairn().slugify(m.group(1)) for m in g.cairn().WIKILINK.finditer(draft["body"])]
-    if any(slug not in kb.notes() for slug in links):
-        raise ValueError("report contains a wikilink to a nonexistent note")
+    # Code spans, code blocks and comments render as literal text, not links.
+    prose = reports.PROTECTED.sub("", draft["body"])
+    links = [g.cairn().slugify(m.group(1)) for m in g.cairn().WIKILINK.finditer(prose)]
+    missing = sorted({slug for slug in links if slug not in kb.notes()})
+    if missing:
+        raise ValueError("report contains a wikilink to a nonexistent note: " + ", ".join(missing))
     candidates = {}
     for block in g.DISCOVERY_SOURCES:
         for candidate in facts.get("new-papers", {}).get(block, {}).get("candidates", []):
