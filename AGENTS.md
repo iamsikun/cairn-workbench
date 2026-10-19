@@ -16,10 +16,10 @@ Before adding a feature, ask whether that workflow needs it. See README.md for t
 - Cairn never runs a model. The connected agent writes notes and decides links; Cairn
   stores them and suggests candidate topics.
 - Finch (reading), Quill (writing) and Aster (scouting) are independent skills in their own
-  repositories. They never name Cairn, a knowledge base or each other; the workbench connects
-  them. `cairn skills` installs each through its own `install.sh` at the version `PINS` in
+  repositories. They never name Cairn or the workbench (Aster may hand off to Finch and
+  Quill); the workbench connects them to the knowledge base. `cairn skills` installs each through its own `install.sh` at the version `PINS` in
   `skills.py` names, with its self-update off; bump a pin only after testing that release.
-  Routing between them and the knowledge base lives in the MCP instructions in `mcp.py`.
+  How they use the knowledge base lives in the MCP instructions in `mcp.py`.
   Never vendor or edit them from here. Run `cairn skills install` only with `--dry-run`.
 - Idea minutes are append-only. Never rewrite or drop earlier entries.
 - Never overwrite a note without its current revision. Writes are atomic and stay inside

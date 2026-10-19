@@ -39,9 +39,9 @@ unregisters it.
 Cairn is used with three independent skills, each in its own repository:
 [Finch](https://github.com/iamsikun/finch) reads papers,
 [Quill](https://github.com/iamsikun/quill) drafts and revises them, and
-[Aster](https://github.com/iamsikun/aster) scouts what is new. None of them knows about
-Cairn or the others. Cairn's MCP instructions connect them: a scouted item is checked against
-your notes and read with Finch when you pick it, and Quill drafts from your notes.
+[Aster](https://github.com/iamsikun/aster) scouts what is new and hands picked items to
+Finch. None of them knows about Cairn; its MCP instructions connect them to your notes: a
+scouted item is checked against them, a reading is saved, and Quill drafts from them.
 
 ```sh
 cairn skills install          # Finch, Quill and Aster at the versions this release pins, plus kb-gardener
