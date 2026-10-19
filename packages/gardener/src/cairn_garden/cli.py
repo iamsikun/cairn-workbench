@@ -33,8 +33,14 @@ from datetime import date
 from pathlib import Path
 
 WORKFLOW = {"daily", "weekly", "health", "readiness", "enable-zotero-writes"}
-# Claude Code reads ~/.claude/skills; Codex, Gemini CLI and Cursor read ~/.agents/skills.
-SKILL_HOMES = {".claude": (".claude",), ".agents": (".agents", ".codex", ".gemini", ".cursor")}
+# Each skills folder and the folders that show its agent is installed, as Finch, Quill and
+# Aster's installers detect them: Codex, Gemini CLI and Cursor share ~/.agents/skills.
+SKILL_HOMES = {
+    ".claude": (".claude",),
+    ".agents": (".agents", ".codex", ".gemini", ".cursor"),
+    ".copilot": (".copilot",),
+    ".config/opencode": (".config/opencode",),
+}
 
 
 def _print(value) -> None:
@@ -72,13 +78,20 @@ def skill(remove: bool) -> dict:
         if not any((home / marker).is_dir() for marker in markers):
             continue
         link = home / folder / "skills" / "kb-gardener"
+        # A link is this package's when it points at a cairn_garden skill folder or nowhere.
+        ours = link.is_symlink() and (
+            not link.exists() or Path(os.readlink(link)).parts[-2:] == ("cairn_garden", "skill")
+        )
         if remove:
-            if link.is_symlink():
+            if ours:
                 link.unlink()
                 done.append({"unlinked": str(link)})
             continue
         if link.exists() and not link.is_symlink():
             done.append({"skipped": str(link), "reason": "a non-link folder already exists"})
+            continue
+        if link.is_symlink() and not ours:
+            done.append({"kept": str(link), "reason": f"owned elsewhere: {os.readlink(link)}"})
             continue
         link.parent.mkdir(parents=True, exist_ok=True)
         if link.is_symlink():

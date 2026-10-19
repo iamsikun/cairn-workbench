@@ -4,7 +4,7 @@ description: Maintain and grow the user's Cairn research knowledge base on a dai
 license: MIT
 metadata:
   author: Sikun Xu
-  version: "0.6.3"
+  version: "0.7.0"
 ---
 
 # kb-gardener: keeping the knowledge base organized and growing
@@ -20,7 +20,7 @@ Pick the mode from the request; scheduled runs name it explicitly.
 
 | Mode | When | Read |
 |---|---|---|
-| `daily` | Every morning, or "daily digest", "what's new" | [references/daily.md](references/daily.md) |
+| `daily` | Every morning, or "daily digest" | [references/daily.md](references/daily.md) |
 | `weekly` | Monday, or "weekly review", "garden the KB", "find gaps", "new topics" | [references/weekly.md](references/weekly.md) |
 | `apply` | "apply garden proposals", or the start of a weekly run | [references/apply.md](references/apply.md) |
 

@@ -135,9 +135,10 @@ The generated status block in existing catalog notes links to the GitHub run for
 refreshes. Temporary runner paths are not useful after the job exits. Local refreshes retain
 their local catalog links, and either mode preserves note content outside that status block.
 
-**Aster.** Set `aster: <tag>` (an [Aster](https://github.com/iamsikun/aster) release) in the
-caller's `with:` block to collect with Aster as well. Every run that has a period due installs
-that release, restores Aster's data log from the Actions cache, runs `aster refresh` and caches
+**Aster.** Set `aster: pinned` in the caller's `with:` block to collect with
+[Aster](https://github.com/iamsikun/aster) as well, at the release the workbench `version`
+pins (`cairn skills pin aster`), the same one `cairn skills install` puts on a Mac. A tag or
+commit instead installs that one. Every run that has a period due installs it, restores Aster's data log from the Actions cache, runs `aster refresh` and caches
 the log again, before the digest or review reads it. Aster's settings are `aster.yaml` in the
 knowledge base repository (`aster-config` names another file); without it, Aster's default
 fields apply. A failed refresh is a warning, not a failure. Aster's data is a small log, so

@@ -357,7 +357,7 @@ jobs:
       mode: ${{{{ inputs.mode || 'auto' }}}}
       scheduled: ${{{{ github.event_name == 'schedule' || inputs.scheduled }}}}
       allow-empty-state: ${{{{ inputs.allow-empty-state || false }}}}
-      # aster: v0.2.0      # also collect new papers with this Aster release (aster.yaml here)
+      # aster: pinned      # also collect new papers with the Aster release this version pins
     secrets: inherit
 """
 

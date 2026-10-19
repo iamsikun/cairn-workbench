@@ -31,7 +31,7 @@ on:
         type: boolean
         default: true
       aster:
-        description: Aster release tag to install and refresh before each run, e.g. v0.2.0; empty skips Aster
+        description: Aster to install and refresh before each run - pinned (the release this workbench version pins), a tag or a commit; empty skips Aster
         type: string
         default: ""
       aster-config:
@@ -107,7 +107,12 @@ jobs:
 
       - name: Install Aster ${{ inputs.aster }}
         if: inputs.aster != ''
-        run: uv tool install "aster-scout @ git+https://github.com/iamsikun/aster@${{ inputs.aster }}"
+        env:
+          ASTER_VERSION: ${{ inputs.aster }}
+        run: |
+          ref="$ASTER_VERSION"
+          [ "$ref" = pinned ] && ref="$(cairn skills pin aster)"
+          uv tool install "aster-scout @ git+https://github.com/iamsikun/aster@$ref"
 
       - name: Restore garden state
         id: restore

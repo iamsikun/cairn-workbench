@@ -13,7 +13,7 @@ The agent instructions are the `kb-gardener` skill in
 
 ```sh
 uv tool install ./packages/gardener      # from the workbench checkout; provides `cairn-garden`
-cairn-garden skill                       # link the skill into ~/.claude/skills and ~/.agents/skills
+cairn-garden skill                       # link the skill into each detected agent (also run by `cairn skills install`)
 ```
 
 Settings live in `~/.config/cairn-workbench/config.toml`, shared with `cairn-catalog`:
@@ -55,7 +55,8 @@ cairn-garden schedule        # then install launchd jobs (macOS); --catalog adds
 ```
 
 **Aster.** When the [Aster](https://github.com/iamsikun/aster) command is installed (`aster` on
-`PATH`, or `$CAIRN_ASTER`), `new-papers` also asks it for papers first collected since the last
+`PATH`, or `$CAIRN_ASTER`; `cairn skills install aster` installs the pinned release),
+`new-papers` also asks it for papers first collected since the last
 digest whose title or abstract contains a topic term, `verify` accepts a DOI that Aster collected
 from an index, and an approved `paper` proposal takes Aster's title, authors, venue and abstract.
 Aster's own fields decide what it collects (`aster fields`). It runs beside the journal catalog,

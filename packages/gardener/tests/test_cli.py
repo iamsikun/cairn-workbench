@@ -52,6 +52,25 @@ def test_skill_links_into_detected_agents_and_unlinks(tmp_path):
     assert not link.exists()
 
 
+def test_skill_keeps_links_owned_elsewhere(tmp_path):
+    env = sandbox(tmp_path)
+    other = tmp_path / "elsewhere/kb-gardener"
+    other.mkdir(parents=True)
+    skills = tmp_path / "home/.copilot/skills"
+    skills.mkdir(parents=True)
+    (skills / "kb-gardener").symlink_to(other)
+    code, out = run(env, "skill")
+    assert code == 0 and json.loads(out)["skill"][0]["kept"] == str(skills / "kb-gardener")
+    run(env, "skill", "--remove")
+    assert (skills / "kb-gardener").resolve() == other.resolve()
+
+
+def test_skill_version_matches_the_package():
+    from cairn_garden import __version__
+
+    assert f'version: "{__version__}"' in (workflow.SKILL / "SKILL.md").read_text()
+
+
 def test_skill_references_and_bridge_ship_with_the_package():
     names = {p.name for p in (workflow.SKILL / "references").glob("*.md")}
     assert {
