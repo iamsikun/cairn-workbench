@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cairn-garden"
-version = "0.8.0"
+version = "0.8.1"
 description = "Daily and weekly gardening for a Cairn knowledge base, run by your own agent"
 requires-python = ">=3.12"
 dependencies = ["cairn-workbench", "cairn-catalog"]

@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.8.1 — unattended gardening fixes
+
+Fixes for scheduled gardening: Zotero writes stay on across upgrades, a report that shows
+wikilink syntax in code no longer aborts the daily run, and the Actions workflow leaves Node 20.
+The MCP tools and the note format are unchanged.
 
 - Scheduled Zotero writes, once enabled for a library, stay on across upgrades. A change to
   the Zotero write code or the configuration is a warning, and the next scheduled run that
@@ -12,6 +16,7 @@
   runner instead of `ubuntu-latest`.
 - A garden report may show `[[...]]` inside inline code or a code block; only real links are
   checked. A report that links to a missing note names the missing slugs.
+- `cairn skills install` prints each install command before its installer runs.
 
 ## 0.8.0 — one place to install the skills
 

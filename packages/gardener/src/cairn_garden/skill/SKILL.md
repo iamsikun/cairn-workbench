@@ -4,7 +4,7 @@ description: Maintain and grow the user's Cairn research knowledge base on a dai
 license: MIT
 metadata:
   author: Sikun Xu
-  version: "0.8.0"
+  version: "0.8.1"
 ---
 
 # kb-gardener: keeping the knowledge base organized and growing
