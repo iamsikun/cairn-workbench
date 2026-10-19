@@ -46,6 +46,18 @@ earlier entries with a new one.
 decision, with the reason in `minute`. Do not propose a parked idea again without new \
 evidence. To rename an idea, pass its `slug` with the new title.
 
+While the user scouts new work (for example a research brief with the Aster skill):
+1. `search` for each item before recommending it, and say when the user already has a note \
+on it or on its topic.
+2. Save only the items the user picks or asks to save; a brief is not a reading session. To \
+read a picked item in depth, use the Finch skill if it is installed, then follow the reading \
+steps above.
+
+While the user drafts or revises a paper (for example with the Quill skill), `search` and \
+`get_note` the related paper and idea notes as sources, and cite papers by their recorded \
+`source`. Do not save draft prose. When the draft settles a question about an idea, record \
+the decision in that idea's `minute`.
+
 Updating an existing note requires its current `revision` from get_note; if a save is \
 rejected, get_note again, merge, and retry. Report the saved slug when done. Only \
 claim something is saved after a successful tool result.\
