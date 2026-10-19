@@ -1,4 +1,4 @@
-"""cairn init | connect | mcp | search | show | topics | html"""
+"""cairn init | connect | skills | mcp | search | show | topics | html"""
 
 from __future__ import annotations
 
@@ -24,6 +24,24 @@ def connect_command(client: str, root: Path, collection: str, remove: bool) -> l
     return [client, "mcp", "add", *scope, name, "--", *server]
 
 
+def skills_command(action: str, names: list[str], dry_run: bool) -> int:
+    from cairn import skills
+
+    known = [*skills.PINS, skills.GARDENER]
+    if unknown := [name for name in names if name not in known]:
+        raise CairnError(f"unknown skill {', '.join(unknown)}; choose from {', '.join(known)}")
+    if action == "status":
+        rows = skills.status()
+        print(json.dumps([r for r in rows if not names or r["skill"] in names], indent=2))
+        return 0
+    if action == "pin":
+        if len(names) != 1 or names[0] not in skills.PINS:
+            raise CairnError(f"name one of {', '.join(skills.PINS)}")
+        print(skills.PINS[names[0]])
+        return 0
+    return skills.run(names or known, action == "remove", dry_run, subprocess.call)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="cairn", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -46,6 +64,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("client", choices=["claude", "codex"])
     p.add_argument("--remove", action="store_true", help="unregister instead")
     p.add_argument("--dry-run", action="store_true", help="print the command only")
+    p = command("skills", "install, remove or check Finch, Quill, Aster and kb-gardener", False)
+    p.add_argument(
+        "action", nargs="?", default="status", choices=["status", "install", "remove", "pin"]
+    )
+    p.add_argument("names", nargs="*", metavar="skill", help="default: all")
+    p.add_argument("--dry-run", action="store_true", help="print the commands only")
     command("mcp", "run the MCP server on stdio (started by the client)")
     p = command("search", "search notes")
     p.add_argument("query", nargs="?", default="", help="keywords; omit to list all")
@@ -61,6 +85,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "init":
             print(f"Initialized {init(args.path)}")
             return 0
+        if args.command == "skills":
+            return skills_command(args.action, args.names, args.dry_run)
         if not args.workspace:
             raise CairnError("pass --workspace or set CAIRN_WORKSPACE")
         kb = KB(args.workspace, args.collection)

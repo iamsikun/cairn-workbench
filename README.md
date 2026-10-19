@@ -32,7 +32,26 @@ cairn connect codex  -w ~/knowledge     # runs `codex mcp add cairn ...`
 Keep the knowledge base private and outside this repository. `cairn` refuses a folder
 inside any git checkout, though the knowledge base may be its own private git repo.
 `--dry-run` prints the registration command without running it, and `--remove`
-unregisters it. Finch is installed separately; Cairn does not install or modify it.
+unregisters it.
+
+### Skills
+
+Cairn is used with three independent skills, each in its own repository:
+[Finch](https://github.com/iamsikun/finch) reads papers,
+[Quill](https://github.com/iamsikun/quill) drafts and revises them, and
+[Aster](https://github.com/iamsikun/aster) scouts what is new. None of them knows about
+Cairn or the others. Cairn's MCP instructions connect them: a scouted item is checked against
+your notes and read with Finch when you pick it, and Quill drafts from your notes.
+
+```sh
+cairn skills install          # Finch, Quill and Aster at the versions this release pins, plus kb-gardener
+cairn skills                  # installed and pinned versions, and each agent's link
+cairn skills remove aster     # uninstall one; `install` again after upgrading Cairn
+```
+
+`install` runs each skill's own installer (`curl … | bash` the first time) with its daily
+self-update off, so upgrading Cairn moves all of them to tested versions together. It also
+runs `cairn-garden skill` when the gardener is installed. `--dry-run` prints the commands.
 
 ## How it works
 

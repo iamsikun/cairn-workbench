@@ -5,16 +5,22 @@ brainstorms research ideas, it saves notes automatically and connects them into 
 of topics. Keep it minimal.
 Before adding a feature, ask whether that workflow needs it. See README.md for the design.
 
-- The code is four modules in `src/cairn/`:
+- The code is five modules in `src/cairn/`:
   - `store.py`: notes, links, search and suggestions.
   - `mcp.py`: the stdio server and the agent instructions.
   - `html.py`: optional offline pages.
   - `cli.py`: the command line.
+  - `skills.py`: the pinned skills and `cairn skills`.
 - Markdown files are the only state. Indexes, caches and HTML are derived or absent.
 - The MCP tools are search, get_note, list_topics, save_reading, save_idea and save_note.
 - Cairn never runs a model. The connected agent writes notes and decides links; Cairn
   stores them and suggests candidate topics.
-- Finch is an independent skill. Do not install, vendor or edit it.
+- Finch (reading), Quill (writing) and Aster (scouting) are independent skills in their own
+  repositories. They never name Cairn, a knowledge base or each other; the workbench connects
+  them. `cairn skills` installs each through its own `install.sh` at the version `PINS` in
+  `skills.py` names, with its self-update off; bump a pin only after testing that release.
+  Routing between them and the knowledge base lives in the MCP instructions in `mcp.py`.
+  Never vendor or edit them from here. Run `cairn skills install` only with `--dry-run`.
 - Idea minutes are append-only. Never rewrite or drop earlier entries.
 - Never overwrite a note without its current revision. Writes are atomic and stay inside
   the selected collection.

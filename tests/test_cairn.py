@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from cairn import skills
 from cairn.cli import connect_command, main
 from cairn.html import render
 from cairn.mcp import serve
@@ -428,6 +429,58 @@ def test_cli_and_connect_commands(tmp_path: Path, capsys: pytest.CaptureFixture[
         "remove",
         "cairn-finance",
     ]
+
+
+def fake_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    home = tmp_path / "home"
+    (home / ".claude").mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(home))
+    for name in ("FINCH", "QUILL", "ASTER"):
+        monkeypatch.delenv(f"{name}_HOME", raising=False)
+    return home
+
+
+def test_skills_install_runs_each_installer_at_its_pin(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    home = fake_home(tmp_path, monkeypatch)
+    assert main(["skills", "install", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert f"/finch/{skills.PINS['finch']}/install.sh | FINCH_REF={skills.PINS['finch']}" in out
+    assert "bash -s -- install --no-auto-update" in out and "cairn-garden skill" in out
+    assert not (home / ".local").exists() and not (home / ".claude/skills").exists()
+
+    clone = home / ".local/share/finch"
+    clone.mkdir(parents=True)
+    (clone / "install.sh").write_text('echo "$FINCH_REF $*" > "$HOME/ran"\n')
+    assert main(["skills", "install", "finch"]) == 0
+    assert (home / "ran").read_text() == f"{skills.PINS['finch']} install --no-auto-update\n"
+    assert main(["skills", "remove", "finch"]) == 0
+    assert (home / "ran").read_text() == " uninstall\n"
+    assert main(["skills", "remove", "quill"]) == 0  # not installed: nothing to run
+    assert main(["skills", "install", "zotero"]) == 1
+
+
+def test_skills_status_and_pin(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    home = fake_home(tmp_path, monkeypatch)
+    pinned = skills.PINS["aster"].removeprefix("v")
+    skill = home / ".local/share/aster/skills/aster"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text(f'---\nmetadata:\n  version: "{pinned}"\n---\n')
+    (home / ".claude/skills").mkdir()
+    (home / ".claude/skills/aster").symlink_to(skill)
+    (home / ".claude/skills/kb-gardener").symlink_to(tmp_path / "gone")
+    rows = {row["skill"]: row for row in skills.status()}
+    assert rows["aster"]["installed"] == pinned and rows["aster"]["ok"]
+    assert rows["finch"]["installed"] is None and not rows["finch"]["ok"]
+    gardener = rows["kb-gardener"]
+    assert not gardener["ok"] and list(gardener["links"].values())[0].startswith("broken")
+
+    assert main(["skills", "pin", "aster"]) == 0
+    assert capsys.readouterr().out == skills.PINS["aster"] + "\n"
+    assert main(["skills", "pin", "kb-gardener"]) == 1
 
 
 def test_normalize_source() -> None:

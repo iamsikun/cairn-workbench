@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased — one place to install the skills
+
+- `cairn skills [status | install | remove | pin] [skill...]` installs Finch, Quill and Aster
+  through their own installers at the versions this release pins (Finch 0.2.2, Quill 0.6.0,
+  Aster 0.2.0), with their self-updates off, links kb-gardener, and reports versions and
+  broken links.
+- The MCP instructions route between the skills, which no longer name Cairn or each other:
+  scouted items are checked against existing notes and saved only when picked, and drafts
+  read notes as sources.
+- The reusable Actions workflow accepts `aster: pinned`, the Aster release `cairn skills pin
+  aster` names; tags and commits still work.
+- `cairn-garden skill` also links into Copilot and opencode, keeps links owned elsewhere, and
+  removes only its own. kb-gardener no longer claims "what's new", which belongs to Aster.
+
 ## 0.7.0 — Aster beside the journal catalog
 
 The gardener can collect new papers with Aster as well as the journal catalog, so the two can
