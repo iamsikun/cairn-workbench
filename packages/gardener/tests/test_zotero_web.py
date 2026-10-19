@@ -11,6 +11,7 @@ from cairn_garden import workflow as w
 from test_regressions import g, invoke, save_paper
 
 PAPER = "arxiv:1706.03762"
+LOAD = g.ZoteroIndex.__dict__["load"]  # setup turns Zotero reads off; scheduled writes need them
 METADATA = {
     "itemType": "preprint",
     "title": "Original paper",
@@ -229,8 +230,7 @@ def test_scheduled_web_run_stays_read_only_until_enabled(web, setup):
     assert web.posts() == 0
 
 
-def test_write_gate_survives_unrelated_releases_but_not_writer_changes(web, monkeypatch):
-    cfg = g.config()
+def enable(cfg, monkeypatch):
     verified = {"daily": True, "weekly": True}
     monkeypatch.setattr(w, "write_verification", lambda cfg: verified)
     monkeypatch.setattr(
@@ -240,17 +240,68 @@ def test_write_gate_survives_unrelated_releases_but_not_writer_changes(web, monk
     state.update(zotero_verified_daily="daily-run", zotero_verified_weekly="weekly-run")
     g.save_state(cfg, state)
     w.enable_scheduled_writes(cfg)
+
+
+def test_write_gate_stays_open_across_upgrades_unless_strict(web, monkeypatch):
+    cfg = g.config()
+    enable(cfg, monkeypatch)
     assert w.scheduled_writes_enabled(cfg)
-    # A release that leaves the write path alone (docs, sync, reports) keeps writes on.
     monkeypatch.setattr(w, "release_hash", lambda: "another release")
-    assert w.scheduled_writes_enabled(cfg)
     monkeypatch.setattr(w, "writer_hash", lambda: "changed write path")
-    assert not w.scheduled_writes_enabled(cfg)
+    assert w.scheduled_writes_enabled(cfg)
+    assert not w.scheduled_writes_enabled({**cfg, "zotero_strict_write_gate": True})
     assert "write code changed" in w.write_gate_closed(cfg)
+    assert not w.scheduled_writes_enabled({**cfg, "zotero_user_id": 2})
+    assert "library changed" in w.write_gate_closed({**cfg, "zotero_user_id": 2})
+
+
+def test_gate_without_writer_is_migrated(web):
+    cfg = g.config()
+    bridge = {"library": "users/1", "key_user_id": 1, "write": True}
+    g.atomic_json(g.state_dir(cfg) / w.GATE, {"config": "old", "bridge": bridge})
+    assert w.scheduled_writes_enabled(cfg)
+    g.atomic_json(g.state_dir(cfg) / w.GATE, {"config": "old", "bridge": {"user_id": 1}})
+    assert w.scheduled_writes_enabled(cfg)
+
+
+def scheduled_daily(monkeypatch):
+    monkeypatch.setattr(g.ZoteroIndex, "load", LOAD)
+    return w.run(
+        g.config(),
+        "daily",
+        renderer=lambda *a, **k: (
+            {"body": "No recommendations today; nothing new was found.", "selected": []},
+            {"agent": "claude"},
+        ),
+        scheduled=True,
+    )
+
+
+def test_changed_writer_is_reverified_by_the_next_scheduled_write(web, setup, monkeypatch):
+    g.atomic_json(g.state_dir(g.config()) / w.GATE, {"writer": "old", "bridge": {"user_id": 1}})
+    result = scheduled_daily(monkeypatch)
+    assert any(x.startswith(w.WRITES_UNVERIFIED) for x in result["warnings"])
+    assert web.posts() == 1
+    gate = g.read_json(g.state_dir(g.config()) / w.GATE, {})
+    assert gate["writer"] == w.writer_hash() and gate["reverified"]["run"] == result["id"]
+    assert w.gate_current(g.config(), gate) and not gate.get("paused")
+
+
+def test_failed_reverification_pauses_writes(web, setup, monkeypatch):
+    g.atomic_json(g.state_dir(g.config()) / w.GATE, {"writer": "old", "bridge": {"user_id": 1}})
+
+    def broken(*args):
+        raise RuntimeError("read-back does not show the created item's identifier")
+
+    monkeypatch.setattr(g.WebWriter, "readback", broken)
+    with pytest.raises(RuntimeError, match="read-back failures"):
+        scheduled_daily(monkeypatch)
+    assert not w.scheduled_writes_enabled(g.config())
+    assert "could not verify" in w.write_gate_closed(g.config())
 
 
 def test_paused_writes_are_reported_distinctly(web, monkeypatch):
-    g.atomic_json(g.state_dir(g.config()) / "zotero-writes-enabled.json", {"writer": "old"})
+    g.atomic_json(g.state_dir(g.config()) / w.GATE, {"writer": "old", "paused": "a test"})
     result = w.run(
         g.config(),
         "daily",

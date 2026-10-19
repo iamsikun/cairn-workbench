@@ -32,6 +32,8 @@ interests = []                     # extra discovery terms besides your leaf top
 zotero_user_id = 1234567           # for Zotero writes (see the local-zotero reference)
 zotero_backend = "auto"            # "local": the bundled Zotero extension only;
                                    # "web": the Zotero Web API only, no Zotero app needed
+zotero_strict_write_gate = false   # true: pause scheduled Zotero writes after any change to
+                                   # the write code or configuration until re-enabled
 reports = "gardening"              # the report folder, inside the workspace
 workspace_id = "my-kb"             # optional; state follows this name instead of the path
 catalog_max_age_days = 8           # the weekly review warns about an older catalog...

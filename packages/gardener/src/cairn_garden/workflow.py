@@ -416,7 +416,14 @@ def run(
             step("before", "commit", "-m", f"before {mode}: {run_id}")
             baseline = step("initial-lint", "lint")
             sync_args = ["zotero-sync"]
-            if scheduled and not scheduled_writes_enabled(cfg):
+            reverify = False
+            if scheduled and scheduled_writes_enabled(cfg):
+                reverify = not gate_current(cfg, g.read_json(g.state_dir(cfg) / GATE, {}))
+                if reverify:
+                    manifest["warnings"].append(
+                        f"{WRITES_UNVERIFIED}; this run's writes re-verify them"
+                    )
+            elif scheduled:
                 sync_args.append("--dry-run")
                 paused = write_gate_closed(cfg)
                 manifest["warnings"].append(
@@ -487,6 +494,9 @@ def run(
             if not facts["zotero-sync"].get("can_write"):
                 manifest["warnings"].append("Zotero writes unconfigured; changes remain pending")
             sync = facts["zotero-sync"]
+            if reverify and not sync.get("dry_run") and reverify_gate(cfg, run_id, sync):
+                if sync.get("failed"):
+                    manifest["warnings"].append(f"{WRITES_PAUSED}: {write_gate_closed(cfg)}")
             if (
                 cfg.get("zotero_backend") in ("local", "web")
                 and not sync.get("dry_run")
@@ -709,24 +719,49 @@ def identity_verified(cfg, sync, bridge_hash):
     )
 
 
+GATE = "zotero-writes-enabled.json"
+
+
+def gate_library(gate):
+    """The library a gate was enabled for; older gates name it only in their bridge status."""
+    bridge = gate.get("bridge") or {}
+    if gate.get("library") or bridge.get("library"):
+        return gate.get("library") or bridge.get("library")
+    return f"users/{int(bridge['user_id'])}" if bridge.get("user_id") else None
+
+
+def gate_current(cfg, gate):
+    return gate.get("writer") == writer_hash() and gate.get("config") == config_hash(cfg)
+
+
 def scheduled_writes_enabled(cfg):
-    gate = g.read_json(g.state_dir(cfg) / "zotero-writes-enabled.json", {})
-    return bool(
-        gate.get("writer") == writer_hash()
-        and gate.get("config") == config_hash(cfg)
-        and all(write_verification(cfg).values())
-    )
+    """Enabled writes stay on across upgrades: each write is checked and read back anyway.
+
+    A changed write path or configuration is re-verified by the next run that writes
+    (see reverify_gate). `zotero_strict_write_gate = true` closes the gate instead.
+    """
+    gate = g.read_json(g.state_dir(cfg) / GATE, {})
+    if not gate or gate.get("paused"):
+        return False
+    if cfg.get("zotero_strict_write_gate"):
+        return gate_current(cfg, gate) and all(write_verification(cfg).values())
+    return bool(cfg.get("zotero_user_id")) and gate_library(gate) == g.zotero_library(cfg)
 
 
 WRITES_PAUSED = "Scheduled Zotero writes are paused"
+WRITES_UNVERIFIED = "Zotero write code or configuration changed since writes were enabled"
 
 
 def write_gate_closed(cfg):
     """Why writes enabled earlier are paused now; None if they were never enabled."""
-    gate = g.read_json(g.state_dir(cfg) / "zotero-writes-enabled.json", {})
+    gate = g.read_json(g.state_dir(cfg) / GATE, {})
     if not gate:
         return None
-    if gate.get("writer") != writer_hash():
+    if gate.get("paused"):
+        reason = gate["paused"]
+    elif not cfg.get("zotero_user_id") or gate_library(gate) != g.zotero_library(cfg):
+        reason = "the Zotero library changed since they were enabled"
+    elif gate.get("writer") != writer_hash():
         reason = "the Zotero write code changed since they were enabled"
     elif gate.get("config") != config_hash(cfg):
         reason = "the configuration changed since they were enabled"
@@ -736,6 +771,28 @@ def write_gate_closed(cfg):
         reason + "; run a manual daily and weekly that each create and add a Zotero item, "
         "then mode enable-zotero-writes"
     )
+
+
+def reverify_gate(cfg, run_id, sync):
+    """After a change, a scheduled run's read-back writes re-verify the gate or pause it."""
+    path = g.state_dir(cfg) / GATE
+    gate = g.read_json(path, {})
+    if sync.get("failed"):
+        gate["paused"] = f"run {run_id} could not verify its Zotero writes after an update"
+    elif any(
+        x.get("status") in ("created", "added") and x.get("verified") for x in sync.get("done", [])
+    ):
+        gate.update(
+            release=release_hash(),
+            writer=writer_hash(),
+            config=config_hash(cfg),
+            library=g.zotero_library(cfg),
+            reverified={"run": run_id, "at": g.now(cfg).isoformat()},
+        )
+    else:
+        return False
+    g.atomic_json(path, gate)
+    return True
 
 
 def enable_scheduled_writes(cfg):
@@ -753,13 +810,14 @@ def enable_scheduled_writes(cfg):
         "release": release_hash(),
         "writer": writer_hash(),
         "config": config_hash(cfg),
+        "library": g.zotero_library(cfg),
         "at": g.now(cfg).isoformat(),
         "bridge": writer.status,
         "runs": {
             mode: g.load_state(cfg)[f"zotero_verified_{mode}"] for mode in ("daily", "weekly")
         },
     }
-    g.atomic_json(g.state_dir(cfg) / "zotero-writes-enabled.json", gate)
+    g.atomic_json(g.state_dir(cfg) / GATE, gate)
     return {"scheduled_zotero_writes": True, "verified": gate["runs"]}
 
 

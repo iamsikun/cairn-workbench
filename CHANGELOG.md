@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Scheduled Zotero writes, once enabled for a library, stay on across upgrades. A change to
+  the Zotero write code or the configuration is a warning, and the next scheduled run that
+  writes re-verifies the gate by read-back; writes pause only if that fails or the library
+  changes. Gates written by earlier releases, without a `writer` field, carry over.
+  `zotero_strict_write_gate = true` keeps the old strict gate.
+- A garden report may show `[[...]]` inside inline code or a code block; only real links are
+  checked. A report that links to a missing note names the missing slugs.
+
 ## 0.8.0 — one place to install the skills
 
 Finch, Quill and Aster are installed and kept at tested versions by `cairn skills`, and the MCP

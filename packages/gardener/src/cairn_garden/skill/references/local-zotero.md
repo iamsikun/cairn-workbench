@@ -24,9 +24,11 @@ Zotero must be open. Cloud sync, when configured in Zotero, remains Zotero's res
 5. Run `cairn-garden readiness`, then `cairn-garden enable-zotero-writes`. `cairn-garden schedule`
    also checks/enables this gate for an explicit local backend before registering jobs.
 
-Scheduled invocation checks the stored gate against current code/configuration and both durable
-workflow receipts. A new release or changed config closes it. Reports can still run with a sync
-preview while closed. A failed write, missing bridge or closed Zotero in an enabled local workflow
+Scheduled invocation checks that the stored gate names the configured library. Once enabled, it
+stays open across releases: after a change to the write code or configuration, the next scheduled
+run that writes re-verifies the gate by read-back, and a failed verification pauses it. With
+`zotero_strict_write_gate = true` under `[garden]`, any such change closes it until both
+workflows are verified again. Reports can still run with a sync preview while closed. A failed write, missing bridge or closed Zotero in an enabled local workflow
 prevents completion, so the 15-minute schedule can retry. Disable scheduled writes immediately by
 removing `zotero-writes-enabled.json` from the gardener's workspace state folder; this preserves all library items.
 

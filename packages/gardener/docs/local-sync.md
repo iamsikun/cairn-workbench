@@ -77,8 +77,8 @@ No conflict is resolved automatically. Empty snapshots produce no commits.
 The optional sync does not depend on agent/Zotero readiness or enable local gardening.
 It does not touch the cloud `garden-state` branch, Zotero credentials or write gates.
 Updating the gardener package still changes its release hash, so local gardening
-readiness needs a verified daily and weekly again. The Zotero write gate only reopens when
-the Zotero write code itself changes.
+readiness needs a verified daily and weekly again. The Zotero write gate stays open; a change
+to the Zotero write code is re-verified by the next scheduled write.
 
 ## Files and migration
 
