@@ -4,7 +4,7 @@
 
 - `cairn skills [status | install | remove | pin] [skill...]` installs Finch, Quill and Aster
   through their own installers at the versions this release pins (Finch 0.2.2, Quill 0.6.0,
-  Aster 0.2.0), with their self-updates off, links kb-gardener, and reports versions and
+  Aster 0.2.1), with their self-updates off, links kb-gardener, and reports versions and
   broken links.
 - The MCP instructions connect the skills, which no longer name Cairn, to the notes: scouted
   items are checked against existing notes and saved only when picked, and drafts

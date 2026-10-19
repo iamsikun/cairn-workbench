@@ -14,7 +14,7 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-PINS = {"finch": "v0.2.2", "quill": "v0.6.0", "aster": "v0.2.0"}
+PINS = {"finch": "v0.2.2", "quill": "v0.6.0", "aster": "v0.2.1"}
 GARDENER = "kb-gardener"
 INSTALLER = "https://raw.githubusercontent.com/iamsikun/{name}/{ref}/install.sh"
 # Claude Code; the shared folder of Codex, Gemini CLI and Cursor; Copilot; opencode.
