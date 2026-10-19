@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 members = [
     "cairn-catalog",
     "cairn-garden",
+    "cairn-studio",
     "cairn-workbench",
 ]
 
@@ -42,6 +43,21 @@ requires-dist = [
 ]
 
 [[package]]
+name = "cairn-studio"
+version = "0.8.0"
+source = { editable = "packages/studio" }
+dependencies = [
+    { name = "cairn-workbench" },
+    { name = "markdown-it-py" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cairn-workbench", editable = "." },
+    { name = "markdown-it-py", specifier = ">=3,<5" },
+]
+
+[[package]]
 name = "cairn-workbench"
 version = "0.8.2"
 source = { editable = "." }
@@ -54,6 +70,7 @@ dependencies = [
 dev = [
     { name = "cairn-catalog" },
     { name = "cairn-garden" },
+    { name = "cairn-studio" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -68,6 +85,7 @@ requires-dist = [
 dev = [
     { name = "cairn-catalog", editable = "packages/catalog" },
     { name = "cairn-garden", editable = "packages/gardener" },
+    { name = "cairn-studio", editable = "packages/studio" },
     { name = "pytest", specifier = ">=8.3,<10" },
     { name = "ruff", specifier = ">=0.12,<1" },
 ]

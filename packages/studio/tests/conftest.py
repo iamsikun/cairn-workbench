@@ -1,0 +1,11 @@
+"""Keep every test away from the owner's configuration and knowledge base."""
+
+import os
+import sys
+import tempfile
+
+_SANDBOX = tempfile.mkdtemp(prefix="cairn-studio-tests-")
+os.environ["CAIRN_WORKBENCH_CONFIG"] = os.path.join(_SANDBOX, "config.toml")
+os.environ.pop("CAIRN_WORKSPACE", None)
+os.environ.pop("CAIRN_COLLECTION", None)
+sys.path.insert(0, os.path.dirname(__file__))  # the sample knowledge base

@@ -14,7 +14,7 @@ dependencies = ["PyYAML>=6.0.2,<7", "markdown-it-py>=3,<5"]
 cairn = "cairn.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8.3,<10", "ruff>=0.12,<1", "cairn-catalog", "cairn-garden"]
+dev = ["pytest>=8.3,<10", "ruff>=0.12,<1", "cairn-catalog", "cairn-garden", "cairn-studio"]
 
 [tool.uv.workspace]
 members = ["packages/*"]
@@ -22,12 +22,13 @@ members = ["packages/*"]
 [tool.uv.sources]
 cairn-catalog = { workspace = true }
 cairn-garden = { workspace = true }
+cairn-studio = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cairn"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "packages/catalog/tests", "packages/gardener/tests"]
+testpaths = ["tests", "packages/catalog/tests", "packages/gardener/tests", "packages/studio/tests"]
 addopts = ["--import-mode=importlib"]
 
 [tool.ruff]

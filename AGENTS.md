@@ -39,6 +39,9 @@ above are the core's.
   reports. Its state, logs and note history live in the state folder, never in the
   knowledge base. Keep `bridge/` byte-identical unless a new Zotero extension is intended:
   any change requires reinstalling the extension in Zotero.
+- `packages/studio` (`cairn-studio`): a localhost app for browsing the knowledge base. It
+  only reads, binds to 127.0.0.1 and answers only localhost requests. Its frontend has no
+  build step and no third-party code. Where it is heading is in `packages/studio/ROADMAP.md`.
 - The knowledge base holds knowledge, plus the gardener's readable reports in `gardening/`
   beside the collections. Code, views, caches, run state and raw evidence stay out of it. The
   core never reads `gardening/`.
