@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased — one place to install the skills
+## 0.8.0 — one place to install the skills
+
+Finch, Quill and Aster are installed and kept at tested versions by `cairn skills`, and the MCP
+instructions connect them to the knowledge base. The skills themselves never name Cairn. The
+MCP tools, the note format and the Zotero write path are unchanged.
 
 - `cairn skills [status | install | remove | pin] [skill...]` installs Finch, Quill and Aster
   through their own installers at the versions this release pins (Finch 0.2.2, Quill 0.6.0,

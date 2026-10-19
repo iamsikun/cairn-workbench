@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cairn-workbench"
-version = "0.7.0"
+version = "0.8.0"
 description = "A Markdown research knowledge base that your agent writes while you read"
 readme = "README.md"
 requires-python = ">=3.12"
