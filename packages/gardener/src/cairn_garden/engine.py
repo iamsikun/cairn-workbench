@@ -1247,6 +1247,19 @@ def cited_sources(note, notes, index):
     return ids, keys
 
 
+OWN_ITEM = re.compile(r"^- Paper: \[Zotero\]\(zotero://select/library/items/([A-Z0-9]{8})\)", re.M)
+
+
+def own_sources(note, index):
+    """The paper a paper note is about: its source fields, or the item line fix-links writes."""
+    ids, keys = note_ids(note), set()
+    for match in OWN_ITEM.finditer(note.body):
+        key = index.item_for_key(match.group(1))
+        if key:
+            keys.add(key)
+    return ids, keys
+
+
 def remote_zotero_index(cfg):
     if READ_WEB["cfg"] is not None:
         return ZoteroIndex.load()  # Reads already come from the Web API.
@@ -1277,13 +1290,19 @@ def cmd_zotero_sync(args, cfg):
         )
         return
     mapping = topic_collections(cfg, notes, index)
-    wanted, unmapped = {}, set()
+    # A paper is filed only under the topics of its own paper note. Citing a paper from a topic,
+    # idea or another note says nothing about what the paper itself is about.
+    wanted, unmapped, owned, cited = {}, set(), set(), {}
     for note in notes.values():
         if reports.is_legacy_report(note) or note.slug in cfg.get("zotero_skip_notes", []):
             continue
-        homes = [note.slug] if note.kind == "topic" else note.topics
-        targets = {c for c in (collection_for(t, notes, mapping) for t in homes) if c}
-        ids, keys = cited_sources(note, notes, index)
+        for ident in cited_sources(note, notes, index)[0]:
+            cited.setdefault(ident, set()).add(note.slug)
+        if note.kind != "paper":
+            continue
+        targets = {c for c in (collection_for(t, notes, mapping) for t in note.topics) if c}
+        ids, keys = own_sources(note, index)
+        owned |= ids
         if not targets and (ids or keys):
             unmapped.add(note.slug)
             continue
@@ -1374,6 +1393,12 @@ def cmd_zotero_sync(args, cfg):
             "daily_writes_used": ledger["days"].get(day, 0),
             "daily_write_limit": cfg["zotero_write_limit"],
             "unmapped_notes": sorted(unmapped),
+            # Cited somewhere but without a paper note of their own: never created or filed.
+            "cited_without_note": [
+                {"id": ident, "cited_in": sorted(cited[ident])}
+                for ident in sorted(cited)
+                if ident not in owned and not index.find([ident])
+            ],
             "duplicates": [
                 {"id": i, "items": sorted(keys)}
                 for i, keys in index.duplicates.items()

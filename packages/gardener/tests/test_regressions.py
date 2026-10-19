@@ -101,16 +101,38 @@ def test_conflicting_identity_does_not_match_on_title(ws):
     assert idx.find(["doi:10.1000/requested"], "A repeated title") is None
 
 
-def test_zotero_item_links_still_drive_collection_sync(ws, monkeypatch):
+def test_paper_notes_own_zotero_item_drives_collection_sync(ws, monkeypatch):
     kb().save(
-        kind="topic",
-        title="Transformers",
-        body="Read [this paper](zotero://select/library/items/PAPER001).",
+        kind="paper",
+        title="Original paper",
+        body="- Paper: [Zotero](zotero://select/library/items/PAPER001)",
+        topics=["Transformers"],
     )
     monkeypatch.setattr(g.ZoteroIndex, "load", lambda: index())
     monkeypatch.setattr(g, "remote_titles", lambda cfg, ids: {})
     report = invoke("zotero-sync", "--dry-run")
     assert [item["item"] for item in report["to_add"]] == ["PAPER001"]
+
+
+def test_citing_a_paper_never_files_it_under_the_citing_topic(ws, monkeypatch):
+    save_paper()  # Its own note puts it under Transformers.
+    kb().save(
+        kind="topic",
+        title="Linear algebra",
+        body="Matrix costs, worked while reading [this paper](zotero://select/library/items/PAPER001)"
+        " and [another](https://arxiv.org/abs/2002.10689).",
+    )
+    library = index()
+    library.collections["LINALG01"] = {"name": "Linear Algebra", "parent": None}
+    monkeypatch.setattr(g.ZoteroIndex, "load", lambda: library)
+    report = invoke("zotero-sync", "--dry-run")
+    assert [(a["item"], a["collections"]) for a in report["to_add"]] == [
+        ("PAPER001", ["Transformers"])
+    ]
+    assert report["to_create"] == []
+    assert report["cited_without_note"] == [
+        {"id": "arxiv:2002.10689", "cited_in": ["linear-algebra"]}
+    ]
 
 
 def test_paper_note_is_not_itself_proof_of_external_verification(ws, monkeypatch):

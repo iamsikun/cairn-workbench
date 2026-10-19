@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- `zotero-sync` files a paper only under the topics of its own paper note. A topic, idea or
+  other note that cites a paper no longer creates it in Zotero or adds it to that note's
+  collections: discussing basic concepts while reading a paper does not make the paper belong
+  to that topic. Papers cited without a paper note of their own are listed under
+  `cited_without_note` and nothing is written for them. Items already filed by the old rule
+  are not removed.
+
 ## 0.8.1 — unattended gardening fixes
 
 Fixes for scheduled gardening: Zotero writes stay on across upgrades, a report that shows

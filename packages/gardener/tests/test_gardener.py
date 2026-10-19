@@ -268,6 +268,10 @@ def test_zotero_sync_plans_memberships_and_creations(ws, zotero, capsys):
     result = run(capsys, "zotero-sync", "--dry-run")
     assert result["topic_collections"] == {"transformers": "Transformers"}
     added = {a["item"]: a["collections"] for a in result["to_add"]}
-    assert added == {"EE3TRR9S": ["Transformers"]}  # QFYRQXFN is already in a subcollection.
-    assert [c["id"] for c in result["to_create"]] == ["arxiv:1904.10509"]
+    assert added == {"EE3TRR9S": ["Transformers"]}  # Filed by its own paper note.
+    # The topic note only cites Sparse attention: it is reported, never created or filed.
+    assert result["to_create"] == []
+    assert result["cited_without_note"] == [
+        {"id": "arxiv:1904.10509", "cited_in": ["transformers"]}
+    ]
     assert result["can_write"] is False and result["done"] == []
