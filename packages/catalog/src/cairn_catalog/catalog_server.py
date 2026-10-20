@@ -11,7 +11,7 @@ import threading
 import webbrowser
 from contextlib import closing
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse, urlsplit
 
 from . import discovery, entities, insights, paths, personalize, preferences, publication_status
 
@@ -312,16 +312,29 @@ def save(length, body):
         return 500, {"error": f"Could not save preferences: {exc}"}
 
 
+def page(url):
+    """A web address compared loosely: either scheme, with or without www., no trailing slash."""
+    parts = urlsplit(url.strip())
+    host = parts.netloc.lower().removeprefix("www.")
+    return host + parts.path.rstrip("/") + ("?" + parts.query if parts.query else "")
+
+
 def papers_with(sources):
-    """Catalog paper ids for Cairn paper sources (doi:… or arxiv:…), matched by any of a paper's DOIs."""
-    dois = {}
+    """Catalog paper ids for Cairn paper identities: doi:…, arxiv:… or a web address.
+
+    A DOI matches any of a paper's DOIs, an arXiv id its arXiv DOI. A web address matches the
+    publisher page of a paper that has no DOI, such as a JMLR article.
+    """
+    dois, pages = {}, {}
     for source in sources:
         kind, _, value = source.partition(":")
         if kind == "doi":
             dois[value.lower()] = source
         elif kind == "arxiv":
             dois["10.48550/arxiv." + value.lower()] = source
-    if not dois:
+        elif kind in ("http", "https"):
+            pages[page(source)] = source
+    if not dois and not pages:
         return {}
     found = {}
     with closing(entities.connect(True, ROOT / "catalog.sqlite")) as con:
@@ -333,6 +346,16 @@ def papers_with(sources):
                 f"SELECT doi,paper_id FROM paper_dois WHERE doi IN ({marks})", chunk
             ):
                 found.setdefault(paper, dois[doi])
+        if pages:
+            # Only papers without a DOI; reading every record's JSON would take seconds.
+            for paper, url, archive in con.execute(
+                "SELECT id,json_extract(record_json,'$.url'),"
+                "json_extract(record_json,'$.archive_urls') FROM papers WHERE doi IS NULL"
+            ):
+                for candidate in [url, *json.loads(archive or "[]")]:
+                    if candidate and page(candidate) in pages:
+                        found.setdefault(paper, pages[page(candidate)])
+                        break
     return found
 
 

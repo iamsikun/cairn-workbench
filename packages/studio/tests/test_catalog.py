@@ -25,7 +25,7 @@ def kb(tmp_path: Path) -> KB:
 
 @pytest.fixture
 def journals(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """A built catalog with three DOIs: one an arXiv DOI, one an alternate of the first paper."""
+    """A built catalog: DOIs (one an arXiv DOI, one an alternate) and JMLR pages without one."""
     root = tmp_path / "catalog"
     (root / "catalog-assets-v1").mkdir(parents=True)
     (root / "raw").mkdir()
@@ -45,6 +45,16 @@ def journals(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
                 ("10.1000/unread", "unread", 1),
             ],
         )
+        con.execute("CREATE TABLE papers(id TEXT PRIMARY KEY, doi TEXT, record_json TEXT)")
+        page = "https://jmlr.org/papers/v{}/{}.html"
+        con.executemany(
+            "INSERT INTO papers VALUES(?,?,?)",
+            [
+                ("jmlr-a", None, json.dumps({"url": page.format(22, "a"), "archive_urls": []})),
+                ("jmlr-b", None, json.dumps({"url": None, "archive_urls": [page.format(23, "b")]})),
+                ("with-doi", "10.1000/x", json.dumps({"url": page.format(24, "c")})),
+            ],
+        )
     con.close()
     monkeypatch.setattr(catalog_server, "ROOT", root)
     return catalog_server
@@ -56,10 +66,23 @@ def test_catalog_is_offered_only_once_its_pages_are_built(journals, tmp_path: Pa
     assert catalog.load() is None
 
 
-def test_catalog_papers_in_the_knowledge_base_are_matched_by_doi_or_arxiv_id(
+def test_catalog_papers_in_the_knowledge_base_are_matched_by_doi_arxiv_id_or_page(
     kb: KB, journals
 ) -> None:
+    pages = {
+        "Page with www": "http://www.jmlr.org/papers/v22/a.html/",
+        "Page by url field": "arxiv:2001.00001",
+        "Page of a paper with a DOI": "https://jmlr.org/papers/v24/c.html",
+    }
+    for title, source in pages.items():
+        fields = {"source": source}
+        if source.startswith("arxiv:"):
+            fields["url"] = "https://jmlr.org/papers/v23/b.html"
+        kb.save(kind="paper", title=title, body="Read.", topics=["Causal inference"], fields=fields)
     marks = views.in_catalog(kb, journals.papers_with)["papers"]
+    assert marks["jmlr-a"]["slug"] == "page-with-www"
+    assert marks["jmlr-b"]["slug"] == "page-by-url-field"
+    del marks["jmlr-a"], marks["jmlr-b"]
     assert marks == {
         "pnas-meta": {
             "slug": "meta-learners-for-heterogeneous-treatment-effects",

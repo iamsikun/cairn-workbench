@@ -266,14 +266,18 @@ def search(kb: KB, query: str, kind: str | None = None, limit: int = 30) -> dict
 
 
 def in_catalog(kb: KB, lookup: Callable[[Iterable[str]], dict[str, str]]) -> dict[str, Any]:
-    """Catalog papers that have a paper note here, matched by DOI or arXiv id.
+    """Catalog papers that have a paper note here, matched by DOI, arXiv id or web address.
 
-    `lookup` maps paper sources (doi:… or arxiv:…) to catalog paper ids; it is the catalog's.
+    `lookup` maps paper identities (a note's `source` and `url`) to catalog paper ids; it is the
+    catalog's.
     """
     notes: dict[str, Note] = {}
     for note in kb.notes().values():
-        if note.kind == "paper" and note.meta.get("source"):
-            notes.setdefault(normalize_source(str(note.meta["source"])), note)
+        if note.kind != "paper":
+            continue
+        for key in ("source", "url"):
+            if note.meta.get(key):
+                notes.setdefault(normalize_source(str(note.meta[key])), note)
     found = lookup(list(notes)) if notes else {}
     return {
         "papers": {

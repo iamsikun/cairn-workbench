@@ -53,8 +53,10 @@ uv tool install './packages/studio[catalog]'   # or add cairn-catalog to the sam
   Studio never writes notes.
 - Catalog papers that already have a paper note in the collection are marked **In KB**,
   matched by DOI or arXiv id (an arXiv DOI such as `10.48550/arXiv.2305.05065` matches
-  `arxiv:2305.05065`). The mark links to the note in the Studio. The paper's detail view
-  links to the note as well.
+  `arxiv:2305.05065`). A paper without a DOI, such as a JMLR article, matches a note whose
+  `source` or `url` is its page on the publisher's site, with either scheme and with or
+  without `www.`. The mark links to the note in the Studio. The paper's detail view links to
+  the note as well.
 - The catalog's data stays in its own folder, outside the knowledge base. Only the pages,
   their edition's bundles, the guides and the library notes are served; the database and raw
   evidence are not.

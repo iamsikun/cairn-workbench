@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- The Studio's **In KB** mark also matches catalog papers without a DOI, such as JMLR
+  articles, by their page on the publisher's site: a note's `source` or `url`, with either
+  scheme and with or without `www.`.
+
 ## 0.8.4 — Cairn Studio
 
 A new optional package, `cairn-studio`: a local, read-only app for browsing the knowledge
