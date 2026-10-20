@@ -1,10 +1,11 @@
 # Changelog
 
-## 0.8.3 — Cairn Studio
+## 0.8.4 — Cairn Studio
 
 A new optional package, `cairn-studio`: a local, read-only app for browsing the knowledge
-base, built phone-first as the first step toward a phone app. The MCP tools and the note
-format are unchanged.
+base, built phone-first as the first step toward a phone app. It also serves the journal
+catalog, marking papers already in the knowledge base. The MCP tools and the note format are
+unchanged. (0.8.3 was not released separately; its changes are here.)
 
 - `cairn-studio serve --open` serves the app on 127.0.0.1. It has Recent, a Map of every
   note as an interactive network, an Ideas board by status, Search, and a page for every note:
@@ -15,6 +16,13 @@ format are unchanged.
   addressed to localhost and serves pages under a strict Content Security Policy. The
   frontend has no build step and no third-party code.
 - `packages/studio/ROADMAP.md` lays out the steps from here to a phone app.
+- With `cairn-catalog` installed (`cairn-studio[catalog]`), the Studio serves the catalog's
+  pages, API and preference saves under `/catalog/`, so `cairn-catalog serve` is no longer
+  needed day to day. Catalog papers with a paper note in the collection are marked **In KB**,
+  matched by DOI or arXiv id, and link to the note. The catalog's data stays in its own
+  folder; its database and raw evidence are not served.
+- The catalog pages call their API by relative URL. Rebuild them once (`cairn-catalog
+  browser`, or the next `cairn-catalog update`) so they work inside the Studio.
 
 ## 0.8.2 — file papers by their own notes
 
