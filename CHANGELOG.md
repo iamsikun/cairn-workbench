@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.3 — Cairn Studio
+
+A new optional package, `cairn-studio`: a local, read-only app for browsing the knowledge
+base, built phone-first as the first step toward a phone app. The MCP tools and the note
+format are unchanged.
+
+- `cairn-studio serve --open` serves the app on 127.0.0.1. It has Recent, a Map of every
+  note as an interactive network, an Ideas board by status, Search, and a page for every note:
+  topic trails, backlinks and papers that share topics. An idea's page shows its current
+  account beside its minutes as a timeline marked by attribution and status changes.
+- Views refresh while an agent saves, over server-sent events.
+- The server reads through `cairn.store` and never writes. It answers only requests
+  addressed to localhost and serves pages under a strict Content Security Policy. The
+  frontend has no build step and no third-party code.
+- `packages/studio/ROADMAP.md` lays out the steps from here to a phone app.
+
 ## 0.8.2 — file papers by their own notes
 
 Zotero filing follows what a paper is about: only a paper's own note decides its collections.
