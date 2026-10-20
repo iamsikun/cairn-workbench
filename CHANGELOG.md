@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.8.2 — file papers by their own notes
+
+Zotero filing follows what a paper is about: only a paper's own note decides its collections.
+The MCP tools and the note format are unchanged.
 
 - `zotero-sync` files a paper only under the topics of its own paper note. A topic, idea or
   other note that cites a paper no longer creates it in Zotero or adds it to that note's
