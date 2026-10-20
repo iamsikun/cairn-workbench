@@ -51,11 +51,18 @@ dependencies = [
     { name = "markdown-it-py" },
 ]
 
+[package.optional-dependencies]
+catalog = [
+    { name = "cairn-catalog" },
+]
+
 [package.metadata]
 requires-dist = [
+    { name = "cairn-catalog", marker = "extra == 'catalog'", editable = "packages/catalog" },
     { name = "cairn-workbench", editable = "." },
     { name = "markdown-it-py", specifier = ">=3,<5" },
 ]
+provides-extras = ["catalog"]
 
 [[package]]
 name = "cairn-workbench"

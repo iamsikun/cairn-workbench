@@ -8,12 +8,22 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections.abc import Callable, Iterable
 from datetime import date
 from typing import Any
 
 from markdown_it import MarkdownIt
 
-from cairn.store import FOLDERS, KB, STATUSES, WIKILINK, Note, slugify, split_minutes
+from cairn.store import (
+    FOLDERS,
+    KB,
+    STATUSES,
+    WIKILINK,
+    Note,
+    normalize_source,
+    slugify,
+    split_minutes,
+)
 
 MD = MarkdownIt("commonmark", {"html": False}).enable(["table", "strikethrough"])
 FIELDS = ("authors", "year", "venue", "source", "url", "doi")
@@ -253,3 +263,21 @@ def search(kb: KB, query: str, kind: str | None = None, limit: int = 30) -> dict
         result["snippet"] = " ".join(MARKUP.sub("", result["snippet"]).split())
         result["updated"] = str(notes[result["slug"]].meta.get("updated") or "")
     return {"collection": kb.collection, "query": query, "results": results}
+
+
+def in_catalog(kb: KB, lookup: Callable[[Iterable[str]], dict[str, str]]) -> dict[str, Any]:
+    """Catalog papers that have a paper note here, matched by DOI or arXiv id.
+
+    `lookup` maps paper sources (doi:… or arxiv:…) to catalog paper ids; it is the catalog's.
+    """
+    notes: dict[str, Note] = {}
+    for note in kb.notes().values():
+        if note.kind == "paper" and note.meta.get("source"):
+            notes.setdefault(normalize_source(str(note.meta["source"])), note)
+    found = lookup(list(notes)) if notes else {}
+    return {
+        "papers": {
+            paper: {"slug": notes[source].slug, "title": notes[source].title}
+            for paper, source in found.items()
+        }
+    }

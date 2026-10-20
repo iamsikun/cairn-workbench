@@ -9,11 +9,15 @@ description = "A local app for browsing a Cairn knowledge base: its map, papers 
 requires-python = ">=3.12"
 dependencies = ["cairn-workbench", "markdown-it-py>=3,<5"]
 
+[project.optional-dependencies]
+catalog = ["cairn-catalog"]  # serves the journal catalog under /catalog
+
 [project.scripts]
 cairn-studio = "cairn_studio.cli:main"
 
 [tool.uv.sources]
 cairn-workbench = { workspace = true }
+cairn-catalog = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cairn_studio"]

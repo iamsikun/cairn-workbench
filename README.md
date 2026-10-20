@@ -146,8 +146,9 @@ These take `-w PATH` or read `$CAIRN_WORKSPACE`.
   or, for a knowledge base kept in a private GitHub repository, on GitHub Actions.
 - [`cairn-studio`](packages/studio/README.md): a local, read-only app for browsing the
   knowledge base: a map of topics, papers and ideas, note pages, an idea board and each
-  idea's minutes as a timeline, refreshed live while an agent saves. Its
-  [roadmap](packages/studio/ROADMAP.md) leads to a phone app.
+  idea's minutes as a timeline, refreshed live while an agent saves. With `cairn-catalog`
+  installed it also serves the journal catalog, marking papers already in the knowledge base.
+  Its [roadmap](packages/studio/ROADMAP.md) leads to a phone app.
 
 Their data, state and settings live outside the knowledge base, configured in
 `~/.config/cairn-workbench/config.toml`. The one exception is the gardener's readable

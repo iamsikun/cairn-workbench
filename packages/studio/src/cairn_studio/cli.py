@@ -5,6 +5,7 @@ serve [-w PATH] [--collection NAME] [--port N] [--open] [--verbose]
 The knowledge base is -w, else $CAIRN_WORKSPACE, else `workspace` in
 ~/.config/cairn-workbench/config.toml ($CAIRN_WORKBENCH_CONFIG). The collection is
 --collection, else $CAIRN_COLLECTION, else `collection` there, else research.
+If cairn-catalog is installed and its pages are built, the catalog is served under /catalog.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from pathlib import Path
 
 from cairn.store import COLLECTIONS, CairnError
 
+from . import catalog
 from .server import StudioServer
 
 
@@ -50,12 +52,18 @@ def main(argv: list[str] | None = None) -> int:
         or settings.get("collection")
         or "research"
     )
+    journals = catalog.load()
     try:
-        server = StudioServer(Path(workspace).expanduser(), collection, args.port, args.verbose)
+        server = StudioServer(
+            Path(workspace).expanduser(), collection, args.port, args.verbose, journals
+        )
     except (CairnError, OSError) as exc:
         print(f"cairn-studio: {exc}", file=sys.stderr)
         return 1
     print(f"Studio: {server.url}", flush=True)
+    if journals:
+        print(f"Catalog: {server.url}catalog/", flush=True)
+        catalog.warm(journals)
     if args.open:
         webbrowser.open(server.url)
     try:

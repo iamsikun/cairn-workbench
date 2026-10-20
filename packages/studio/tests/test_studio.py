@@ -150,7 +150,11 @@ def test_server_answers_the_api_and_serves_the_app(studio: server.StudioServer) 
     assert status == 200 and json.loads(body)["kind"] == "idea"
     assert "default-src 'self'" in headers["Content-Security-Policy"]
     status, _, body = fetch(studio, "/api/collections")
-    assert json.loads(body) == {"collections": ["research"], "default": "research"}
+    assert json.loads(body) == {
+        "collections": ["research"],
+        "default": "research",
+        "catalog": False,
+    }
     status, headers, body = fetch(studio, "/")
     assert status == 200 and b"app.js" in body and headers["Content-Type"].startswith("text/html")
     assert fetch(studio, "/assets/app.js")[0] == 200

@@ -3,7 +3,8 @@
 A local app for browsing a Cairn knowledge base: a map of topics, papers and ideas, a page
 for every note, an idea board, and the history of each idea. It reads the Markdown notes
 through `cairn.store` and never writes them. Views refresh while an agent saves, so a
-reading session with Finch can be watched as it fills in.
+reading session with Finch can be watched as it fills in. If the journal catalog is
+installed, the Studio serves it too.
 
 ```sh
 uv tool install ./packages/studio        # from this checkout; provides `cairn-studio`
@@ -31,9 +32,34 @@ be switched in the app.
   its minutes as a timeline, each entry marked as the user's, an agent's suggestion, a source
   or a status change.
 - **Search.** The same ranking as the `search` tool, filtered by kind.
+- **Catalog.** Shown when the journal catalog is installed (below).
 
 The layout is built for a phone first: the tabs sit at the bottom of a narrow screen and in
 the top bar of a wide one.
+
+## The journal catalog
+
+If [`cairn-catalog`](../catalog/README.md) is installed in the same environment and its pages
+are built, the Studio serves them under `/catalog/`, so `cairn-catalog serve` is no longer
+needed:
+
+```sh
+uv tool install './packages/studio[catalog]'   # or add cairn-catalog to the same environment
+```
+
+- What's New, Search, Authors and Institutions work as in the catalog app, and so does the
+  SQLite browser (`/catalog/explore.html`). Changes to keywords, topics, follows and field
+  tiers are saved to the catalog's preferences file. That is the catalog's only write; the
+  Studio never writes notes.
+- Catalog papers that already have a paper note in the collection are marked **In KB**,
+  matched by DOI or arXiv id (an arXiv DOI such as `10.48550/arXiv.2305.05065` matches
+  `arxiv:2305.05065`). The mark links to the note in the Studio. The paper's detail view
+  links to the note as well.
+- The catalog's data stays in its own folder, outside the knowledge base. Only the pages,
+  their edition's bundles, the guides and the library notes are served; the database and raw
+  evidence are not.
+- The marks need catalog pages built by this version: run `cairn-catalog browser` once, or
+  wait for the next `cairn-catalog update`.
 
 ## Design
 
@@ -45,5 +71,8 @@ the top bar of a wide one.
 - Markdown is rendered on the server with raw HTML escaped. Pages run under a strict Content
   Security Policy, the server binds to 127.0.0.1, and it answers only requests addressed to
   `127.0.0.1` or `localhost`, so other sites in the browser cannot read the notes.
+- The catalog pages carry their edition's settings in one inline script. Each page is served
+  with a policy that allows exactly that script by its hash. Preference changes are accepted
+  only from the Studio's own origin (`catalog.py`).
 
 Where this is heading, up to a phone app you can talk to, is in [ROADMAP.md](ROADMAP.md).

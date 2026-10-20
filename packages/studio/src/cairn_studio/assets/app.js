@@ -503,7 +503,8 @@ function listen() {
 }
 
 async function start() {
-  const { collections, default: fallback } = await fetch("/api/collections").then((r) => r.json());
+  const { collections, default: fallback, catalog } = await fetch("/api/collections").then((r) => r.json());
+  document.querySelector('[data-tab="catalog"]').hidden = !catalog;
   const saved = remember("cairn-studio:collection");
   state.collection = collections.includes(saved) ? saved : fallback;
   picker.replaceChildren(...collections.map((c) => h("option", { value: c, selected: c === state.collection }, c)));
