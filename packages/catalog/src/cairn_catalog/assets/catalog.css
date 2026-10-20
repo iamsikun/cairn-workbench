@@ -92,6 +92,8 @@ html{scroll-padding-top:calc(var(--catalog-controls-height,0px) + var(--journal-
 .issue-chips a:hover,a.chip:hover{color:var(--accent);text-decoration:underline}
 .chip span{color:var(--muted);font-variant-numeric:tabular-nums}
 .chip.for-you-chip{background:none;border:1px solid var(--accent);color:var(--accent);padding:0 7px;font-size:11px}
+.chip.in-kb{background:var(--accent);color:white;padding:0 7px;font-size:11px}
+a.chip.in-kb:hover{color:white}
 .chip.reason{font-size:11px;padding:1px 7px;color:var(--muted)}
 .chip.reason.person,.chip.reason.institution{color:var(--accent)}
 .new-count{color:var(--accent);font-weight:650}

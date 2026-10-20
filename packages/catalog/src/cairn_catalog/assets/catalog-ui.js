@@ -64,12 +64,22 @@
   const sqliteEdition = location.protocol !== 'file:' && location.pathname.endsWith('/explore.html');
   async function api(path, args = {}) {
     if (!sqliteEdition) return window.cairnOfflineApi(path, args);
-    const response = await fetch('/api/' + path + '?' + new URLSearchParams({...args, version: config.version}));
+    const response = await fetch('api/' + path + '?' + new URLSearchParams({...args, version: config.version}));
     const result = await response.json();
     if (!response.ok) throw Error(result.error || 'The catalog could not be loaded.');
     return result;
   }
   function fail(error) { $('error').textContent = error.message; }
+  // Inside Cairn Studio (under /catalog/), papers already in the knowledge base link to their notes.
+  const studio = location.protocol !== 'file:' && location.pathname.startsWith('/catalog/');
+  let inKb = {};
+  async function loadInKb() {
+    if (!studio) return;
+    const response = await fetch('in-kb.json?' + new URLSearchParams({c: stored('cairn-studio:collection') || ''}));
+    if (response.ok) inKb = (await response.json()).papers || {};
+  }
+  const noteUrl = p => '/#/note/' + encodeURIComponent(inKb[p.id].slug);
+  const kbChip = p => inKb[p.id] ? `<a class="chip in-kb" href="${esc(noteUrl(p))}" title="${esc('In your knowledge base: ' + inKb[p.id].title)}">In KB</a>` : '';
   // Follows, keywords, topics and field tiers are saved to the preferences file through the catalog app
   // (cairn-catalog serve), which then regenerates catalog-personal.js. A file:// page cannot write files.
   const editable = location.protocol !== 'file:';
@@ -90,7 +100,7 @@
     showStatus(pendingSaves > 1 ? `Saving ${pendingSaves} changes to your preferences…` : 'Saving to your preferences and updating matches…');
     saveQueue = saveQueue.then(async () => {
       try {
-        const response = await fetch('/api/preferences', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(change)});
+        const response = await fetch('api/preferences', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(change)});
         const result = await response.json();
         if (!response.ok) throw Error(result.error || 'Could not save preferences.');
         personal = window.CAIRN_PERSONAL = result.personal;
@@ -142,7 +152,7 @@
   }
   function cardHtml(p, args) {
     const fresh = page === 'home' && isNew(p);
-    return `<article class="paper${fresh ? ' is-new' : ''}">${fresh ? '<span class="new-dot" title="New since your last visit"></span>' : ''}<a class="paper-title" data-paper="${esc(p.id)}" href="${esc(url(location.pathname, {...args, paper: p.id}))}">${esc(p.title)}</a><div class="byline">${byline(p)}</div><div class="paper-meta"><a class="journal-name" href="${esc(url('search.html', {journal: p.journal_id}))}">${esc(p.journal)}</a><span title="${esc(p.first_source || '')}">${esc(dateLabel(p.publication_date, p.date_precision))}</span>${stage(p)}${p.period_membership === 'uncertain' ? '<span class="badge uncertain">Period uncertain</span>' : ''}${!['article', 'article_or_other'].includes(p.entry_type) ? `<span>${esc(p.entry_type?.replaceAll('_', ' '))}</span>` : ''}${forYouChip(p)}</div></article>`;
+    return `<article class="paper${fresh ? ' is-new' : ''}">${fresh ? '<span class="new-dot" title="New since your last visit"></span>' : ''}<a class="paper-title" data-paper="${esc(p.id)}" href="${esc(url(location.pathname, {...args, paper: p.id}))}">${esc(p.title)}</a><div class="byline">${byline(p)}</div><div class="paper-meta"><a class="journal-name" href="${esc(url('search.html', {journal: p.journal_id}))}">${esc(p.journal)}</a><span title="${esc(p.first_source || '')}">${esc(dateLabel(p.publication_date, p.date_precision))}</span>${stage(p)}${p.period_membership === 'uncertain' ? '<span class="badge uncertain">Period uncertain</span>' : ''}${!['article', 'article_or_other'].includes(p.entry_type) ? `<span>${esc(p.entry_type?.replaceAll('_', ' '))}</span>` : ''}${forYouChip(p)}${kbChip(p)}</div></article>`;
   }
   function shortByline(p) {
     const ids = new Map((p.author_entities || []).map(a => [a.position, a.author_id])), authors = (p.authors || []).slice(0, 3);
@@ -159,7 +169,7 @@
   function rowHtml(p, args, {journal = true, reasons = false} = {}) {
     const fresh = isNew(p), score = personal?.scores?.[p.id];
     const why = reasons && score ? score.reasons.slice(0, 3).map(r => `<span class="chip reason ${esc(r.type)}">${esc(reasonText(r))}</span>`).join('') : forYouChip(p);
-    return `<article class="row${fresh ? ' is-new' : ''}">${fresh ? '<span class="new-dot" title="New since your last visit"></span>' : ''}<a class="paper-title" data-paper="${esc(p.id)}" href="${esc(url(location.pathname, {...args, paper: p.id}))}">${esc(p.title)}</a><div class="row-meta"><span class="byline">${shortByline(p)}</span>${journal ? `<span class="abbr" title="${esc(p.journal)}">${esc(abbr(p.journal_id))}</span>` : ''}<span>${esc(shortDate(p.publication_date, p.date_precision))}</span>${why}</div></article>`;
+    return `<article class="row${fresh ? ' is-new' : ''}">${fresh ? '<span class="new-dot" title="New since your last visit"></span>' : ''}<a class="paper-title" data-paper="${esc(p.id)}" href="${esc(url(location.pathname, {...args, paper: p.id}))}">${esc(p.title)}</a><div class="row-meta"><span class="byline">${shortByline(p)}</span>${journal ? `<span class="abbr" title="${esc(p.journal)}">${esc(abbr(p.journal_id))}</span>` : ''}<span>${esc(shortDate(p.publication_date, p.date_precision))}</span>${why}${kbChip(p)}</div></article>`;
   }
   const stageHeading = p => p.publication_status === 'issue_assigned' ? `${p.volume_series ? p.volume_series + ' series · ' : ''}Vol. ${p.volume}${p.issue ? ' · Issue ' + p.issue : ''}` : p.publication_status === 'online_first' ? 'Online first' : 'Issue details unavailable';
   function bindPapers(node) {
@@ -576,7 +586,7 @@
     if (!$('detail').open) $('detail').showModal();
     const p = await api('paper', {id}); if (request !== detailVersion) return;
     const membership = p.journal_membership;
-    $('detailBody').innerHTML = `<p class="eyebrow">${esc(p.journal)}</p><h2 id="detailTitle">${esc(p.title)}</h2><div class="byline">${byline(p)}</div><p class="paper-meta">${stage(p)}</p><p class="muted">Online: ${esc(dateLabel(p.published_online))}<br>Print: ${esc(dateLabel(p.published_print))}<br>Publication (print preferred): ${esc(dateLabel(p.date, p.date_precision))}</p><div class="detail-links">${p.doi ? `<a href="https://doi.org/${encodeURIComponent(p.doi)}" target="_blank" rel="noopener">Publisher / DOI ↗</a>` : ''}<a href="cairn-library/research/papers/${encodeURIComponent(p.cairn_slug)}.md">Cairn paper note</a>${p.issue_id ? `<a href="${esc(url('search.html', {journal: p.journal_id, issue: p.issue_id}))}">Issue contents</a>` : ''}</div><h3>Abstract</h3><div class="abstract">${esc(p.abstract || 'No abstract is available in the harvested public sources.')}</div><p class="notice">Abstract source: ${esc(p.field_sources?.abstract || 'Unavailable')}</p>${p.institution_entities?.length ? `<h3>Institutions</h3><div class="detail-links">${p.institution_entities.map(i => `<a href="${esc(url('institutions.html', {entity: i.id}))}">${esc(i.display_name)}</a>`).join('')}</div><p class="notice">Affiliations recorded on this paper, not necessarily current employers.</p>` : ''}<details><summary>Publication dates &amp; source evidence</summary><p class="notice">${esc(p.publication_status_evidence)}<br>Publication date source: ${esc(p.field_sources?.date || 'Unavailable')}. Dates retain their source precision and are separate from metadata retrieval.</p><p class="notice">${esc(membership?.explanation || 'Journal membership has not been checked.')}<br>${membership?.archive_status === 'confirmed' ? `<a href="${esc(membership.archive_url)}" target="_blank" rel="noopener">Record confirmed in publisher archive</a>` : 'This paper’s individual publisher archive listing has not been checked.'}</p></details>`;
+    $('detailBody').innerHTML = `<p class="eyebrow">${esc(p.journal)}</p><h2 id="detailTitle">${esc(p.title)}</h2><div class="byline">${byline(p)}</div><p class="paper-meta">${stage(p)}</p><p class="muted">Online: ${esc(dateLabel(p.published_online))}<br>Print: ${esc(dateLabel(p.published_print))}<br>Publication (print preferred): ${esc(dateLabel(p.date, p.date_precision))}</p><div class="detail-links">${p.doi ? `<a href="https://doi.org/${encodeURIComponent(p.doi)}" target="_blank" rel="noopener">Publisher / DOI ↗</a>` : ''}${inKb[p.id] ? `<a href="${esc(noteUrl(p))}">Your note in the knowledge base</a>` : ''}<a href="cairn-library/research/papers/${encodeURIComponent(p.cairn_slug)}.md">Cairn paper note</a>${p.issue_id ? `<a href="${esc(url('search.html', {journal: p.journal_id, issue: p.issue_id}))}">Issue contents</a>` : ''}</div><h3>Abstract</h3><div class="abstract">${esc(p.abstract || 'No abstract is available in the harvested public sources.')}</div><p class="notice">Abstract source: ${esc(p.field_sources?.abstract || 'Unavailable')}</p>${p.institution_entities?.length ? `<h3>Institutions</h3><div class="detail-links">${p.institution_entities.map(i => `<a href="${esc(url('institutions.html', {entity: i.id}))}">${esc(i.display_name)}</a>`).join('')}</div><p class="notice">Affiliations recorded on this paper, not necessarily current employers.</p>` : ''}<details><summary>Publication dates &amp; source evidence</summary><p class="notice">${esc(p.publication_status_evidence)}<br>Publication date source: ${esc(p.field_sources?.date || 'Unavailable')}. Dates retain their source precision and are separate from metadata retrieval.</p><p class="notice">${esc(membership?.explanation || 'Journal membership has not been checked.')}<br>${membership?.archive_status === 'confirmed' ? `<a href="${esc(membership.archive_url)}" target="_blank" rel="noopener">Record confirmed in publisher archive</a>` : 'This paper’s individual publisher archive listing has not been checked.'}</p></details>`;
   }
   async function render() {
     const v = ++version, args = read(); $('error').textContent = '';
@@ -638,7 +648,8 @@
   const names = {home: 'What’s New', search: 'Search', author: 'Authors', institution: 'Institutions'};
   document.title = names[page] + ' · Cairn catalog';
   document.querySelector(`[data-nav=${page}]`).setAttribute('aria-current', 'page');
-  $('footerMeta').textContent = `${num(config.meta.papers)} catalog entries · ${num(config.meta.issues)} issues · Snapshot ${config.meta.snapshot_date} · ${sqliteEdition ? 'Local SQLite edition' : location.protocol === 'file:' ? 'Offline edition' : 'Catalog app · edits save to your preferences'}`;
+  $('footerMeta').textContent = `${num(config.meta.papers)} catalog entries · ${num(config.meta.issues)} issues · Snapshot ${config.meta.snapshot_date} · ${sqliteEdition ? 'Local SQLite edition' : location.protocol === 'file:' ? 'Offline edition' : (studio ? 'Cairn Studio' : 'Catalog app') + ' · edits save to your preferences'}`;
+  if (studio) document.querySelector('.masthead nav').insertAdjacentHTML('afterbegin', '<a href="/">← Studio</a>');
   if (page === 'home') {
     const stickyObserver = new ResizeObserver(updateStickyLayout);
     stickyObserver.observe($('catalogChrome')); stickyObserver.observe($('journalIndex'));
@@ -677,5 +688,5 @@
     $('entityForm').onsubmit = e => { e.preventDefault(); go({query: $('entitySearch').value.trim()}); };
     $('publicationForm').onsubmit = e => { e.preventDefault(); try { go({...read(), ...formArgs('publicationForm'), pub_offset: 0, paper: ''}); } catch (error) { fail(error); } };
   }
-  render().then(restorePosition).catch(fail);
+  loadInKb().catch(() => {}).finally(() => render().then(restorePosition).catch(fail));
 })();

@@ -31,6 +31,8 @@ Open `catalog.html` in the data folder in a current Safari, Chrome, Edge or Fire
 
 To edit your follows, keywords, topics and field tiers from the pages, open the catalog through the **catalog app**: run `cairn-catalog serve --open`, which opens `http://127.0.0.1:8766/catalog.html`. The pages read the same offline data files; the app only adds saving to the preferences file. Stop it with Ctrl-C.
 
+[Cairn Studio](../studio/README.md) serves the same pages under `/catalog/` when this package is installed beside it. It saves preferences in the same way and marks papers that already have a note in the knowledge base as **In KB**.
+
 SQLite remains the efficient query store for scripts and larger searches. The app also serves a paginated SQLite browser at `http://127.0.0.1:8766/explore.html`; opening the saved HTML does not require it.
 
 The build retrieves public historical metadata without a publication-year cutoff. Crossref result sets are fully traversed. OpenAlex supplements the metadata; traversals that exceed its free daily budget are explicitly marked incomplete in `COVERAGE.md`. Verified fetched pages remain usable as supplementary evidence, and later refreshes resume missing historical work. AER also uses publisher-supplied RePEc contents and the public AEA issue index. JMLR uses its official volume TOCs and article metadata pages, retaining the original HTML. This is **not a certified complete historical census**.

@@ -285,6 +285,57 @@ def api(path, args):
     raise LookupError("Unknown endpoint")
 
 
+def answer(path, args):
+    """One read-only API request as (status, result); the Studio serves the same answers."""
+    try:
+        return 200, api(path, args)
+    except ValueError as exc:
+        return 400, {"error": str(exc)}
+    except LookupError as exc:
+        return 404, {"error": str(exc)}
+    except sqlite3.Error:
+        return 500, {"error": "The catalog database is unavailable; rebuild the indexes and retry."}
+
+
+def save(length, body):
+    """One preferences change posted by a page as (status, result). The caller checks the origin."""
+    try:
+        length = int(length or 0)
+        if not 0 < length <= 65536:
+            raise ValueError("Invalid request")
+        return 200, save_preferences(json.loads(body.read(length)))
+    except (ValueError, json.JSONDecodeError) as exc:
+        return 400, {"error": str(exc)}
+    except LookupError as exc:
+        return 404, {"error": str(exc)}
+    except (OSError, sqlite3.Error) as exc:
+        return 500, {"error": f"Could not save preferences: {exc}"}
+
+
+def papers_with(sources):
+    """Catalog paper ids for Cairn paper sources (doi:… or arxiv:…), matched by any of a paper's DOIs."""
+    dois = {}
+    for source in sources:
+        kind, _, value = source.partition(":")
+        if kind == "doi":
+            dois[value.lower()] = source
+        elif kind == "arxiv":
+            dois["10.48550/arxiv." + value.lower()] = source
+    if not dois:
+        return {}
+    found = {}
+    with closing(entities.connect(True, ROOT / "catalog.sqlite")) as con:
+        names = list(dois)
+        for start in range(0, len(names), 500):
+            chunk = names[start : start + 500]
+            marks = ",".join("?" * len(chunk))
+            for doi, paper in con.execute(
+                f"SELECT doi,paper_id FROM paper_dois WHERE doi IN ({marks})", chunk
+            ):
+                found.setdefault(paper, dois[doi])
+    return found
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
@@ -297,20 +348,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             return
         if request.path.startswith("/api/"):
-            status = 200
-            try:
-                result = api(request.path, parse_qs(request.query))
-            except ValueError as exc:
-                status, result = 400, {"error": str(exc)}
-            except LookupError as exc:
-                status, result = 404, {"error": str(exc)}
-            except sqlite3.Error:
-                status, result = (
-                    500,
-                    {
-                        "error": "The catalog database is unavailable; rebuild the indexes and retry."
-                    },
-                )
+            status, result = answer(request.path, parse_qs(request.query))
             data = json.dumps(result, ensure_ascii=False).encode()
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -329,27 +367,16 @@ class Handler(SimpleHTTPRequestHandler):
         if urlparse(self.path).path != "/api/preferences":
             self.send_error(404)
             return
-        status = 200
-        try:
-            if (
-                origin not in (f"http://127.0.0.1:{port}", f"http://localhost:{port}")
-                or self.headers.get("Content-Type", "").split(";")[0] != "application/json"
-            ):
-                status, result = (
-                    403,
-                    {"error": "Preferences can only be changed from the catalog pages."},
-                )
-            else:
-                length = int(self.headers.get("Content-Length") or 0)
-                if not 0 < length <= 65536:
-                    raise ValueError("Invalid request")
-                result = save_preferences(json.loads(self.rfile.read(length)))
-        except (ValueError, json.JSONDecodeError) as exc:
-            status, result = 400, {"error": str(exc)}
-        except LookupError as exc:
-            status, result = 404, {"error": str(exc)}
-        except (OSError, sqlite3.Error) as exc:
-            status, result = 500, {"error": f"Could not save preferences: {exc}"}
+        if (
+            origin not in (f"http://127.0.0.1:{port}", f"http://localhost:{port}")
+            or self.headers.get("Content-Type", "").split(";")[0] != "application/json"
+        ):
+            status, result = (
+                403,
+                {"error": "Preferences can only be changed from the catalog pages."},
+            )
+        else:
+            status, result = save(self.headers.get("Content-Length"), self.rfile)
         data = json.dumps(result, ensure_ascii=False).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
