@@ -46,7 +46,8 @@ aster_max_age_days = 2             # the weekly review warns when Aster has not 
 ## Running
 
 ```sh
-cairn-garden health          # runtime checks: workspace, agent login, git, Node, Zotero
+cairn-garden health          # runtime checks: workspace, agent login, git, Node, Zotero,
+                             # and installed versions against the KB's garden workflow pin
 cairn-garden daily           # a complete verified pass, saved in gardening/daily/
 cairn-garden weekly          # saved in gardening/weekly/, with proposals to tick
 cairn-garden apply           # run ticked proposals now

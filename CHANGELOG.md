@@ -35,6 +35,11 @@
   once its settings are in cairn-workbench's config file (rollback restores it). The Zotero
   extension's credential stays in `~/.config/kb-gardener/`, where the installed extension reads
   it.
+- `cairn-garden health` and `readiness` warn when the installed cairn packages differ from the
+  release the knowledge base's own garden workflow (`.github/workflows/`) pins, and list both.
+- A running `cairn mcp` server checks the installed Cairn version once a minute; after an
+  upgrade its tool results carry a note that a newer version is installed and the client needs
+  a restart. Results are otherwise unchanged.
 - The Studio's **In KB** mark also matches catalog papers without a DOI, such as JMLR
   articles, by their page on the publisher's site: a note's `source` or `url`, with either
   scheme and with or without `www.`.

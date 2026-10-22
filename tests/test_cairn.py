@@ -339,6 +339,18 @@ def test_mcp_protocol_round_trip(kb: KB) -> None:
     assert replies[6]["error"]["code"] == -32700
 
 
+def test_mcp_says_when_a_newer_cairn_is_installed(kb: KB, monkeypatch: pytest.MonkeyPatch) -> None:
+    from cairn import mcp
+
+    call = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "list_topics"}}
+    monkeypatch.setitem(mcp._INSTALLED, "at", None)
+    assert len(rpc(kb, call)[0]["result"]["content"]) == 1
+    monkeypatch.setattr(mcp.importlib.metadata, "version", lambda name: "99.0")
+    monkeypatch.setitem(mcp._INSTALLED, "at", None)
+    content = rpc(kb, call)[0]["result"]["content"]
+    assert json.loads(content[0]["text"]) == [] and "99.0 is installed" in content[1]["text"]
+
+
 def test_mcp_saves_resumes_and_renames_an_idea(kb: KB) -> None:
     def call(id: int, name: str, **arguments: object) -> dict:
         return {

@@ -621,3 +621,18 @@ def test_a_rejected_draft_is_redone_once_with_the_reason(setup):
     with pytest.raises(ValueError, match="nonexistent note"):
         w.run(setup, "weekly", renderer=invalid, verify_html=True)
     assert calls.count("again") == 2
+
+
+def test_health_warns_when_local_tools_lag_the_pinned_workflow(setup, monkeypatch):
+    from cairn_garden import ci
+
+    monkeypatch.setattr(w.shutil, "which", lambda name: None)  # no agent CLI is consulted
+    caller = Path(setup["workspace"]) / ".github/workflows/cairn-garden.yml"
+    caller.parent.mkdir(parents=True)
+    caller.write_text(ci.template("v0.0.1"))
+    result = w.health(setup)
+    assert result["pinned_version"] == "v0.0.1"
+    [drift] = [x for x in result["warnings"] if "pins v0.0.1, but this installation has" in x]
+    assert f"cairn-garden {w.installed_versions()['cairn-garden']}" in drift
+    caller.write_text(ci.template())
+    assert not any("pins" in warning for warning in w.health(setup)["warnings"])

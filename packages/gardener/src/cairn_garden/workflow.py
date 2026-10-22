@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import hashlib
+import importlib.metadata
 import inspect
 import io
 import json
@@ -106,6 +107,29 @@ def execute(*argv):
     return json.loads(stream.getvalue())
 
 
+PACKAGES = ("cairn-workbench", "cairn-garden", "cairn-catalog", "cairn-studio")
+
+
+def installed_versions():
+    found = {}
+    for name in PACKAGES:
+        with contextlib.suppress(importlib.metadata.PackageNotFoundError):
+            found[name] = importlib.metadata.version(name)
+    return found
+
+
+def pinned_version(cfg):
+    """The workbench release the knowledge base's own garden workflow installs, if it has one."""
+    folder = g.workspace(cfg) / ".github" / "workflows"
+    for path in sorted([*folder.glob("*.yml"), *folder.glob("*.yaml")]):
+        text = path.read_text("utf-8")
+        uses = g.re.search(r"cairn-workbench/\.github/workflows/garden\.yml@([\w./-]+)", text)
+        if uses:
+            given = g.re.search(r"^\s+version:\s*['\"]?([\w./-]+)", text[uses.end() :], g.re.M)
+            return (given or uses).group(1)
+    return None
+
+
 def health(cfg):
     errors, warnings = [], []
     try:
@@ -142,6 +166,17 @@ def health(cfg):
     _, backend, write_error = g.zotero_writer(cfg)
     if write_error:
         warnings.append(write_error)
+    versions, pinned = installed_versions(), None
+    with contextlib.suppress(Exception):
+        pinned = pinned_version(cfg)
+    if pinned and g.re.fullmatch(r"v?\d+(?:\.\d+)*", pinned):
+        # Local tools that lag the release GitHub Actions runs garden by other rules.
+        drift = [f"{name} {v}" for name, v in versions.items() if v != pinned.removeprefix("v")]
+        if drift:
+            warnings.append(
+                f"the knowledge base's garden workflow pins {pinned}, but this installation "
+                f"has {', '.join(drift)}; upgrade the local tools or the pin"
+            )
     return {
         "ready": not errors,
         "errors": errors,
@@ -154,6 +189,8 @@ def health(cfg):
         "notes": note_count,
         "release": release_hash(),
         "node": node,
+        "versions": versions,
+        "pinned_version": pinned,
     }
 
 

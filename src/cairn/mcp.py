@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import importlib.metadata
 import json
 import sys
+import time
 from typing import IO, Any
 
 from cairn import __version__
@@ -225,6 +227,25 @@ def call(kb: KB, name: str, args: dict[str, Any]) -> Any:
     raise CairnError(f"unknown tool {name!r}")
 
 
+_INSTALLED: dict[str, Any] = {"at": None, "version": __version__}
+
+
+def stale_notice() -> str | None:
+    """A running server keeps its code after an upgrade; say so, checking once a minute."""
+    if _INSTALLED["at"] is None or time.monotonic() - _INSTALLED["at"] > 60:
+        try:
+            _INSTALLED["version"] = importlib.metadata.version("cairn-workbench")
+        except importlib.metadata.PackageNotFoundError:
+            _INSTALLED["version"] = __version__
+        _INSTALLED["at"] = time.monotonic()
+    if _INSTALLED["version"] == __version__:
+        return None
+    return (
+        f"This Cairn server runs {__version__}, but {_INSTALLED['version']} is installed. "
+        "Tell the user to restart this client to load it."
+    )
+
+
 def handle(kb: KB, message: dict[str, Any]) -> dict[str, Any] | None:
     if "id" not in message:
         return None  # Notifications need no reply.
@@ -247,6 +268,8 @@ def handle(kb: KB, message: dict[str, Any]) -> dict[str, Any] | None:
         except Exception as exc:  # Report to the agent; a broken note must not kill the server.
             text, error = str(exc) or type(exc).__name__, True
         result = {"content": [{"type": "text", "text": text}], "isError": error}
+        if notice := stale_notice():
+            result["content"].append({"type": "text", "text": notice})
     else:
         return {
             "jsonrpc": "2.0",
