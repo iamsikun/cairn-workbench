@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cairn-studio"
-version = "0.8.4"
+version = "0.8.5"
 description = "A local app for browsing a Cairn knowledge base: its map, papers and ideas"
 requires-python = ">=3.12"
 dependencies = ["cairn-workbench", "markdown-it-py>=3,<5"]

@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.8.5 — reports that match the run
+
+Follow-ups from gardening on 0.8.4 (issue #8). Reports now carry the run's own facts, weekly
+checklists keep one live set of proposals, paper notes link their Zotero items, and the Mac's
+journal catalog can be refreshed without local gardening. The MCP tools and the note format
+are unchanged. The Zotero write code is unchanged too, so scheduled writes that were enabled
+stay enabled without re-verification.
 
 - `fix-links` gives a paper note whose paper is in Zotero its item line,
   `- Paper: [Zotero](…) · [PDF in Zotero](…)`, after `zotero-sync` creates or finds the item.
