@@ -507,3 +507,40 @@ def test_citation_punctuation_does_not_change_source_url(setup, citation):
         "daily",
         facts,
     )
+
+
+def test_weekly_rerun_supersedes_the_earlier_checklist(setup):
+    older = "weekly/garden-weekly-2026-w01.md"
+    g.reports.save(
+        setup,
+        older,
+        '- [ ] **L1** Old link <!-- action: {"op":"manual"} -->\n'
+        '- [x] **L2** Approved, not yet applied <!-- action: {"op":"manual"} -->\n'
+        "```markdown\n- [ ] an example, not a proposal\n```\n",
+        {"title": "Garden weekly 2026-W01"},
+    )
+    seen = []
+
+    def drafting(cfg, mode, folder, facts, model=None):
+        seen.append(facts["open-proposals"])
+        return draft(cfg, mode, folder, facts)
+
+    first = w.run(setup, "weekly", renderer=drafting, verify_html=True)
+    assert [x["item"] for x in seen[0]] == [
+        '- [ ] **L1** Old link <!-- action: {"op":"manual"} -->'
+    ]
+    old = report(older).body
+    assert f"- [-] **L1** Old link _(superseded by run {first['id']})_ <!-- action:" in old
+    assert "- [x] **L2**" in old and "- [ ] an example" in old
+    second = w.run(setup, "weekly", renderer=draft, verify_html=True)
+    body = report(second["report_id"]).body
+    assert body.count("- [-] **P1**") == 1 and body.count("- [ ] **P1**") == 1
+    assert f"superseded by run {second['id']}" in body
+    stats = invoke("metrics", "--dry-run")["current"]["proposals"]
+    assert (stats["open"], stats["superseded"], stats["rejected"]) == (1, 2, 0)
+
+
+def test_only_the_latest_run_of_a_report_counts_as_open(setup):
+    runs = [f"- [ ] **P1** Same proposal again\n\n<!-- gardener-run:run{n} -->" for n in range(3)]
+    g.reports.save(setup, "weekly/garden-weekly-2026-w02.md", "\n\n## Update\n\n".join(runs), {})
+    assert g.proposal_stats(setup)["open"] == 1

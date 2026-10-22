@@ -11,7 +11,9 @@ are plain Markdown files, not Cairn notes: edit them directly, not through the M
    memory edits). Do them by hand with `get_note` / `save_note`, following the rules in SKILL.md:
    keep the user's words, never delete a note (a merged note becomes a short pointer to its
    successor), and then edit the checklist line to `- [x] ✅ … (applied DATE: what you did)`.
-3. Unticked items are left alone. They count as "open" in the metrics.
+3. Unticked items are left alone until the next weekly run, which restates the ones still worth
+   doing and marks the rest `- [-] … (superseded by run …)`. Only the latest run's unticked items
+   count as "open" in the metrics; ticking a superseded item still approves it.
 4. Finish with `cairn-garden commit -m "apply: <summary>"`.
 
 ## Action comments

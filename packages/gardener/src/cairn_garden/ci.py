@@ -294,8 +294,8 @@ def summary(cfg, mode: str | None, publication: dict | None) -> str:
     weekly = reports.reports(cfg, "weekly")
     if weekly:
         latest = weekly[max(weekly)]
-        open_items = sum(line.lstrip().startswith("- [ ]") for line in latest.body.splitlines())
-        lines.append(f"- pending approvals in `{max(weekly)}`: {open_items}")
+        pending = len(list(g.open_items(g.latest_run(latest.body))))
+        lines.append(f"- pending approvals in `{max(weekly)}`: {pending}")
     if publication is not None:
         published = publication.get("published")
         lines.append(

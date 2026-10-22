@@ -9,6 +9,12 @@
   unlinked. `lint` lists the paper notes that still don't link their item
   (`unlinked_items`), and a `Paper:` item line counts as the note's own item with or without a
   list marker, as `fix-links` already read it.
+- A weekly rerun no longer piles up open proposals. Once the new report is saved, every
+  earlier unticked item, in this report or an older weekly, becomes `- [-] … (superseded by
+  run …)`; ticked items stay as they are, and ticking a superseded item still approves it.
+  The draft sees those items as `open-proposals` and restates the ones still worth doing.
+  `metrics` counts open items only in each report's latest run and reports superseded ones
+  separately from rejected ones, as does the Actions summary.
 - The Studio's **In KB** mark also matches catalog papers without a DOI, such as JMLR
   articles, by their page on the publisher's site: a note's `source` or `url`, with either
   scheme and with or without `www.`.

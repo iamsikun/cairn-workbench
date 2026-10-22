@@ -287,6 +287,19 @@ def canonicalize_proposals(body):
     return "".join(blocks)
 
 
+def supersede(body, run_id):
+    """Mark every unticked proposal superseded by this run; ticked items stay as they are.
+
+    The note goes before the action comment, so re-ticking the item still approves it.
+    """
+    lines = body.splitlines()
+    for number, line in list(g.open_items(body)):
+        text, comment, action = line.partition("<!--")
+        text = text.replace("- [ ]", "- [-]", 1).rstrip() + f" _({g.SUPERSEDED} {run_id})_"
+        lines[number] = text + (" " + comment + action if comment else "")
+    return "\n".join(lines) + ("\n" if body.endswith("\n") else "")
+
+
 def validate_draft(kb, draft, mode, facts):
     if (
         not isinstance(draft, dict)
@@ -475,6 +488,12 @@ def run(
                 step("archive-digests")
                 step("zotero-sync", *sync_args)
                 step("fix-links")
+                # The new checklist replaces these; the draft restates the ones still worth doing.
+                facts["open-proposals"] = [
+                    {"report": rid, "item": line.strip()}
+                    for rid, note in reports.reports(cfg, "weekly").items()
+                    for _, line in g.open_items(note.body)
+                ]
             else:
                 raise ValueError("workflow mode must be daily or weekly")
             lint = step("lint")
@@ -542,11 +561,8 @@ def run(
             body = draft["body"].strip() + "\n\n" + marker
             body = reports.portable(cfg, body, reports.path_of(cfg, rid), kb.notes())
             if previous:
-                body = (
-                    previous.body.rstrip()
-                    + f"\n\n## Update {stamp.strftime('%H:%M %Z')}\n\n"
-                    + body
-                )
+                earlier = supersede(previous.body, run_id) if mode == "weekly" else previous.body
+                body = earlier.rstrip() + f"\n\n## Update {stamp.strftime('%H:%M %Z')}\n\n" + body
             meta = {"title": reports.title(mode, stamp), "kind": f"garden-{mode}"}
             meta["period"] = reports.period(mode, stamp)
             meta["runs"] = [*(previous.meta.get("runs") or [] if previous else []), run_id]
@@ -554,6 +570,14 @@ def run(
             persisted = reports.get(cfg, rid)
             if persisted is None or marker not in persisted.body:
                 raise RuntimeError("report persistence could not be verified")
+            if mode == "weekly":
+                for other, note in reports.reports(cfg, "weekly").items():
+                    if other == rid or not any(g.open_items(note.body)):
+                        continue
+                    try:
+                        reports.save(cfg, other, supersede(note.body, run_id), {}, note.revision)
+                    except g.cairn().CairnError as error:
+                        manifest["warnings"].append(f"earlier proposals left open: {error}")
             g.atomic_json(
                 folder / "report.json",
                 {

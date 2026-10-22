@@ -2387,13 +2387,43 @@ def cmd_html_audit(args, cfg):
 # metrics ---------------------------------------------------------------------------------------
 
 
+RUN_MARKER = re.compile(r"<!-- gardener-run:[^\s>]+ -->")
+SUPERSEDED = "superseded by run"
+
+
+def latest_run(body: str) -> str:
+    """A report's latest run: a rerun appends below the earlier ones, whose checklists it replaces."""
+    markers = list(RUN_MARKER.finditer(body))
+    return body[markers[-2].end() :] if len(markers) > 1 else body
+
+
+def open_items(body: str):
+    """Unticked proposals outside code blocks, as (line number, line)."""
+    fenced = False
+    for number, line in enumerate(body.splitlines()):
+        if line.lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+        if not fenced and re.match(r"^\s*- \[ \]", line):
+            yield number, line
+
+
 def proposal_stats(cfg) -> dict:
-    stats = {"accepted": 0, "open": 0, "applied": 0, "rejected": 0, "attempted": 0, "failed": 0}
+    stats = {
+        "accepted": 0,
+        "open": 0,
+        "applied": 0,
+        "rejected": 0,
+        "superseded": 0,
+        "attempted": 0,
+        "failed": 0,
+    }
     for note in reports.reports(cfg, "weekly").values():
+        superseded = len(re.findall(r"^\s*- \[-\].*" + SUPERSEDED, note.body, re.M))
         stats["accepted"] += len(re.findall(r"^\s*- \[x\]", note.body, re.M | re.I))
-        stats["open"] += len(re.findall(r"^\s*- \[ \]", note.body, re.M))
+        stats["open"] += len(list(open_items(latest_run(note.body))))
         stats["applied"] += len(re.findall(r"^\s*- \[x\] ✅", note.body, re.M | re.I))
-        stats["rejected"] += len(re.findall(r"^\s*- \[-\]", note.body, re.M))
+        stats["rejected"] += len(re.findall(r"^\s*- \[-\]", note.body, re.M)) - superseded
+        stats["superseded"] += superseded
     return stats
 
 
