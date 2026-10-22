@@ -616,6 +616,8 @@ def test_run_facts_name_confirmed_writes_and_gated_ones():
     )
     assert "notes repaired 1 ([[a-paper]])" in text and "orphans 2" in text
     assert "arxiv unavailable, checkpoint kept" in text and "open 3 · superseded 4" in text
+    facts["zotero-sync"]["done"][0]["title"] = "[Re] A [[replication]]"
+    assert r"[\[Re\] A \[\[replication\]\]](zotero://" in w.run_facts("daily", facts, [])
     facts["zotero-sync"].update(dry_run=True, done=[])
     assert "pending 3 (read-only run: writes are gated)" in w.run_facts("daily", facts, [])
 

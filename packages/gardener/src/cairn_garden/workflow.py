@@ -324,6 +324,11 @@ LINT = {
 }
 
 
+def label(text):
+    """Link text that cannot close the link early or become a wikilink."""
+    return str(text).replace("[", "\\[").replace("]", "\\]")
+
+
 def run_facts(mode, facts, warnings):
     """The report's factual section, rendered from the run's results instead of by the agent."""
     lines = ["## Run facts", ""]
@@ -339,7 +344,7 @@ def run_facts(mode, facts, warnings):
         zotero = f"({sync.get('backend')}) created {len(created)}"
         if created:
             zotero += " — " + ", ".join(
-                f"[{x.get('title') or x['id']}]({g.zotero_link(x['key'])})" for x in created
+                f"[{label(x.get('title') or x['id'])}]({g.zotero_link(x['key'])})" for x in created
             )
         zotero += f" · filed in topic collections {len(added)} · pending {pending}"
         if sync.get("dry_run"):
