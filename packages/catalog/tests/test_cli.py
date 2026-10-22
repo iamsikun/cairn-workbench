@@ -49,6 +49,16 @@ class CommandTests(unittest.TestCase):
         )
         self.assertEqual(refused.returncode, 2)
 
+    def test_update_can_leave_the_catalog_notes_to_the_cloud(self):
+        from unittest.mock import patch
+
+        from cairn_catalog import cli, update_catalog
+
+        with patch.object(update_catalog, "refresh") as refresh:
+            cli.main(["update", "--keep-notes"])
+            cli.main(["update"])
+        self.assertEqual([c.kwargs["notes"] for c in refresh.call_args_list], [False, True])
+
     def test_defaults_stay_under_home(self):
         resolved = json.loads(run(self.env, "paths"))
         home = self.root / "home"

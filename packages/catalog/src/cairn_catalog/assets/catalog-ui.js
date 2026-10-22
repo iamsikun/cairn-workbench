@@ -648,7 +648,9 @@
   const names = {home: 'What’s New', search: 'Search', author: 'Authors', institution: 'Institutions'};
   document.title = names[page] + ' · Cairn catalog';
   document.querySelector(`[data-nav=${page}]`).setAttribute('aria-current', 'page');
-  $('footerMeta').textContent = `${num(config.meta.papers)} catalog entries · ${num(config.meta.issues)} issues · Snapshot ${config.meta.snapshot_date} · ${sqliteEdition ? 'Local SQLite edition' : location.protocol === 'file:' ? 'Offline edition' : (studio ? 'Cairn Studio' : 'Catalog app') + ' · edits save to your preferences'}`;
+  const snapshotAge = Math.max(0, Math.round((new Date(CairnPeriods.today()) - new Date(config.meta.snapshot_date)) / 86400000));
+  $('footerMeta').textContent = `${num(config.meta.papers)} catalog entries · ${num(config.meta.issues)} issues · Snapshot ${config.meta.snapshot_date} (${snapshotAge === 1 ? '1 day' : snapshotAge + ' days'} old) · ${sqliteEdition ? 'Local SQLite edition' : location.protocol === 'file:' ? 'Offline edition' : (studio ? 'Cairn Studio' : 'Catalog app') + ' · edits save to your preferences'}`;
+  $('footerMeta').classList.toggle('stale', snapshotAge > 7);
   if (studio) document.querySelector('.masthead nav').insertAdjacentHTML('afterbegin', '<a href="/">← Studio</a>');
   if (page === 'home') {
     const stickyObserver = new ResizeObserver(updateStickyLayout);

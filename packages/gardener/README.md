@@ -54,6 +54,7 @@ cairn-garden apply           # run ticked proposals now
 cairn-garden readiness       # both real workflows passed on this release and configuration?
 cairn-garden schedule        # then install launchd jobs (macOS); --catalog adds a Monday
                              # `cairn-catalog update`, --aster a daily 06:45 `aster refresh`;
+                             # --only installs just those, without local gardening;
                              # --remove uninstalls them
 ```
 

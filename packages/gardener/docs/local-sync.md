@@ -60,6 +60,21 @@ Run setup from the installed tool (`uv tool install`), not with `uv run` inside 
 project: the job runs the interpreter that ran setup, and setup refuses a project's
 environment because the job would then follow that checkout's current branch.
 
+## The journal catalog on the Mac
+
+GitHub Actions refreshes only the catalog edition in its own cache. The Studio and the catalog
+pages on the Mac read the Mac's edition, which nothing refreshes unless you schedule it:
+
+```sh
+cairn-garden schedule --catalog --only            # Monday 09:00: cairn-catalog update --keep-notes
+cairn-garden schedule --remove                    # remove it again
+```
+
+`--only` installs that job without local gardening and needs no readiness check.
+`--keep-notes` leaves the status block in the catalog notes to the cloud refresh, so the
+two refreshes do not take turns rewriting it. The catalog pages show the edition's date and
+age in their footer, and the home page warns when it is more than a week old.
+
 ## What a run does
 
 1. Under the note and gardener locks, commit local modifications/deletions to tracked

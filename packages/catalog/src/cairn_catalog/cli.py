@@ -1,6 +1,7 @@
 """cairn-catalog: the public journal catalog that feeds a Cairn knowledge base.
 
-update [--rebuild-only]        refresh metadata, verify a staged edition, then publish it
+update [--rebuild-only] [--keep-notes]
+                               refresh metadata, verify a staged edition, then publish it
 serve [--port N] [--open]      the catalog app on localhost (preferences, SQLite browser)
 search | import-paper | harvest | harvest-repec | harvest-publisher | build | validate
                                catalog commands (see `cairn-catalog search -h`)
@@ -31,7 +32,11 @@ CATALOG = {
 
 # Commands without a parser of their own: parsed here, so `-h` prints help instead of running.
 SIMPLE = {
-    "update": ("refresh metadata, verify a staged edition, then publish it", ["--rebuild-only"]),
+    "update": (
+        "refresh metadata, verify a staged edition, then publish it; --keep-notes leaves the "
+        "catalog notes' status block to the cloud refresh",
+        ["--rebuild-only", "--keep-notes"],
+    ),
     "browser": ("rebuild the offline browser pages of the current edition", []),
     "personalize": ("rewrite catalog-personal.js from the preferences and topic notes", []),
     "first-seen": ("record when each paper first entered the catalog", []),
@@ -73,7 +78,9 @@ def main(argv: list[str] | None = None) -> int:
     elif command == "update":
         from . import paths, update_catalog
 
-        update_catalog.refresh(paths.data_dir(), rebuild_only=options.rebuild_only)
+        update_catalog.refresh(
+            paths.data_dir(), rebuild_only=options.rebuild_only, notes=not options.keep_notes
+        )
     elif command == "browser":
         from . import build_browser
 

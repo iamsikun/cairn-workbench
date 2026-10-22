@@ -1,6 +1,7 @@
 """Integration and failure-injection tests; real Cairn persistence and Git, isolated externals."""
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -127,6 +128,24 @@ def test_schedule_plist_preserves_paths_and_uses_verified_runner():
     value = schedule.job("daily")
     assert plistlib.loads(plistlib.dumps(value)) == value
     assert value["ProgramArguments"][-3:] == ["cairn_garden", "daily", "--scheduled"]
+
+
+def test_catalog_only_schedule_needs_no_gardening(tmp_path, monkeypatch):
+    import plistlib
+
+    calls = []
+    monkeypatch.setattr(schedule, "agents_folder", lambda: tmp_path / "LaunchAgents")
+    monkeypatch.setattr(schedule, "project_environment", lambda: None)
+    monkeypatch.setattr(schedule.subprocess, "run", lambda argv, **kw: calls.append(argv))
+    monkeypatch.setattr(schedule.workflow, "readiness", lambda cfg: pytest.fail("not needed"))
+    result = schedule.install(catalog=True, only=True)
+    assert result["enabled"] == [schedule.CATALOG_LABEL] and result["daily"] is None
+    plist = tmp_path / "LaunchAgents" / f"{schedule.CATALOG_LABEL}.plist"
+    # The cloud gardener's refresh keeps the catalog notes; this one refreshes the Mac's pages.
+    assert plistlib.loads(plist.read_bytes())["ProgramArguments"][-2:] == ["update", "--keep-notes"]
+    assert ["launchctl", "bootstrap", f"gui/{os.getuid()}", str(plist)] in calls
+    with pytest.raises(SystemExit, match="--catalog or --aster"):
+        schedule.install(only=True)
 
 
 def test_aster_refresh_job_needs_the_command(tmp_path, monkeypatch):

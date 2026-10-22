@@ -334,7 +334,9 @@ def sync_entrypoints(root):
             )
 
 
-def refresh(root=ROOT, rebuild_only=False):
+def refresh(root=ROOT, rebuild_only=False, notes=True):
+    """`notes=False` leaves the catalog notes' status block to another refresh, such as the
+    cloud gardener's for a knowledge base gardened on GitHub Actions."""
     root = Path(root).resolve()
     root.mkdir(parents=True, exist_ok=True)
     with (root / "update.lock").open("a") as lock:
@@ -461,7 +463,7 @@ def refresh(root=ROOT, rebuild_only=False):
             report.update(
                 status="success", completed_at=catalog.now(), backup_directory=str(backup)
             )
-            if root == ROOT.resolve():
+            if notes and root == ROOT.resolve():
                 try:
                     sync_entrypoints(root)
                 except Exception as exc:

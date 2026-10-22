@@ -43,6 +43,12 @@
 - `cairn-catalog <command> -h` prints that command's usage. `browser`, `update` and the other
   commands without their own options used to ignore `-h` and run, which for `browser` meant a
   full page rebuild. Unknown options are now refused.
+- The Mac's journal catalog can be kept fresh for a knowledge base gardened on GitHub Actions:
+  `cairn-garden schedule --catalog --only` installs just the Monday catalog refresh, without
+  local gardening or its readiness check. It runs `cairn-catalog update --keep-notes`, which
+  leaves the catalog notes' status block to the cloud refresh. The catalog pages' footer shows
+  the edition's age and turns to the warning colour after a week. Rebuild the pages once
+  (`cairn-catalog browser`, or the next update) to see it.
 - The Studio's **In KB** mark also matches catalog papers without a DOI, such as JMLR
   articles, by their page on the publisher's site: a note's `source` or `url`, with either
   scheme and with or without `www.`.
