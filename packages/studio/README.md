@@ -57,6 +57,9 @@ uv tool install './packages/studio[catalog]'   # or add cairn-catalog to the sam
   `source` or `url` is its page on the publisher's site, with either scheme and with or
   without `www.`. The mark links to the note in the Studio. The paper's detail view links to
   the note as well.
+- A paper note's page says whether the journal catalog holds its paper, with a link to it
+  there, or that it does not: conference and arXiv-only papers are not in the journal
+  catalog, so they never show as **In KB**.
 - The catalog's data stays in its own folder, outside the knowledge base. Only the pages,
   their edition's bundles, the guides and the library notes are served; the database and raw
   evidence are not.

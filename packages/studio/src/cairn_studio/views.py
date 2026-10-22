@@ -265,6 +265,15 @@ def search(kb: KB, query: str, kind: str | None = None, limit: int = 30) -> dict
     return {"collection": kb.collection, "query": query, "results": results}
 
 
+def catalog_paper(
+    fields: dict[str, Any], lookup: Callable[[Iterable[str]], dict[str, str]]
+) -> str | None:
+    """The catalog's id for a paper note's paper, or None: the journal catalog holds journal
+    papers, not conference or arXiv-only ones."""
+    sources = [normalize_source(str(fields[k])) for k in ("source", "url") if fields.get(k)]
+    return next(iter(lookup(sources)), None) if sources else None
+
+
 def in_catalog(kb: KB, lookup: Callable[[Iterable[str]], dict[str, str]]) -> dict[str, Any]:
     """Catalog papers that have a paper note here, matched by DOI, arXiv id or web address.
 

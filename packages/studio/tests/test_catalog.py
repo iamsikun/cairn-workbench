@@ -180,6 +180,17 @@ def test_studio_answers_the_catalog_api_and_marks_papers_in_the_knowledge_base(
     assert request(studio, "/catalog/in-kb.json?c=elsewhere")[0] == 404
 
 
+def test_a_paper_note_says_whether_the_journal_catalog_holds_it(studio, kb: KB) -> None:
+    kb.save(kind="paper", title="A conference paper", body="Read.", fields={"source": "arxiv:1"})
+
+    def note(slug):
+        return json.loads(request(studio, f"/api/note?slug={slug}")[2])
+
+    assert note("tiger-recommender-systems-with-generative-retrieval")["catalog"] == "tiger"
+    assert note("a-conference-paper")["catalog"] is None
+    assert "catalog" not in note("causal-inference")
+
+
 def test_only_the_catalog_pages_change_its_preferences(
     studio, journals, monkeypatch: pytest.MonkeyPatch
 ) -> None:

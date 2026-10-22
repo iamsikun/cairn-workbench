@@ -52,6 +52,9 @@
 - The caller template and the Actions guide say that GitHub's cron is best-effort: the hourly
   triggers are the earliest a period can run, and in practice digests land mid-morning to early
   afternoon in Chicago. Regenerate the caller (`cairn-garden ci template`) to get the comment.
+- In the Studio, a paper note's page says whether the journal catalog holds its paper (with a
+  link to it there) or not, so a conference or arXiv-only paper is no longer mistaken for one
+  the **In KB** mark failed to match.
 - The Studio's **In KB** mark also matches catalog papers without a DOI, such as JMLR
   articles, by their page on the publisher's site: a note's `source` or `url`, with either
   scheme and with or without `www.`.

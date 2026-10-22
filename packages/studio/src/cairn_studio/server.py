@@ -114,7 +114,12 @@ class Handler(BaseHTTPRequestHandler):
         if name == "ideas":
             return views.ideas(kb)
         if name == "note":
-            return views.note(kb, args.get("slug", ""))
+            found = views.note(kb, args.get("slug", ""))
+            if self.server.catalog is not None and found["kind"] == "paper":
+                found["catalog"] = views.catalog_paper(
+                    found["fields"], self.server.catalog.papers_with
+                )
+            return found
         if name == "search":
             return views.search(kb, args.get("q", ""), args.get("kind"))
         raise CairnError(f"no such view {name!r}")

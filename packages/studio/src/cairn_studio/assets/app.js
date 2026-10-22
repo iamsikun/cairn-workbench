@@ -211,7 +211,7 @@ function sourceLink(source) {
   return text;
 }
 
-function fieldList(fields) {
+function fieldList(fields, catalog) {
   const parts = [];
   const add = (label, value) => value && parts.push(h("span", {}, h("b", {}, label), value));
   const authors = fields.authors;
@@ -221,6 +221,9 @@ function fieldList(fields) {
   if (fields.source) add("Source", sourceLink(fields.source));
   if (fields.url && fields.url !== fields.source) add("Link", sourceLink(fields.url));
   if (fields.doi && !String(fields.source || "").includes(String(fields.doi))) add("DOI", sourceLink(`doi:${fields.doi}`));
+  // A paper note when the catalog is installed: its catalog paper, or none (conference, arXiv).
+  if (catalog !== undefined)
+    add("Catalog", catalog ? h("a", { href: `/catalog/catalog.html?paper=${encodeURIComponent(catalog)}` }, "In the journal catalog") : "Not in the journal catalog");
   add("Created", fields.created);
   add("Updated", fields.updated);
   return parts.length ? h("div", { class: "fields" }, parts) : null;
@@ -307,7 +310,7 @@ async function noteView(slug) {
           ),
         )
       : null,
-    fieldList(note.fields),
+    fieldList(note.fields, note.catalog),
     note.kind === "idea" ? statusTrack(note.fields.status) : null,
     note.kind === "idea" && note.fields.next_action
       ? h("div", { class: "card next-action" }, h("b", {}, "Next action"), note.fields.next_action)
