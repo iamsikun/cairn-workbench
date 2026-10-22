@@ -40,6 +40,9 @@
 - A running `cairn mcp` server checks the installed Cairn version once a minute; after an
   upgrade its tool results carry a note that a newer version is installed and the client needs
   a restart. Results are otherwise unchanged.
+- `cairn-catalog <command> -h` prints that command's usage. `browser`, `update` and the other
+  commands without their own options used to ignore `-h` and run, which for `browser` meant a
+  full page rebuild. Unknown options are now refused.
 - The Studio's **In KB** mark also matches catalog papers without a DOI, such as JMLR
   articles, by their page on the publisher's site: a note's `source` or `url`, with either
   scheme and with or without `www.`.

@@ -36,6 +36,19 @@ class CommandTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_help_never_runs_a_command(self):
+        for command in ("update", "browser", "jmlr", "verify"):
+            usage = run(self.env, command, "-h")
+            self.assertIn(f"usage: cairn-catalog {command}", usage)
+        self.assertFalse((self.root / "home/.local/share/cairn-workbench/catalog").exists())
+        refused = subprocess.run(
+            [sys.executable, "-m", "cairn_catalog", "browser", "--unknown"],
+            env=self.env,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(refused.returncode, 2)
+
     def test_defaults_stay_under_home(self):
         resolved = json.loads(run(self.env, "paths"))
         home = self.root / "home"

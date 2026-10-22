@@ -14,6 +14,7 @@ paths                          print the folders and files in use
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 
@@ -28,6 +29,19 @@ CATALOG = {
 }
 
 
+# Commands without a parser of their own: parsed here, so `-h` prints help instead of running.
+SIMPLE = {
+    "update": ("refresh metadata, verify a staged edition, then publish it", ["--rebuild-only"]),
+    "browser": ("rebuild the offline browser pages of the current edition", []),
+    "personalize": ("rewrite catalog-personal.js from the preferences and topic notes", []),
+    "first-seen": ("record when each paper first entered the catalog", []),
+    "author-directory": ("rebuild the surname index for author browsing", []),
+    "verify": ("compare the offline pages' queries with SQLite", []),
+    "jmlr": ("harvest the JMLR publisher archive", ["--refresh"]),
+    "paths": ("print the folders and files in use", []),
+}
+
+
 def _print(value) -> None:
     print(json.dumps(value, ensure_ascii=False, indent=1, default=str))
 
@@ -38,6 +52,12 @@ def main(argv: list[str] | None = None) -> int:
         print(__doc__)
         return 0 if argv else 2
     command, rest = argv[0], argv[1:]
+    if command in SIMPLE:
+        text, flags = SIMPLE[command]
+        parser = argparse.ArgumentParser(prog=f"cairn-catalog {command}", description=text)
+        for flag in flags:
+            parser.add_argument(flag, action="store_true")
+        options = parser.parse_args(rest)
     if command in CATALOG:
         from . import catalog
 
@@ -53,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     elif command == "update":
         from . import paths, update_catalog
 
-        update_catalog.refresh(paths.data_dir(), rebuild_only="--rebuild-only" in rest)
+        update_catalog.refresh(paths.data_dir(), rebuild_only=options.rebuild_only)
     elif command == "browser":
         from . import build_browser
 
@@ -85,7 +105,7 @@ def main(argv: list[str] | None = None) -> int:
         from . import paths
         from .publisher_archives import harvest_jmlr
 
-        harvest_jmlr(paths.data_dir(), "--refresh" in rest)
+        harvest_jmlr(paths.data_dir(), options.refresh)
     elif command == "paths":
         from . import paths
 
