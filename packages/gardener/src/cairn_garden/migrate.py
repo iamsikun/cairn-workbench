@@ -148,6 +148,8 @@ def plan(workspace: Path | None = None, resources_to: Path | None = None) -> dic
     move(root / ".gardener", g.workspace_state({**cfg, "workspace": str(root)}))
     # The Web API key, if any, is moved unread; the Zotero extension's credential stays in place.
     move(old_config_file().parent / "zotero.key", target_config.parent / "zotero.key")
+    # Nothing reads the old settings after this; renamed, they no longer look current.
+    move(old_config_file(), old_config_file().with_name(old_config_file().name + ".migrated"))
     for name in ("history", "logs"):
         move(old_home() / name, g.HOME / name)
     catalog = collection / "catalog"

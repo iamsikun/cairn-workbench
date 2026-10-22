@@ -140,6 +140,10 @@ def test_migration_empties_the_workspace_of_everything_but_notes(legacy, tmp_pat
     assert (tmp_path / "evidence/extracted.txt").read_text() == "raw evidence"
     assert (home / ".config/cairn-workbench/zotero.key").exists()
     assert (home / ".config/kb-gardener/zotero-local.json").exists()  # the extension's fixed path
+    assert not (home / ".config/kb-gardener/config.toml").exists()
+    assert (home / ".config/kb-gardener/config.toml.migrated").read_text() == OLD_CONFIG.format(
+        kb=kb
+    )
 
     cfg = g.config()
     assert g.load_state(cfg) == {"last_digest": "2026-10-13"}

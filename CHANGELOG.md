@@ -31,6 +31,10 @@
 - A draft that fails validation, for example with a wikilink to a note that doesn't exist, is
   redone once with the reason in the prompt, instead of failing the run until the next
   scheduled trigger. The run records the rejection as a warning.
+- `cairn-garden migrate` renames kb-gardener's old `config.toml` to `config.toml.migrated`
+  once its settings are in cairn-workbench's config file (rollback restores it). The Zotero
+  extension's credential stays in `~/.config/kb-gardener/`, where the installed extension reads
+  it.
 - The Studio's **In KB** mark also matches catalog papers without a DOI, such as JMLR
   articles, by their page on the publisher's site: a note's `source` or `url`, with either
   scheme and with or without `www.`.
