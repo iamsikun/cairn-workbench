@@ -98,9 +98,10 @@ cairn-garden ci template > .github/workflows/cairn-garden.yml
 
 The template is pinned to the installed release, both in `uses:` and in `version:`. Keep the two
 equal when you upgrade, and upgrade the Mac's tools with them: `cairn-garden health` warns when
-the installed packages differ from the `version:` this file pins, and a running `cairn mcp`
-server adds a note to its tool results when a newer Cairn is installed than the one it started
-with, until the client restarts it.
+the installed packages differ from the `version:` this file pins. A release tag is compared with
+their versions, and a commit with the commit they were installed from (`uv tool install` from Git
+records it). A running `cairn mcp` server adds a note to its tool results when a newer Cairn is
+installed than the one it started with, until the client restarts it.
 
 **Triggers.** It runs hourly from 12:43 to 20:43 UTC every day, off the busy top and half of
 the hour. GitHub often starts scheduled runs hours late or drops them, so the hourly triggers

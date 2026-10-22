@@ -118,6 +118,18 @@ def installed_versions():
     return found
 
 
+def installed_commits():
+    """The Git commit each package was installed from, as its installer recorded it; a package
+    installed from a folder or an index has none."""
+    found = {}
+    for name in PACKAGES:
+        with contextlib.suppress(importlib.metadata.PackageNotFoundError, ValueError):
+            text = importlib.metadata.distribution(name).read_text("direct_url.json")
+            if commit := (json.loads(text or "{}").get("vcs_info") or {}).get("commit_id"):
+                found[name] = commit
+    return found
+
+
 def pinned_version(cfg):
     """The workbench release the knowledge base's own garden workflow installs, if it has one."""
     folder = g.workspace(cfg) / ".github" / "workflows"
@@ -166,17 +178,26 @@ def health(cfg):
     _, backend, write_error = g.zotero_writer(cfg)
     if write_error:
         warnings.append(write_error)
-    versions, pinned = installed_versions(), None
+    versions, commits, pinned = installed_versions(), installed_commits(), None
     with contextlib.suppress(Exception):
         pinned = pinned_version(cfg)
+    # Local tools that lag the release GitHub Actions runs garden by other rules.
+    drift, label = [], pinned
     if pinned and g.re.fullmatch(r"v?\d+(?:\.\d+)*", pinned):
-        # Local tools that lag the release GitHub Actions runs garden by other rules.
         drift = [f"{name} {v}" for name, v in versions.items() if v != pinned.removeprefix("v")]
-        if drift:
-            warnings.append(
-                f"the knowledge base's garden workflow pins {pinned}, but this installation "
-                f"has {', '.join(drift)}; upgrade the local tools or the pin"
-            )
+    elif pinned and g.re.fullmatch(r"[0-9a-fA-F]{7,40}", pinned):
+        # A commit pin can only be compared with packages installed from Git.
+        drift = [
+            f"{name} {versions[name]} ({commit[:7]})"
+            for name, commit in commits.items()
+            if not commit.lower().startswith(pinned.lower())
+        ]
+        label = f"commit {pinned[:7]}"
+    if drift:
+        warnings.append(
+            f"the knowledge base's garden workflow pins {label}, but this installation "
+            f"has {', '.join(drift)}; upgrade the local tools or the pin"
+        )
     return {
         "ready": not errors,
         "errors": errors,
@@ -190,6 +211,7 @@ def health(cfg):
         "release": release_hash(),
         "node": node,
         "versions": versions,
+        "commits": commits,
         "pinned_version": pinned,
     }
 

@@ -657,3 +657,46 @@ def test_health_warns_when_local_tools_lag_the_pinned_workflow(setup, monkeypatc
     assert f"cairn-garden {w.installed_versions()['cairn-garden']}" in drift
     caller.write_text(ci.template())
     assert not any("pins" in warning for warning in w.health(setup)["warnings"])
+
+
+def test_health_compares_a_commit_pin_with_the_installed_commit(setup, monkeypatch):
+    pin, older = (
+        "9115e6163a0508a8eb87e8a6ea26f442825f6693",
+        "5ad3e909f0628e1160e2b8f52bfe9fc77269079e",
+    )
+    monkeypatch.setattr(w.shutil, "which", lambda name: None)
+    caller = Path(setup["workspace"]) / ".github/workflows/cairn-garden.yml"
+    caller.parent.mkdir(parents=True)
+    caller.write_text(
+        "jobs:\n  garden:\n    # v0.8.5\n"
+        f"    uses: iamsikun/cairn-workbench/.github/workflows/garden.yml@{pin}\n"
+        f"    with:\n      version: {pin}\n      catalog: true\n"
+    )
+
+    def drift(commits):
+        monkeypatch.setattr(w, "installed_commits", lambda: commits)
+        result = w.health(setup)
+        assert result["pinned_version"] == pin and result["commits"] == commits
+        return [x for x in result["warnings"] if "garden workflow pins" in x]
+
+    assert drift({"cairn-garden": pin}) == []
+    [warning] = drift({"cairn-garden": pin, "cairn-catalog": older})
+    assert "pins commit 9115e61, but this installation has cairn-catalog" in warning
+    assert "(5ad3e90)" in warning and "cairn-garden" not in warning
+    assert drift({}) == []  # installed from a folder: nothing to compare
+
+
+def test_installed_commits_come_from_the_installers_record(monkeypatch):
+    records = {
+        "cairn-garden": '{"url": "https://github.com/x/y", "vcs_info": {"vcs": "git", "commit_id": "abc1234"}}',
+        "cairn-catalog": '{"url": "file:///checkout", "dir_info": {"editable": true}}',
+        "cairn-workbench": None,
+    }
+
+    def distribution(name):
+        if name not in records:
+            raise w.importlib.metadata.PackageNotFoundError(name)
+        return type("Dist", (), {"read_text": lambda self, file: records[name]})()
+
+    monkeypatch.setattr(w.importlib.metadata, "distribution", distribution)
+    assert w.installed_commits() == {"cairn-garden": "abc1234"}

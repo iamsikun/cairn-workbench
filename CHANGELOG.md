@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `cairn-garden health` also compares a garden workflow pinned by commit, as a knowledge base
+  may pin it, with the commit the local packages were installed from. In 0.8.5 the warning
+  compared only release tags, so a commit pin was never checked. Packages installed from a
+  local folder have no commit and are not compared. `health` now lists those commits.
+
 ## 0.8.5 — reports that match the run
 
 Follow-ups from gardening on 0.8.4 (issue #8). Reports now carry the run's own facts, weekly
