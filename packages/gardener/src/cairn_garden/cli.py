@@ -5,8 +5,8 @@ daily | weekly [--scheduled] [--agent claude|codex] [--model M] [--zotero-limit 
 health | readiness | enable-zotero-writes
                                runtime checks and the scheduled Zotero write gate
 apply [NOTE] [--dry-run]       run approved proposals
-lint | fix-links | new-papers | zotero-sync | zotero-gaps | snapshot | verify | storage |
-html-audit | metrics | archive-digests | commit | config
+lint | fix-links | new-papers | zotero-sync | zotero-gaps | zotero-audit | snapshot | verify |
+storage | html-audit | metrics | archive-digests | commit | config
                                engine commands; each prints JSON (`cairn-garden lint -h`)
 schedule [--catalog] [--aster] [--remove]
                                install or remove the launchd jobs (after readiness passes)

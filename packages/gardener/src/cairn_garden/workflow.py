@@ -488,6 +488,7 @@ def run(
                 step("archive-digests")
                 step("zotero-sync", *sync_args)
                 step("fix-links")
+                step("zotero-audit")
                 # The new checklist replaces these; the draft restates the ones still worth doing.
                 facts["open-proposals"] = [
                     {"report": rid, "item": line.strip()}

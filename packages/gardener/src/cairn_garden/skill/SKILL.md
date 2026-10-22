@@ -61,6 +61,7 @@ The engine is the `cairn-garden` command (package `cairn-garden` in cairn-workbe
 | `fix-links [--dry-run]` | Point papers that are in Zotero to their Zotero item and PDF, and give each paper note whose paper is in Zotero its `Paper:` item line; replace local file references |
 | `new-papers [--record]` | New papers from the journal catalog, Aster, arXiv and Zotero, pre-filtered by the user's topics |
 | `zotero-gaps` | Papers in Zotero collections linked from topic notes that have no Cairn note |
+| `zotero-audit` | Collections the garden filed items in that no paper note's own topics justify, such as filings made by citation before 0.8.2 (read-only) |
 | `snapshot [--days 7]` | Compact map of all notes, links, backlinks, headings, recent changes |
 | `verify --doi X / --arxiv X / --title X` | Confirm that a paper exists before recommending it |
 | `storage [--apply]` | Prune old catalog snapshots (keeps the newest successful edition) and optimize SQLite |

@@ -137,6 +137,78 @@ def test_citing_a_paper_never_files_it_under_the_citing_topic(ws, monkeypatch):
     ]
 
 
+def test_audit_lists_garden_filings_no_paper_note_justifies(ws, monkeypatch):
+    save_paper()  # PAPER001 belongs in Transformers.
+    kb().save(
+        kind="paper",
+        title="ImageNet classification",
+        body="A convolutional network.",
+        topics=["Computer vision"],
+        fields={"source": "doi:10.1000/cnn"},
+    )
+
+    def item(key, title, collections, **ids):
+        return {
+            "key": key,
+            "data": {
+                "itemType": "journalArticle",
+                "title": title,
+                "collections": collections,
+                **ids,
+            },
+        }
+
+    library = index(
+        [
+            item(
+                "PAPER001", "Original paper", ["TOPIC001"], url="https://arxiv.org/abs/1706.03762"
+            ),
+            item(
+                "CNN00001", "ImageNet classification", ["TOPIC001", "VISION01"], DOI="10.1000/cnn"
+            ),
+            item(
+                "CITED001", "Cited by a topic note", ["TOPIC001", "USERS001"], DOI="10.1000/cited"
+            ),
+        ]
+    )
+    library.collections.update(
+        {
+            "VISION01": {"name": "Computer vision", "parent": None},
+            "USERS001": {"name": "Reading group", "parent": None},
+        }
+    )
+    monkeypatch.setattr(g.ZoteroIndex, "load", lambda: library)
+    cfg = g.config()
+    run = g.state_dir(cfg) / "runs" / "20261012T074300-daily-abcd1234"
+    run.mkdir(parents=True)
+    done = [
+        {"item": "PAPER001", "before_collections": [], "collections": ["TOPIC001"]},
+        {"item": "CNN00001", "before_collections": [], "collections": ["TOPIC001", "VISION01"]},
+        {"item": "PAPER001", "before_collections": ["TOPIC001"], "collections": ["VISION01"]},
+    ]
+    g.atomic_json(run / "zotero-sync.json", {"done": done})
+    g.atomic_json(
+        g.state_dir(cfg) / "zotero-writes.json",
+        {
+            "creations": {
+                "doi:10.1000/cited": {
+                    "key": "CITED001",
+                    "status": "confirmed",
+                    "at": "2026-10-10T07:43:00",
+                }
+            }
+        },
+    )
+    result = invoke("zotero-audit")
+    assert [(x["item"], x["collection"], x["written_by"]) for x in result["unjustified"]] == [
+        ("CITED001", "Transformers", "created 2026-10-10"),
+        ("CNN00001", "Transformers", "run 20261012T074300-daily-abcd1234"),
+    ]
+    cnn = result["unjustified"][1]
+    assert cnn["paper_notes"] == ["imagenet-classification"]
+    assert cnn["belongs_in"] == ["Computer vision"]
+
+
 def test_paper_note_is_not_itself_proof_of_external_verification(ws, monkeypatch):
     save_paper(source="arxiv:9999.99999", title="Nonexistent paper")
     empty = g.ZoteroIndex([], [{"key": "TOPIC001", "data": {"name": "Transformers"}}])

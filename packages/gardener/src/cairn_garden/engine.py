@@ -1452,6 +1452,79 @@ def cmd_zotero_sync(args, cfg):
     )
 
 
+# zotero-audit ----------------------------------------------------------------------------------
+
+
+def garden_filings(cfg, index, mapped: set) -> dict[str, dict[str, str]]:
+    """Collections the garden put items in: item key -> {collection key: which write}.
+
+    Each run's `zotero-sync` record lists a write's collections before and after. An item the
+    creation ledger names but no record covers got its mapped collections from the garden.
+    """
+    written: dict[str, dict[str, str]] = {}
+    for path in sorted((state_dir(cfg) / "runs").glob("*/zotero-sync.json")):
+        for write in read_json(path, {}).get("done", []):
+            key = write.get("item") or write.get("key")
+            added = set(write.get("collections", [])) - set(write.get("before_collections", []))
+            for collection in sorted(added):
+                written.setdefault(key, {}).setdefault(collection, f"run {path.parent.name}")
+    ledger = read_json(state_dir(cfg) / "zotero-writes.json", {})
+    for receipt in ledger.get("creations", {}).values():
+        key = receipt.get("key")
+        if receipt.get("status") != "confirmed" or key not in index.items or key in written:
+            continue
+        for collection in sorted(set(index.items[key].get("collections", [])) & mapped):
+            written.setdefault(key, {})[collection] = f"created {str(receipt.get('at'))[:10]}"
+    return written
+
+
+def cmd_zotero_audit(args, cfg):
+    """Garden filings that no paper note's own topics justify, such as those made before 0.8.2
+    because a topic or idea note cited the paper. Read-only: the user decides in Zotero."""
+    notes, index = kb_open(cfg).notes(), ZoteroIndex.load()
+    if index is None:
+        out({"zotero_available": False, "unjustified": []})
+        return
+    mapping = topic_collections(cfg, notes, index)
+    belongs: dict[str, set] = {}  # item -> collections of its own paper notes' topics
+    owners: dict[str, set] = {}
+    for note in notes.values():
+        if note.kind != "paper" or note.slug in cfg.get("zotero_skip_notes", []):
+            continue
+        ids, keys = own_sources(note, index)
+        keys |= {key for key in (index.find([ident]) for ident in ids) if key}
+        targets = {c for c in (collection_for(t, notes, mapping) for t in note.topics) if c}
+        for key in keys:
+            belongs.setdefault(key, set()).update(targets)
+            owners.setdefault(key, set()).add(note.slug)
+    found = []
+    for key, written in sorted(garden_filings(cfg, index, set(mapping.values())).items()):
+        data = index.items.get(key)
+        for collection, write in sorted(written.items()):
+            if data is None or collection not in data.get("collections", []):
+                continue  # The item or the membership is gone already.
+            # A broader or narrower collection of a justified one still fits the paper.
+            if any(
+                collection in index.within(t) or t in index.within(collection)
+                for t in belongs.get(key, ())
+            ):
+                continue
+            found.append(
+                {
+                    "item": key,
+                    "title": data.get("title"),
+                    "zotero": zotero_link(key),
+                    "collection": index.collections.get(collection, {}).get("name", collection),
+                    "written_by": write,
+                    "paper_notes": sorted(owners.get(key, ())),
+                    "belongs_in": sorted(
+                        index.collections[c]["name"] for c in belongs.get(key, ())
+                    ),
+                }
+            )
+    out({"zotero_available": True, "unjustified": found})
+
+
 # new-papers ------------------------------------------------------------------------------------
 
 
@@ -2853,6 +2926,7 @@ def main(argv=None):
         "--record", action="store_true", help="remember these candidates so later runs skip them"
     )
     sub.add_parser("zotero-gaps")
+    sub.add_parser("zotero-audit")
     p = sub.add_parser("zotero-sync")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--limit", type=int)

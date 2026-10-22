@@ -3,7 +3,8 @@
 Run `cairn-garden weekly` for the complete verified pass. Before drafting, the runner records
 history, applies executable approved proposals, gathers a seven-day snapshot and discovery
 window, finds Zotero gaps, prunes eligible storage, runs the installed offline HTML verifier,
-archives unreferenced old digests to `gardening/archive/`, syncs Zotero and repairs links, and records metrics. It then saves
+archives unreferenced old digests to `gardening/archive/`, syncs Zotero, repairs links, audits the
+garden's Zotero filings, and records metrics. It then saves
 and checks the report and records history before acknowledging completion.
 
 When given `facts.json`, these steps have already happened; draft the report only. Source metadata
@@ -34,6 +35,8 @@ Choose useful proposals from these areas, omitting empty sections:
    from initial page load size. Surface failed or manual approvals as pending handoffs.
 6. **Zotero:** duplicate identities, unmapped topics, unverified items and pending writes. A note's
    existence alone does not verify a paper. Closed or unavailable sources must remain explicit.
+   Each `zotero-audit` finding (a collection the garden filed an item in that none of its paper
+   notes' topics justify) is a manual proposal to review in Zotero; nothing is removed for the user.
 7. **Memory:** if relevant memory files are accessible, identify obsolete references and duplicate
    entries, citing evidence for proposed changes. State when memory was not inspected. Do not edit
    agent memory during the scheduled report pass.

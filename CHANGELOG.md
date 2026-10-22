@@ -18,6 +18,11 @@
 - `lint` no longer reports `aster.yaml`, or the file the garden workflow's `aster-config` names,
   as a foreign entry, so the weekly report stops proposing to move Aster's settings out of
   the knowledge base.
+- `cairn-garden zotero-audit` lists the Zotero collections the garden filed an item in that
+  none of the item's paper notes' topics justify, such as filings made before 0.8.2 because a
+  topic or idea note cited the paper. It reads the run records and the creation ledger, never
+  removes anything, and runs in the weekly review, which proposes each finding as a manual
+  item.
 - The Studio's **In KB** mark also matches catalog papers without a DOI, such as JMLR
   articles, by their page on the publisher's site: a note's `source` or `url`, with either
   scheme and with or without `www.`.
