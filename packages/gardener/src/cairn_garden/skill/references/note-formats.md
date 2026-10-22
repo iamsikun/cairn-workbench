@@ -18,15 +18,16 @@ Title `Garden digest YYYY-MM-DD`.
    Why: one line tied to [[existing-topic]].
 …
 
-## Upkeep
-- Links fixed: 4 notes (local PDF paths → arXiv + Zotero).
-- Open issues: 2 unresolved local references (listed in the weekly review), 0 broken links.
-
 ## Pick up where you left off
 - [[attention-is-all-you-need]] — reading position: …
 
 ## For the weekly review
 - (optional) anything larger noticed today
+
+## Run facts            ← appended by the runner from facts.json, not drafted
+- **Zotero**: (web) created 1 — [Title](zotero://…) · filed in topic collections 2 · pending 0
+- **Links**: notes repaired 1 ([[slug]]) · local references unresolved 0
+…
 ```
 
 ## Weekly checklist

@@ -554,3 +554,70 @@ def test_aster_settings_are_not_foreign(ws, monkeypatch):
     assert invoke("lint")["foreign_entries"] == ["scouting"]
     monkeypatch.setenv("ASTER_CONFIG", str(ws / "scouting/aster-settings.yaml"))
     assert invoke("lint")["foreign_entries"] == []
+
+
+def test_report_facts_are_rendered_from_the_run_not_the_draft(setup):
+    result = w.run(setup, "daily", renderer=draft)
+    body = report(result["report_id"]).body
+    facts = body[body.index("## Run facts") : body.index("<!-- gardener-run:")]
+    assert "- **Zotero**: unavailable" in facts and "- **Lint**: broken links 0" in facts
+    assert "catalog 1 pending" in facts and "aster not installed" in facts
+    assert "- **Warning**: Zotero writes unconfigured" in facts
+
+
+def test_run_facts_name_confirmed_writes_and_gated_ones():
+    facts = {
+        "zotero-sync": {
+            "zotero_available": True,
+            "can_write": True,
+            "backend": "web",
+            "to_add": [{"item": "OLD00001"}, {"item": "OLD00002"}],
+            "to_create": [{"id": "doi:10.1/a", "verified": True}],
+            "done": [
+                {
+                    "status": "created",
+                    "verified": True,
+                    "id": "doi:10.1/a",
+                    "title": "A paper",
+                    "key": "NEW00001",
+                },
+                {"status": "added", "verified": True, "item": "OLD00001"},
+            ],
+            "failed": [],
+        },
+        "fix-links": {"changed": [{"note": "a-paper"}], "unresolved": []},
+        "lint": {"summary": {"orphans": 2}},
+        "new-papers": {"arxiv": {"available": False}},
+        "metrics": {"current": {"proposals": {"open": 3, "superseded": 4}}},
+    }
+    text = w.run_facts("daily", facts, ["arxiv: unavailable"])
+    assert (
+        "- **Zotero**: (web) created 1 — [A paper](zotero://select/library/items/NEW00001)"
+        " · filed in topic collections 1 · pending 1" in text
+    )
+    assert "notes repaired 1 ([[a-paper]])" in text and "orphans 2" in text
+    assert "arxiv unavailable, checkpoint kept" in text and "open 3 · superseded 4" in text
+    facts["zotero-sync"].update(dry_run=True, done=[])
+    assert "pending 3 (read-only run: writes are gated)" in w.run_facts("daily", facts, [])
+
+
+def test_a_rejected_draft_is_redone_once_with_the_reason(setup):
+    calls = []
+
+    def drafting(cfg, mode, folder, facts, model=None):
+        calls.append((folder / w.REJECTED).exists())
+        if len(calls) == 1:
+            return {"body": "A long enough report that links [[Missing note]].", "selected": []}, {}
+        return draft(cfg, mode, folder, facts)
+
+    result = w.run(setup, "daily", renderer=drafting)
+    assert calls == [False, True] and result["status"] == "success_with_warnings"
+    assert any("first draft rejected" in warning for warning in result["warnings"])
+
+    def invalid(cfg, mode, folder, facts, model=None):
+        calls.append("again")
+        return {"body": "A long enough report that links [[Missing note]].", "selected": []}, {}
+
+    with pytest.raises(ValueError, match="nonexistent note"):
+        w.run(setup, "weekly", renderer=invalid, verify_html=True)
+    assert calls.count("again") == 2

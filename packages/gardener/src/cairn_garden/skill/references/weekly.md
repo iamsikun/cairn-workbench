@@ -17,6 +17,10 @@ saved, the runner marks every earlier unticked item `- [-] … (superseded by ru
 appear in the supplied evidence. If evidence is insufficient, propose the research question or
 verification task without inventing a citation. The agent may read relevant notes for context.
 
+The runner appends a **Run facts** section rendered from `facts.json` (Zotero writes and gate
+status, link repairs, lint counts, discovery status, catalog age, storage, HTML verification, the
+Zotero audit, proposal counts and warnings); do not restate it, but say what its facts call for.
+
 Choose useful proposals from these areas, omitting empty sections:
 
 1. **Connections:** up to eight concrete relations between notes. Direction matters: use

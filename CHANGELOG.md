@@ -23,6 +23,14 @@
   topic or idea note cited the paper. It reads the run records and the creation ledger, never
   removes anything, and runs in the weekly review, which proposes each finding as a manual
   item.
+- Digests and weekly reviews end with a **Run facts** section that the runner renders from the
+  run's results: Zotero writes with their items, failures, gate status and pending writes,
+  link repairs, lint counts, discovery status, proposal counts and warnings, plus catalog age,
+  storage, HTML verification and the Zotero audit in the weekly. The drafting model writes only
+  recommendations and commentary, so it can no longer leave out or deny what the run verified.
+- A draft that fails validation, for example with a wikilink to a note that doesn't exist, is
+  redone once with the reason in the prompt, instead of failing the run until the next
+  scheduled trigger. The run records the rejection as a warning.
 - The Studio's **In KB** mark also matches catalog papers without a DOI, such as JMLR
   articles, by their page on the publisher's site: a note's `source` or `url`, with either
   scheme and with or without `www.`.

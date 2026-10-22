@@ -157,6 +157,9 @@ def health(cfg):
     }
 
 
+REJECTED = "rejected-draft.txt"
+
+
 def render(cfg, mode, folder, facts, model=None):
     """The agent drafts a report; it cannot mutate the KB or publish anything."""
     root = SKILL
@@ -180,8 +183,17 @@ def render(cfg, mode, folder, facts, model=None):
         "The report is saved in the gardening folder, not as a research note; metrics count research notes only. Discovery complete describes source pagination; "
         "truncated describes the bounded review window, not a source failure. Storage always protects the latest "
         "database recovery in addition to the requested number of recent editions. "
-        "Preserve current uncertain or missing evidence explicitly. Keep the report concise and useful."
+        "Preserve current uncertain or missing evidence explicitly. Keep the report concise and useful. "
+        "The runner appends a Run facts section rendered from facts.json: Zotero writes, failures and "
+        "gate status, link repairs, lint counts, discovery status, storage, proposal counts and warnings. "
+        "Do not restate those facts or call them unavailable; write the recommendations and commentary they need."
     )
+    if (folder / REJECTED).exists():
+        prompt += (
+            " Your previous draft failed validation: "
+            + (folder / REJECTED).read_text()
+            + ". Return the whole report again without that problem."
+        )
     tier = "daily" if mode == "daily" else "weekly"
     agent = cfg["agent"]
     model = model or cfg[f"{agent}_{tier}_model"]
@@ -262,6 +274,103 @@ def render(cfg, mode, folder, facts, model=None):
         draft = json.loads((folder / "agent-response.json").read_text())
         usage = {}
     return draft, {"agent": agent, "model": model, "usage": usage}
+
+
+LINT = {
+    "broken_links": "broken links",
+    "orphans": "orphans",
+    "empty_topics": "empty topics",
+    "incomplete_papers": "incomplete papers",
+    "unlinked_items": "papers not linking their Zotero item",
+    "forbidden_refs": "local references",
+    "foreign_entries": "foreign entries",
+}
+
+
+def run_facts(mode, facts, warnings):
+    """The report's factual section, rendered from the run's results instead of by the agent."""
+    lines = ["## Run facts", ""]
+    sync = facts.get("zotero-sync", {})
+    done = sync.get("done", [])
+    created = [x for x in done if x.get("status") == "created" and x.get("verified")]
+    added = [x for x in done if x.get("status") == "added" and x.get("verified")]
+    planned = len(sync.get("to_add", [])) + sum(c["verified"] for c in sync.get("to_create", []))
+    pending = max(0, planned - len(done) - len(sync.get("failed", [])))
+    if not sync.get("zotero_available"):
+        zotero = "unavailable" + (f": {sync['note']}" if sync.get("note") else "")
+    else:
+        zotero = f"({sync.get('backend')}) created {len(created)}"
+        if created:
+            zotero += " — " + ", ".join(
+                f"[{x.get('title') or x['id']}]({g.zotero_link(x['key'])})" for x in created
+            )
+        zotero += f" · filed in topic collections {len(added)} · pending {pending}"
+        if sync.get("dry_run"):
+            zotero += " (read-only run: writes are gated)"
+        elif not sync.get("can_write"):
+            zotero += f" ({sync.get('note') or 'writes unconfigured'})"
+    for failure in sync.get("failed", []):
+        zotero += f" · failed {failure.get('item') or failure.get('id')}: {failure.get('error')}"
+    if sync.get("unverified"):
+        zotero += " · not created, metadata unverified: " + ", ".join(sync["unverified"])
+    lines.append(f"- **Zotero**: {zotero}")
+    fixed = facts.get("fix-links", {})
+    changed = [c["note"] for c in fixed.get("changed", [])]
+    lines.append(
+        f"- **Links**: notes repaired {len(changed)}"
+        + (" (" + ", ".join(f"[[{slug}]]" for slug in changed) + ")" if changed else "")
+        + f" · local references unresolved {len(fixed.get('unresolved', []))}"
+    )
+    summary = facts.get("lint", {}).get("summary", {})
+    lines.append(
+        "- **Lint**: " + " · ".join(f"{label} {summary.get(k, 0)}" for k, label in LINT.items())
+    )
+    found = []
+    for source in g.DISCOVERY_SOURCES:
+        block = facts.get("new-papers", {}).get(source, {})
+        if block.get("installed") is False:
+            found.append(f"{source} not installed")
+        elif not block.get("available"):
+            found.append(f"{source} unavailable, checkpoint kept")
+        elif not block.get("complete", True):
+            found.append(f"{source} incomplete, resumes next run")
+        else:
+            found.append(f"{source} {block.get('pending_count', 0)} pending")
+    lines.append("- **Discovery**: " + " · ".join(found))
+    if mode == "weekly":
+        catalog = facts.get("catalog", {})
+        if catalog.get("available"):
+            lines.append(
+                f"- **Journal catalog**: updated {str(catalog.get('last_success_at'))[:10]}, "
+                f"{catalog.get('age_days')} days ago" + ("" if catalog.get("fresh") else " (stale)")
+            )
+        storage = facts.get("storage", {})
+        if storage.get("skipped"):
+            lines.append(f"- **Storage**: skipped, {storage['skipped']}")
+        elif storage.get("catalog") is not False and "deleted" in storage:
+            lines.append(
+                f"- **Storage**: old catalog editions removed {len(storage['deleted'])} · "
+                f"GB freed {storage.get('gb', {}).get('freed_bytes', 0)}"
+            )
+        check = (facts.get("html-audit", {}).get("verification") or {}).get("status")
+        if check:
+            lines.append(f"- **Catalog views**: offline verification {check}")
+        audit = facts.get("zotero-audit", {})
+        if audit.get("zotero_available"):
+            lines.append(
+                f"- **Zotero audit**: filings no paper note justifies {len(audit['unjustified'])}"
+            )
+    stats = facts.get("metrics", {}).get("current", {}).get("proposals", {})
+    proposals = f"open {stats.get('open', 0)} · superseded {stats.get('superseded', 0)}"
+    if mode == "weekly":
+        apply = facts.get("apply", {})
+        proposals = (
+            f"applied this run {len(apply.get('applied', []))} · "
+            f"need the agent {len(apply.get('needs_agent', []))} · " + proposals
+        )
+    lines.append(f"- **Proposals**: {proposals}")
+    lines += [f"- **Warning**: {warning}" for warning in warnings]
+    return "\n".join(lines)
 
 
 def canonicalize_proposals(body):
@@ -549,17 +658,31 @@ def run(
                 manifest["warnings"].append(
                     "approved manual or failed proposals require agent follow-up"
                 )
-            draft, agent = renderer(cfg, mode, folder, facts, model=model)
-            if mode == "weekly" and isinstance(draft, dict) and isinstance(draft.get("body"), str):
-                draft["body"] = canonicalize_proposals(draft["body"])
             kb = g.kb_open(cfg)
-            validate_draft(kb, draft, mode, facts)
+            for attempt in (1, 2):
+                draft, agent = renderer(cfg, mode, folder, facts, model=model)
+                try:
+                    if (
+                        mode == "weekly"
+                        and isinstance(draft, dict)
+                        and isinstance(draft.get("body"), str)
+                    ):
+                        draft["body"] = canonicalize_proposals(draft["body"])
+                    validate_draft(kb, draft, mode, facts)
+                    break
+                except ValueError as error:
+                    if attempt == 2:
+                        raise
+                    # One re-draft told why, instead of waiting hours for the next trigger.
+                    (folder / REJECTED).write_text(str(error))
+                    manifest["warnings"].append(f"first draft rejected and redone: {error}")
             stamp = g.now(cfg)
             rid = reports.report_id(mode, stamp)
             previous = reports.get(cfg, rid)
             # A rerun must not replace a user's edits or previous approvals.
             marker = f"<!-- gardener-run:{run_id} -->"
-            body = draft["body"].strip() + "\n\n" + marker
+            body = draft["body"].strip() + "\n\n" + run_facts(mode, facts, manifest["warnings"])
+            body += "\n\n" + marker
             body = reports.portable(cfg, body, reports.path_of(cfg, rid), kb.notes())
             if previous:
                 earlier = supersede(previous.body, run_id) if mode == "weekly" else previous.body
