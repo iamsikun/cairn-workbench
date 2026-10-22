@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `fix-links` gives a paper note whose paper is in Zotero its item line,
+  `- Paper: [Zotero](…) · [PDF in Zotero](…)`, after `zotero-sync` creates or finds the item.
+  An existing `Paper:` line gets the item first and keeps its exact-version link; a note
+  without one gets the line after its title. Notes that never had a link used to stay
+  unlinked. `lint` lists the paper notes that still don't link their item
+  (`unlinked_items`), and a `Paper:` item line counts as the note's own item with or without a
+  list marker, as `fix-links` already read it.
 - The Studio's **In KB** mark also matches catalog papers without a DOI, such as JMLR
   articles, by their page on the publisher's site: a note's `source` or `url`, with either
   scheme and with or without `www.`.

@@ -5,7 +5,9 @@ to a paper or source points to something durable.
 
 **Zotero first.** A paper that is in the user's Zotero library is referenced by its Zotero item,
 not by a web URL; `fix-links` rewrites such URLs daily and `zotero-sync` adds missing papers to
-Zotero. The note's front matter keeps `source` and `url` as the paper's identity.
+Zotero. Once a paper note's own paper is in Zotero, `fix-links` puts its item and PDF first on the
+note's `Paper:` line, keeping any exact-version link there, or adds the line after the title. The
+note's front matter keeps `source` and `url` as the paper's identity.
 
 **Allowed**
 - For a paper not yet in Zotero: its canonical URL (`https://doi.org/<doi>`,

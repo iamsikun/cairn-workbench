@@ -166,6 +166,56 @@ def test_fix_links_uses_zotero(ws, zotero, capsys):
     ]
 
 
+MQA = """---
+title: Fast Transformer Decoding
+kind: paper
+source: arxiv:1911.02150
+topics: ['[[transformers]]']
+---
+"""
+
+
+@pytest.mark.parametrize(
+    "body,expected",
+    [
+        (
+            "# Fast Transformer Decoding\n\n## Main idea\nOne key-value head.\n",
+            "# Fast Transformer Decoding\n\n- Paper: [Zotero](zotero://select/library/items/QFYRQXFN)"
+            "\n\n## Main idea\nOne key-value head.\n",
+        ),
+        (
+            "## Main idea\nOne key-value head.\n",
+            "- Paper: [Zotero](zotero://select/library/items/QFYRQXFN)\n\n## Main idea\n",
+        ),
+        (  # An exact version is evidence: the item goes first, the version stays.
+            "Paper: [arXiv v2](https://arxiv.org/abs/1911.02150v2) — read in v2.\n",
+            "Paper: [Zotero](zotero://select/library/items/QFYRQXFN) · "
+            "[arXiv v2](https://arxiv.org/abs/1911.02150v2) — read in v2.",
+        ),
+    ],
+)
+def test_fix_links_adds_the_papers_own_item(ws, zotero, capsys, body, expected):
+    path = ws / "research/papers/fast-transformer-decoding.md"
+    path.write_text(MQA + body)
+    before = run(capsys, "lint")
+    assert {"note": "fast-transformer-decoding", "item": "QFYRQXFN"} in before["unlinked_items"]
+    run(capsys, "fix-links")
+    assert expected in path.read_text()
+    assert run(capsys, "lint")["unlinked_items"] == []
+    again = run(capsys, "fix-links")
+    assert "fast-transformer-decoding" not in [c["note"] for c in again["changed"]]
+
+
+def test_a_note_naming_another_item_is_reported_not_rewritten(ws, zotero, capsys):
+    path = ws / "research/papers/fast-transformer-decoding.md"
+    path.write_text(MQA + "- Paper: [Zotero](zotero://select/library/items/EE3TRR9S)\n")
+    run(capsys, "fix-links")
+    assert "QFYRQXFN" not in path.read_text()
+    assert run(capsys, "lint")["unlinked_items"] == [
+        {"note": "fast-transformer-decoding", "item": "QFYRQXFN"}
+    ]
+
+
 def test_fix_links_falls_back_to_paper_url(ws, capsys):
     result = run(capsys, "fix-links", "--dry-run")
     assert result["zotero_available"] is False

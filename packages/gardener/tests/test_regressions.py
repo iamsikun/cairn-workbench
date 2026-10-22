@@ -101,13 +101,15 @@ def test_conflicting_identity_does_not_match_on_title(ws):
     assert idx.find(["doi:10.1000/requested"], "A repeated title") is None
 
 
-def test_paper_notes_own_zotero_item_drives_collection_sync(ws, monkeypatch):
-    kb().save(
-        kind="paper",
-        title="Original paper",
-        body="- Paper: [Zotero](zotero://select/library/items/PAPER001)",
-        topics=["Transformers"],
-    )
+@pytest.mark.parametrize(
+    "line",
+    [
+        "- Paper: [Zotero](zotero://select/library/items/PAPER001)",
+        "Paper: [Zotero](zotero://select/library/items/PAPER001) · [arXiv v2](https://arxiv.org/abs/1706.03762v2)",
+    ],
+)
+def test_paper_notes_own_zotero_item_drives_collection_sync(ws, monkeypatch, line):
+    kb().save(kind="paper", title="Original paper", body=line, topics=["Transformers"])
     monkeypatch.setattr(g.ZoteroIndex, "load", lambda: index())
     monkeypatch.setattr(g, "remote_titles", lambda cfg, ids: {})
     report = invoke("zotero-sync", "--dry-run")

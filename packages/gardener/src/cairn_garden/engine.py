@@ -330,6 +330,7 @@ def foreign_entries(cfg) -> list[str]:
 def cmd_lint(args, cfg):
     kb = kb_open(cfg)
     notes = kb.notes()
+    index = ZoteroIndex.load()
     inbound: dict[str, int] = {}
     for note in notes.values():
         for slug in {*note.topics, *note.body_links}:
@@ -343,6 +344,9 @@ def cmd_lint(args, cfg):
         "forbidden_refs": [],
         "reading_positions": [],
         "report_links": [],
+        # Paper notes whose own paper is in Zotero but which do not link its item (fix-links does).
+        "unlinked_items": [],
+        "zotero_available": index is not None,
     }
     for note in notes.values():
         if reports.is_legacy_report(note):
@@ -371,6 +375,9 @@ def cmd_lint(args, cfg):
                         "position": " ".join(section.group(1).split())[:600],
                     }
                 )
+            key = index.find(note_ids(note)) if index and note_ids(note) else None
+            if key and key not in OWN_ITEM.findall(note.body):
+                report["unlinked_items"].append({"note": note.slug, "item": key})
         for ref in forbidden_refs(note):
             report["forbidden_refs"].append({"note": note.slug, "kind": note.kind, **ref})
     # Reports link notes (and each other) with relative Markdown links; notes may link reports.
@@ -642,6 +649,36 @@ def paper_links(note, key: str | None, pdf: str | None) -> str:
 # fix-links -------------------------------------------------------------------------------------
 
 SOURCE_LINE = re.compile(r"^(\s*(?:[-*]\s*)?)(Local PDF|PDF|Local file|Paper)\s*:\s*(\S.*)$", re.I)
+# A paper note's own Zotero item: a `Paper:` source line (as above) that starts with its link.
+OWN_ITEM = re.compile(
+    r"^\s*(?:[-*]\s*)?Paper\s*:\s*\[[^\]]*\]\(zotero://select/library/items/([A-Z0-9]{8})\)",
+    re.I | re.M,
+)
+
+
+def link_item(note, body: str, key: str, pdf: str | None):
+    """Give a paper note the source line of its Zotero item, keeping any links already there.
+
+    An existing `Paper:` line (an exact version, say) gets the item prepended; otherwise a new
+    line goes after the title. A note that already names an item, even another one, is left alone.
+    """
+    if OWN_ITEM.search(body):
+        return body, None
+    links = paper_links(note, key, pdf)
+    lines, fenced = body.splitlines(keepends=True), False
+    for number, line in enumerate(lines):
+        if line.lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+        source = None if fenced else SOURCE_LINE.match(line.rstrip("\n"))
+        if source and source.group(2).lower() == "paper":
+            start = source.start(3)
+            lines[number] = line[:start] + links + " · " + line[start:]
+            edit = {"from": line.strip(), "to": lines[number].strip()}
+            return "".join(lines), edit
+    head = lines[0].rstrip("\n") + "\n\n" if lines and lines[0].startswith("# ") else ""
+    rest = "".join(lines[1 if head else 0 :]).lstrip("\n")
+    new = f"- Paper: {links}"
+    return head + new + ("\n\n" + rest if rest else "\n"), {"from": "", "to": new}
 
 
 def fix_body(note, index: ZoteroIndex | None, titles: dict | None = None):
@@ -727,7 +764,11 @@ def fix_body(note, index: ZoteroIndex | None, titles: dict | None = None):
             start, end = source.span(2)
             new_line = new_line[:start] + "Paper" + new_line[end:]
         lines.append(new_line)
-    return "".join(lines), edits, unresolved, paper_key
+    body = "".join(lines)
+    if paper_key:
+        body, edit = link_item(note, body, paper_key, pdf)
+        edits += [edit] if edit else []
+    return body, edits, unresolved, paper_key
 
 
 def cmd_fix_links(args, cfg):
@@ -1245,9 +1286,6 @@ def cited_sources(note, notes, index):
         if other and other.kind == "paper":
             ids |= note_ids(other)
     return ids, keys
-
-
-OWN_ITEM = re.compile(r"^- Paper: \[Zotero\]\(zotero://select/library/items/([A-Z0-9]{8})\)", re.M)
 
 
 def own_sources(note, index):
