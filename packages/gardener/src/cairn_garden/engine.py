@@ -306,6 +306,7 @@ REPOSITORY_FILES = {
     ".gitattributes",
     "cairn-workbench.toml",
     "catalog-preferences.yaml",
+    "aster.yaml",  # the garden workflow's default `aster-config`
 }
 
 
@@ -316,6 +317,10 @@ def foreign_entries(cfg) -> list[str]:
     ignored = {".DS_Store"}
     allowed = {store.MARKER, ".cairn.lock", "html", *store.COLLECTIONS, *ignored, *REPOSITORY_FILES}
     allowed.add(reports.root(cfg).relative_to(root).parts[0])
+    # Aster's settings under another name (the workflow's `aster-config` sets $ASTER_CONFIG).
+    aster_config = Path(os.environ.get("ASTER_CONFIG") or root / "aster.yaml").resolve()
+    if aster_config.is_relative_to(root.resolve()):
+        allowed.update(aster_config.relative_to(root.resolve()).parts[:1])
     found = [p.name for p in root.iterdir() if p.name not in allowed]
     for collection in store.COLLECTIONS:
         if (root / collection).is_dir():

@@ -15,6 +15,9 @@
   The draft sees those items as `open-proposals` and restates the ones still worth doing.
   `metrics` counts open items only in each report's latest run and reports superseded ones
   separately from rejected ones, as does the Actions summary.
+- `lint` no longer reports `aster.yaml`, or the file the garden workflow's `aster-config` names,
+  as a foreign entry, so the weekly report stops proposing to move Aster's settings out of
+  the knowledge base.
 - The Studio's **In KB** mark also matches catalog papers without a DOI, such as JMLR
   articles, by their page on the publisher's site: a note's `source` or `url`, with either
   scheme and with or without `www.`.

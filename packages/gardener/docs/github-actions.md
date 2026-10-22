@@ -141,7 +141,7 @@ pins (`cairn skills pin aster`), the same one `cairn skills install` puts on a M
 commit instead installs that one. Every run that has a period due installs it, restores Aster's data log from the Actions cache, runs `aster refresh` and caches
 the log again, before the digest or review reads it. Aster's settings are `aster.yaml` in the
 knowledge base repository (`aster-config` names another file); without it, Aster's default
-fields apply. A failed refresh is a warning, not a failure. Aster's data is a small log, so
+fields apply. `lint` does not count that file as a foreign entry. A failed refresh is a warning, not a failure. Aster's data is a small log, so
 it needs neither the disk space nor the priming run of the catalog. If the cache is evicted,
 the next refresh starts again from the past week.
 

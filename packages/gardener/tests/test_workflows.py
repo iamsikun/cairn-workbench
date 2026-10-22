@@ -544,3 +544,13 @@ def test_only_the_latest_run_of_a_report_counts_as_open(setup):
     runs = [f"- [ ] **P1** Same proposal again\n\n<!-- gardener-run:run{n} -->" for n in range(3)]
     g.reports.save(setup, "weekly/garden-weekly-2026-w02.md", "\n\n## Update\n\n".join(runs), {})
     assert g.proposal_stats(setup)["open"] == 1
+
+
+def test_aster_settings_are_not_foreign(ws, monkeypatch):
+    (ws / "aster.yaml").write_text("fields: []\n")
+    (ws / "scouting").mkdir()
+    (ws / "scouting/aster-settings.yaml").write_text("fields: []\n")
+    kb().save(kind="note", title="Plain note", body="Only knowledge here.")
+    assert invoke("lint")["foreign_entries"] == ["scouting"]
+    monkeypatch.setenv("ASTER_CONFIG", str(ws / "scouting/aster-settings.yaml"))
+    assert invoke("lint")["foreign_entries"] == []
