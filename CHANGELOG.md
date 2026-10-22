@@ -49,6 +49,9 @@
   leaves the catalog notes' status block to the cloud refresh. The catalog pages' footer shows
   the edition's age and turns to the warning colour after a week. Rebuild the pages once
   (`cairn-catalog browser`, or the next update) to see it.
+- The caller template and the Actions guide say that GitHub's cron is best-effort: the hourly
+  triggers are the earliest a period can run, and in practice digests land mid-morning to early
+  afternoon in Chicago. Regenerate the caller (`cairn-garden ci template`) to get the comment.
 - The Studio's **In KB** mark also matches catalog papers without a DOI, such as JMLR
   articles, by their page on the publisher's site: a note's `source` or `url`, with either
   scheme and with or without `www.`.

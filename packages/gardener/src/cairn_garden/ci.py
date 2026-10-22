@@ -312,9 +312,10 @@ def summary(cfg, mode: str | None, publication: dict | None) -> str:
 
 # Template ---------------------------------------------------------------------------------------
 
-# 12:43/13:43 UTC is 07:43 in Chicago in summer/winter; 15:43/16:43 is 10:43 on Mondays.
-# GitHub drops or delays scheduled runs by hours, so every hour until 20:43 is a catch-up;
-# a trigger with nothing due takes seconds. `due()` decides what actually runs.
+# 12:43/13:43 UTC is 07:43 in Chicago in summer/winter; 15:43/16:43 is 10:43 on Mondays. These
+# are the earliest a period can run, not when it does: GitHub starts scheduled runs on a
+# best-effort basis, often only two or three of these a day and hours late, so every hour until
+# 20:43 is a catch-up. A trigger with nothing due takes seconds; `due()` decides what runs.
 CRON = "43 12-20 * * *"
 
 TEMPLATE = """\
@@ -324,6 +325,8 @@ name: Cairn garden
 
 on:
   schedule:
+    # Best effort: GitHub starts only some scheduled runs, often hours late. Every trigger
+    # catches up whatever is due, so a digest lands when the first one starts.
     - cron: "{cron}"
   workflow_dispatch:
     inputs:

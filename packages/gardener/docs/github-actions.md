@@ -111,6 +111,12 @@ Central Daylight Time this includes:
 - on Mondays, a trigger after 10:30 for the weekly review;
 - later triggers that catch up when GitHub delays or drops a scheduled run.
 
+These are the earliest times a period can run, not when it does. GitHub starts scheduled runs
+on a best-effort basis: often only two or three of the nine hourly triggers start on a given
+day, the first of them mid-morning to early afternoon in Chicago, so digests usually land then.
+Start the workflow by hand (**Run workflow** on the Actions page, or
+`gh workflow run cairn-garden.yml`) when you want a period sooner.
+
 The runner itself decides what is due, in your configured timezone, exactly as `--scheduled`
 does on a Mac:
 
