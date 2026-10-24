@@ -83,8 +83,9 @@ Two notes on the agent and the token:
 - **Agent usage:** each daily run is one agent call with the daily model, and each weekly run is
   one call with the weekly model. A not-due trigger installs nothing and calls no model.
 - **Repository token:** the workflow pushes with the run's `GITHUB_TOKEN` and asks only for
-  `contents: write`. If the default branch is protected, allow GitHub Actions to push to it, or
-  garden a branch instead.
+  `contents: write` and `issues: write`, the second for the weekly review's issue. The caller
+  workflow must grant both; a caller that grants less stops the run before it starts. If the
+  default branch is protected, allow GitHub Actions to push to it, or garden a branch instead.
 
 The gardener checks the Zotero key against `/keys/current` before writing. A key for another
 library, or one without write access, is refused. Evidence records the library and the key's
@@ -188,6 +189,20 @@ keep these files intact when recovering, rather than rebuilding verification fla
 
 On your own machine, `git pull --rebase` before editing and push soon after. Ticking a proposal
 is an ordinary edit to `gardening/weekly/…`; the next weekly run applies it.
+
+### The review issue
+
+A pushed report sends no notification, so after publishing a weekly review that leaves proposals
+open, `cairn-garden ci issue` opens one issue, "Garden review 2026-W43: 22 proposals to
+approve", listing them as checkboxes with links to the notes. GitHub notifies you as it does for
+any new issue in a repository you watch.
+
+Ticking a box there approves the item. Every run, due or not, first copies the ticks of open
+review issues into the report, so they are published with the next trigger and the next weekly
+review applies them. An issue can only tick a line its report already holds. Unticking withdraws
+nothing; edit the report for that. When the next weekly review publishes, its issue replaces the
+previous one, which is closed after its ticks are copied. The garden state remembers the issue
+it opened, so a retried run does not open a second one.
 
 ## 5. Interruptions and what happens next
 

@@ -68,6 +68,7 @@ jobs:
     timeout-minutes: 240
     permissions:
       contents: write
+      issues: write
     env:
       CAIRN_WORKSPACE: ${{ github.workspace }}/kb
       CAIRN_WORKBENCH_CONFIG: ${{ github.workspace }}/kb/${{ inputs.config }}
@@ -123,6 +124,15 @@ jobs:
         run: >-
           cairn-garden ci restore --branch "${{ inputs.state-branch }}"
           ${{ inputs.allow-empty-state && '--allow-empty' || '' }}
+
+      # Boxes ticked in the weekly review's issue approve those proposals in the report, so the
+      # review applies them; publication commits the ticks even when nothing is due.
+      - name: Copy approvals from the review issue
+        id: approvals
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: cairn-garden ci issue --approvals-only
 
       - name: Decide what is due
         id: due
@@ -264,6 +274,19 @@ jobs:
         if: always() && steps.restore.outcome == 'success'
         run: cairn-garden ci publish --branch "${{ inputs.state-branch }}"
 
+      # Nothing else notifies the owner that a weekly checklist waits. The issue follows the
+      # latest published review: opened once per run, earlier ones closed after their ticks are
+      # copied. Ticks copied at this point are published next.
+      - name: Open the review issue
+        id: issue
+        if: always() && steps.publish.outcome == 'success'
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          cairn-garden ci issue
+          cairn-garden ci publish --branch "${{ inputs.state-branch }}"
+
       - name: Summary
         if: always() && steps.restore.outcome == 'success' && inputs.mode != 'catalog' && steps.enable_writes.outcome != 'failure'
         run: cairn-garden ci summary --mode "${{ inputs.mode }}"
@@ -311,5 +334,5 @@ jobs:
           if-no-files-found: ignore
 
       - name: Fail when a workflow did not complete
-        if: steps.daily.outcome == 'failure' || steps.weekly.outcome == 'failure' || steps.catalog.outcome == 'failure'
+        if: steps.daily.outcome == 'failure' || steps.weekly.outcome == 'failure' || steps.catalog.outcome == 'failure' || steps.approvals.outcome == 'failure' || steps.issue.outcome == 'failure'
         run: exit 1

@@ -13,6 +13,7 @@ its state or the other way round. Nothing is force-pushed.
     cairn-garden ci summary [--mode M]          execution, publication and completion
     cairn-garden ci state-export DIR | state-import DIR [--allow-empty]
     cairn-garden ci template [--version vX.Y.Z] the caller workflow for the knowledge base
+    cairn-garden ci issue [--approvals-only]    the weekly review's GitHub issue (see issues.py)
 """
 
 from __future__ import annotations
@@ -351,6 +352,7 @@ concurrency:
 
 permissions:
   contents: write
+  issues: write  # the weekly review's issue, where ticking a box approves a proposal
 
 jobs:
   garden:
@@ -379,6 +381,10 @@ def output(name: str, value: str) -> None:
 
 
 def main(argv: list[str]) -> int:
+    if argv[:1] == ["issue"]:
+        from . import issues
+
+        return issues.main(argv[1:])
     parser = argparse.ArgumentParser(
         prog="cairn-garden ci",
         description=__doc__,

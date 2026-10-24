@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- On GitHub Actions, each weekly review that leaves proposals open gets a GitHub issue in the
+  knowledge base's repository, listing them as checkboxes. A pushed report and a successful
+  scheduled run notify no one, so weekly checklists used to expire unseen. Ticking a box approves
+  the item: every run first copies ticked boxes into the report (`cairn-garden ci issue
+  --approvals-only`), and the weekly review applies them. An issue can only approve a line of its
+  own run in its report, never add one. The next review closes the previous issue after copying
+  its ticks, and the garden state remembers the open issue, because GitHub lists a new issue only
+  after a moment. **The caller workflow must grant `issues: write`** beside `contents: write`;
+  `cairn-garden ci template` now does.
+
 - `cairn-garden health` also compares a garden workflow pinned by commit, as a knowledge base
   may pin it, with the commit the local packages were installed from. In 0.8.5 the warning
   compared only release tags, so a commit pin was never checked. Packages installed from a

@@ -274,7 +274,7 @@ def test_reusable_workflow_declares_its_interface():
     steps = [s.get("name") for s in spec["jobs"]["garden"]["steps"]]
     assert steps.index("Restore garden state") < steps.index("Daily digest")
     assert steps.index("Weekly review") < steps.index("Publish reports and state")
-    assert spec["jobs"]["garden"]["permissions"] == {"contents": "write"}
+    assert spec["jobs"]["garden"]["permissions"] == {"contents": "write", "issues": "write"}
 
 
 # Catalog ----------------------------------------------------------------------------------------
