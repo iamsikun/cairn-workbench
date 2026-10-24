@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.8.6 — proposals that reach you
+
+Weekly proposals now arrive as a GitHub issue in the knowledge base's repository, where ticking
+a box approves them. The caller workflow must grant `issues: write`. `health` also checks a
+garden workflow pinned by commit. The MCP tools, the note format and the Zotero write code are
+unchanged, so scheduled writes that were enabled stay enabled without re-verification.
 
 - On GitHub Actions, each weekly review that leaves proposals open gets a GitHub issue in the
   knowledge base's repository, listing them as checkboxes. A pushed report and a successful
@@ -11,7 +16,6 @@
   its ticks, and the garden state remembers the open issue, because GitHub lists a new issue only
   after a moment. **The caller workflow must grant `issues: write`** beside `contents: write`;
   `cairn-garden ci template` now does.
-
 - `cairn-garden health` also compares a garden workflow pinned by commit, as a knowledge base
   may pin it, with the commit the local packages were installed from. In 0.8.5 the warning
   compared only release tags, so a commit pin was never checked. Packages installed from a

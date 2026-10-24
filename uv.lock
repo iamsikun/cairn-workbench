@@ -12,7 +12,7 @@ members = [
 
 [[package]]
 name = "cairn-catalog"
-version = "0.8.5"
+version = "0.8.6"
 source = { editable = "packages/catalog" }
 dependencies = [
     { name = "cairn-workbench" },
@@ -29,7 +29,7 @@ requires-dist = [
 
 [[package]]
 name = "cairn-garden"
-version = "0.8.5"
+version = "0.8.6"
 source = { editable = "packages/gardener" }
 dependencies = [
     { name = "cairn-catalog" },
@@ -44,7 +44,7 @@ requires-dist = [
 
 [[package]]
 name = "cairn-studio"
-version = "0.8.5"
+version = "0.8.6"
 source = { editable = "packages/studio" }
 dependencies = [
     { name = "cairn-workbench" },
@@ -66,7 +66,7 @@ provides-extras = ["catalog"]
 
 [[package]]
 name = "cairn-workbench"
-version = "0.8.5"
+version = "0.8.6"
 source = { editable = "." }
 dependencies = [
     { name = "markdown-it-py" },
