@@ -345,10 +345,8 @@ on:
         type: boolean
         default: false
 
-# One run at a time for everything that changes the knowledge base or its state.
-concurrency:
-  group: cairn-garden
-  cancel-in-progress: false
+# Concurrency lives in the reusable jobs: gardening and catalog refreshes have separate queues.
+# Do not add workflow-level concurrency here; a long catalog build would block later digests.
 
 permissions:
   contents: write

@@ -1,0 +1,168 @@
+# Refresh public metadata independently of the jobs that write the knowledge base.
+name: Cairn catalog (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      config:
+        type: string
+        default: cairn-workbench.toml
+      force:
+        type: boolean
+        default: false
+    secrets:
+      OPENALEX_API_KEY:
+        required: false
+
+jobs:
+  catalog:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    concurrency:
+      group: cairn-catalog
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    env:
+      CAIRN_WORKBENCH_CONFIG: ${{ github.workspace }}/kb/${{ inputs.config }}
+      CAIRN_CATALOG_DIR: ${{ github.workspace }}/catalog
+      OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+      WORKBENCH: git+https://github.com/iamsikun/cairn-workbench@${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: kb
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install the catalog tools
+        run: |
+          uv tool install "cairn-garden @ $WORKBENCH#subdirectory=packages/gardener" \
+            --with-executables-from cairn-catalog
+
+      - name: Reserve space for the journal catalog
+        run: |
+          sudo rm -rf -- /usr/local/lib/android /usr/share/dotnet /usr/share/swift /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          python3 - <<'PY'
+          import os, shutil
+          free = shutil.disk_usage(os.environ['GITHUB_WORKSPACE']).free / 2**30
+          print(f'Available space for catalog: {free:.1f} GiB')
+          if free < 30:
+              raise SystemExit('Catalog requires at least 30 GiB free for a staged edition')
+          PY
+
+      - name: Restore the last published edition
+        id: edition
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ github.workspace }}/catalog
+            !${{ github.workspace }}/catalog/.refreshes/**
+            !${{ github.workspace }}/catalog/.refresh-checkpoint/**
+          key: cairn-edition-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: cairn-edition-v1-
+
+      - name: Restore a legacy catalog
+        if: steps.edition.outputs.cache-matched-key == ''
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ github.workspace }}/catalog
+          key: cairn-catalog-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: cairn-catalog-
+
+      - name: Decide whether to refresh
+        id: due
+        env:
+          FORCE: ${{ inputs.force }}
+        run: |
+          if [ "$FORCE" = true ] || ! cairn-garden ci catalog-fresh --max-age 6 > /dev/null; then
+            echo "refresh=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # This namespace can never match a gardening job's published-edition restore.
+      # A version-specific key prevents resuming derived data built by different code.
+      - name: Restore the last completed refresh phase
+        if: steps.due.outputs.refresh == 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ github.workspace }}/catalog/.refresh-checkpoint
+          key: cairn-refresh-v1-${{ inputs.version }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: cairn-refresh-v1-${{ inputs.version }}-
+
+      - name: Collect source metadata
+        id: sources
+        if: steps.due.outputs.refresh == 'true'
+        run: cairn-catalog update --phase sources --keep-notes
+
+      - name: Save source progress before building
+        if: steps.sources.outputs.checkpoint == 'sources'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ github.workspace }}/catalog/.refresh-checkpoint
+          key: cairn-refresh-v1-${{ inputs.version }}-${{ github.run_id }}-${{ github.run_attempt }}-sources
+
+      - name: Build the catalog
+        id: build
+        if: steps.due.outputs.refresh == 'true'
+        run: cairn-catalog update --phase build --keep-notes
+
+      - name: Save build progress before verification
+        if: steps.build.outputs.checkpoint == 'build'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ github.workspace }}/catalog/.refresh-checkpoint
+          key: cairn-refresh-v1-${{ inputs.version }}-${{ github.run_id }}-${{ github.run_attempt }}-build
+
+      - name: Verify and publish the edition
+        id: publish
+        if: steps.due.outputs.refresh == 'true'
+        run: cairn-catalog update --phase publish --keep-notes
+
+      # Save immediately, before summaries or any other work can fail.
+      - name: Save the published edition
+        if: steps.publish.outcome == 'success'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ github.workspace }}/catalog
+            !${{ github.workspace }}/catalog/.refreshes/**
+            !${{ github.workspace }}/catalog/.refresh-checkpoint/**
+          key: cairn-edition-v1-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Catalog summary
+        if: always()
+        env:
+          REFRESH: ${{ steps.due.outputs.refresh }}
+          PUBLISHED: ${{ steps.publish.outcome }}
+        run: |
+          python3 - <<'PY'
+          import os
+          if os.environ['PUBLISHED'] == 'success':
+              result = 'Verified edition published; gardening can read it on the next run.'
+          elif os.environ['REFRESH'] == 'true':
+              result = 'Refresh incomplete. The next attempt resumes the last cached phase.'
+          else:
+              result = 'No refresh completed; see the freshness check and preceding steps.'
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
+              output.write('## Journal catalog\n\n' + result + '\n')
+          PY
+
+      - name: Keep catalog diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: catalog-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ github.workspace }}/catalog/update-report.json
+            ${{ github.workspace }}/catalog/.refresh-checkpoint/checkpoint.json
+            ${{ github.workspace }}/catalog/.refresh-checkpoint/report.json
+          include-hidden-files: true
+          retention-days: 14
+          if-no-files-found: ignore

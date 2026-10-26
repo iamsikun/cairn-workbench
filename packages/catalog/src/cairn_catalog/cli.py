@@ -1,6 +1,6 @@
 """cairn-catalog: the public journal catalog that feeds a Cairn knowledge base.
 
-update [--rebuild-only] [--keep-notes]
+update [--rebuild-only] [--keep-notes] [--phase sources|build|publish]
                                refresh metadata, verify a staged edition, then publish it
 serve [--port N] [--open]      the catalog app on localhost (preferences, SQLite browser)
 search | import-paper | harvest | harvest-repec | harvest-publisher | build | validate
@@ -44,6 +44,7 @@ SIMPLE = {
     "verify": ("compare the offline pages' queries with SQLite", []),
     "jmlr": ("harvest the JMLR publisher archive", ["--refresh"]),
     "paths": ("print the folders and files in use", []),
+    "sync-notes": ("update existing catalog notes from the last published edition", []),
 }
 
 
@@ -62,7 +63,11 @@ def main(argv: list[str] | None = None) -> int:
         parser = argparse.ArgumentParser(prog=f"cairn-catalog {command}", description=text)
         for flag in flags:
             parser.add_argument(flag, action="store_true")
+        if command == "update":
+            parser.add_argument("--phase", choices=("sources", "build", "publish"))
         options = parser.parse_args(rest)
+        if command == "update" and options.phase and options.rebuild_only:
+            parser.error("--phase cannot be combined with --rebuild-only")
     if command in CATALOG:
         from . import catalog
 
@@ -79,8 +84,15 @@ def main(argv: list[str] | None = None) -> int:
         from . import paths, update_catalog
 
         update_catalog.refresh(
-            paths.data_dir(), rebuild_only=options.rebuild_only, notes=not options.keep_notes
+            paths.data_dir(),
+            rebuild_only=options.rebuild_only,
+            notes=not options.keep_notes,
+            phase=options.phase,
         )
+    elif command == "sync-notes":
+        from . import paths, update_catalog
+
+        update_catalog.sync_entrypoints(paths.data_dir())
     elif command == "browser":
         from . import build_browser
 

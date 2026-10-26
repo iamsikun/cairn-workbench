@@ -62,7 +62,21 @@ on:
         required: false
 
 jobs:
+  catalog:
+    if: inputs.catalog && (inputs.mode == 'auto' || inputs.mode == 'weekly' || inputs.mode == 'catalog')
+    uses: ./.github/workflows/catalog.yml
+    with:
+      version: ${{ inputs.version }}
+      config: ${{ inputs.config }}
+      force: ${{ inputs.mode == 'catalog' }}
+    secrets:
+      OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+
   garden:
+    if: inputs.mode != 'catalog'
+    concurrency:
+      group: cairn-garden
+      cancel-in-progress: false
     # A pinned image: move it on only after a green run on the new one.
     runs-on: ubuntu-24.04
     timeout-minutes: 240
@@ -152,10 +166,12 @@ jobs:
             echo "$period=$due" >> "$GITHUB_OUTPUT"
           done
 
-      # This workflow only uses GitHub-hosted Ubuntu runners. The full catalog and its
-      # staged replacement need more space than the image leaves beside unused SDKs.
+      # Legacy caches include recovery snapshots. If there is no room, gardening can
+      # still run without this optional source (subject to catalog_required).
       - name: Reserve space for the journal catalog
-        if: inputs.catalog && (steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true' || inputs.mode == 'catalog')
+        id: catalog_space
+        continue-on-error: true
+        if: inputs.catalog && (steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true')
         run: |
           sudo rm -rf -- /usr/local/lib/android /usr/share/dotnet /usr/share/swift /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
           python3 - <<'PY'
@@ -163,29 +179,38 @@ jobs:
           free = shutil.disk_usage(os.environ['GITHUB_WORKSPACE']).free / 2**30
           print(f'Available space for catalog: {free:.1f} GiB')
           if free < 30:
-              raise SystemExit('Catalog requires at least 30 GiB free for a staged edition')
+              raise SystemExit('Skipping catalog restore: less than 30 GiB free')
           PY
 
       - name: Restore the journal catalog
-        if: inputs.catalog && (steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true' || inputs.mode == 'catalog')
+        id: edition
+        continue-on-error: true
+        if: steps.catalog_space.outcome == 'success'
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ github.workspace }}/catalog
+            !${{ github.workspace }}/catalog/.refreshes/**
+            !${{ github.workspace }}/catalog/.refresh-checkpoint/**
+          key: cairn-edition-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: cairn-edition-v1-
+
+      # One-time compatibility with editions saved by the combined workflow.
+      - name: Restore a legacy catalog
+        if: steps.catalog_space.outcome == 'success' && steps.edition.outputs.cache-matched-key == ''
+        continue-on-error: true
         uses: actions/cache/restore@v6
         with:
           path: ${{ github.workspace }}/catalog
-          key: cairn-catalog-${{ github.run_id }}
+          key: cairn-catalog-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: cairn-catalog-
 
-      # The weekly review reads the catalog: refresh it first unless an earlier run refreshed it
-      # within this weekly cycle. A week-old catalog is 7 days minus the refresh's duration old,
-      # which would pass catalog_max_age_days (8) and leave every other review on a 2-week-old
-      # catalog. The review itself checks catalog_max_age_days again (catalog_required).
-      - name: Refresh the journal catalog
-        id: catalog
-        if: inputs.catalog && (steps.due.outputs.weekly == 'true' || inputs.mode == 'catalog')
+      - name: Update catalog note status
+        if: inputs.catalog && (steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true')
         continue-on-error: true
         run: |
-          if [ "${{ inputs.mode }}" = catalog ] || ! cairn-garden ci catalog-fresh --max-age 6 > /dev/null; then
-            cairn-catalog update
-            echo "saved=true" >> "$GITHUB_OUTPUT"
+          if [ -f "$CAIRN_CATALOG_DIR/entity-coverage.json" ]; then
+            cairn-catalog sync-notes
           fi
 
       # Aster's log is small and only grows; each run restores the latest copy and adds to it.
@@ -228,16 +253,6 @@ jobs:
         if: steps.due.outputs.run_weekly == 'true'
         continue-on-error: true
         run: cairn-garden weekly ${{ inputs.scheduled && '--scheduled' || '' }}
-
-      # Weekly storage maintenance must reach the next runner, too. Saving before
-      # the review would restore the pruned recovery editions every week. A refreshed catalog
-      # is saved even when a later step fails or the job times out.
-      - name: Save the journal catalog
-        if: always() && steps.catalog.outputs.saved == 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: ${{ github.workspace }}/catalog
-          key: cairn-catalog-${{ github.run_id }}
 
       # After a manual daily and weekly run each proved a Zotero import and a collection update
       # on this release and configuration, scheduled runs may write to Zotero.
@@ -288,37 +303,8 @@ jobs:
           cairn-garden ci publish --branch "${{ inputs.state-branch }}"
 
       - name: Summary
-        if: always() && steps.restore.outcome == 'success' && inputs.mode != 'catalog' && steps.enable_writes.outcome != 'failure'
+        if: always() && steps.restore.outcome == 'success' && steps.enable_writes.outcome != 'failure'
         run: cairn-garden ci summary --mode "${{ inputs.mode }}"
-
-      - name: Catalog summary
-        if: always() && steps.restore.outcome == 'success' && inputs.mode == 'catalog'
-        env:
-          CATALOG_OUTCOME: ${{ steps.catalog.outcome }}
-          PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
-        run: |
-          python3 - <<'PY'
-          import json, os
-          from pathlib import Path
-          path = Path(os.environ['CAIRN_CATALOG_DIR']) / 'update-report.json'
-          report = json.loads(path.read_text()) if path.exists() else {}
-          complete = (report.get('status') == 'success'
-                      and os.environ['CATALOG_OUTCOME'] == 'success'
-                      and os.environ['PUBLISH_OUTCOME'] == 'success')
-          lines = ['## Cairn journal catalog', '',
-                   f"- refresh: {report.get('status', 'no completed refresh')}",
-                   f"- publication: {os.environ['PUBLISH_OUTCOME']}",
-                   f"- offline verification: {report.get('offline_verification', 'not completed')}"]
-          lines += [f'- warning: {warning}' for warning in report.get('warnings', [])]
-          if report.get('error'):
-              lines.append(f"- error: {report['error']}")
-          lines += ['', '**Overall: ' + ('complete' if complete else 'incomplete') + '**']
-          summary = '\n'.join(lines) + '\n'
-          print(summary)
-          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
-              output.write(summary)
-          raise SystemExit(0 if complete else 1)
-          PY
 
       - name: Keep diagnostics
         if: always()
@@ -334,5 +320,5 @@ jobs:
           if-no-files-found: ignore
 
       - name: Fail when a workflow did not complete
-        if: steps.daily.outcome == 'failure' || steps.weekly.outcome == 'failure' || steps.catalog.outcome == 'failure' || steps.approvals.outcome == 'failure' || steps.issue.outcome == 'failure'
+        if: steps.daily.outcome == 'failure' || steps.weekly.outcome == 'failure' || steps.approvals.outcome == 'failure' || steps.issue.outcome == 'failure'
         run: exit 1

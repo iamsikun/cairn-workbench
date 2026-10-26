@@ -127,23 +127,40 @@ does on a Mac:
 - A period that completed is never run twice.
 - A missed Monday is caught up later in the week.
 
-**Concurrency.** All runs share one concurrency group with `cancel-in-progress: false`. Two runs
-never change the knowledge base or its state at the same time, and a run that may be writing
-to Zotero is never cancelled for a newer one.
+**Concurrency.** The reusable workflow gives gardening and catalog refreshes separate job-level
+concurrency groups, both with `cancel-in-progress: false`. Gardening jobs still serialize all
+knowledge-base, state and Zotero writes. Catalog jobs serialize only catalog work; they have no
+dependency on gardening and cannot hold up a later daily or weekly job. When upgrading an older
+caller, remove its top-level `concurrency` block as well; leaving it there still serializes the
+entire run, including the catalog job.
 
-**The weekly review and the catalog.** The weekly review first restores the catalog from the
-Actions cache. Unless the catalog was refreshed within the last six days (earlier in this weekly
-cycle), it runs `cairn-catalog update`, so every review reads a catalog refreshed that week. The
-refreshed catalog is cached after the review, so its storage cleanup is retained by the next
-runner rather than restoring old recovery editions. It is cached even when the review fails. The
-review also checks freshness itself:
+**The weekly review and the catalog.** Gardening restores the last verified catalog edition from
+the Actions cache. In parallel, auto and weekly runs check whether the catalog is older than six
+days; catalog mode forces a refresh. The separate catalog job never writes the knowledge base or
+its state. A newly completed edition becomes available to subsequent gardening runs. The review
+checks the edition it actually restored:
 
 - a stale catalog is a warning in the report and the run log;
-- with `catalog_required = true`, a stale catalog fails the run;
+- with `catalog_required = true`, a stale catalog fails the weekly review;
 - a missing catalog is reported as an unavailable source.
 
-The generated status block in existing catalog notes links to the GitHub run for cloud
-refreshes. Temporary runner paths are not useful after the job exits. Local refreshes retain
+The catalog refresh has three phases: collect sources, build the catalog and browser, then verify
+and publish. It saves a separate checkpoint cache immediately after sources and after the build,
+and saves the verified edition immediately after publication. Checkpoint keys include the code
+version, run ID and attempt; they cannot match gardening's published-edition cache. A fresh runner
+resumes the last completed phase without refetching sources or rebuilding a completed catalog.
+An interrupted phase is repeated; work since the last successfully uploaded checkpoint can be lost
+when the runner disappears. These caches remain best effort and may be evicted by GitHub.
+
+Checkpoints carry a content fingerprint of the baseline and journal registry, so moving between
+runner paths is safe and a changed baseline cannot silently receive an outdated staged build.
+Partial builds and failed verification never replace the previous verified edition or advance its
+freshness timestamp. Recovery snapshots and unfinished checkpoints are excluded from the published
+cache, so they no longer return after gardening's storage cleanup. Existing legacy caches can seed
+the first refresh after upgrading.
+
+On its next run, gardening updates the generated status block in existing catalog notes from
+the restored edition, linking to the GitHub run that published it. Temporary runner paths are not useful after the job exits. Local refreshes retain
 their local catalog links, and either mode preserves note content outside that status block.
 
 **Aster.** Set `aster: pinned` in the caller's `with:` block to collect with
@@ -157,7 +174,7 @@ it needs neither the disk space nor the priming run of the catalog. If the cache
 the next refresh starts again from the past week.
 
 **First catalog build.** The first build downloads the full public catalog and is bounded by
-the job's 240-minute timeout. Run `mode: catalog` manually once to prime the cache. Caches
+the catalog job's 240-minute timeout. Daily and weekly jobs can proceed while it builds. Run `mode: catalog` manually once to prime the cache. Caches
 unused for seven days are evicted. The weekly refresh normally keeps the cache alive; otherwise
 the next refresh rebuilds it.
 

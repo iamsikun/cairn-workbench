@@ -260,7 +260,7 @@ def test_template_is_a_thin_pinned_caller():
     text = ci.template("v9.9.9")
     spec = yaml.safe_load(text)
     assert spec[True]["schedule"] == [{"cron": ci.CRON}]
-    assert spec["concurrency"] == {"group": "cairn-garden", "cancel-in-progress": False}
+    assert "concurrency" not in spec  # catalog work must not block later gardening jobs
     job = spec["jobs"]["garden"]
     assert job["uses"].endswith("garden.yml@v9.9.9") and job["with"]["version"] == "v9.9.9"
     assert f"garden.yml@v{ci.__version__}" in ci.template()
@@ -299,13 +299,13 @@ def test_stale_catalog_warns_and_required_catalog_fails(setup, monkeypatch):
         w.run({**setup, "catalog_required": True}, "weekly", renderer=draft)
 
 
-def test_last_weeks_catalog_is_refreshed_before_the_next_review(setup):
+def test_catalog_refreshes_independently_when_six_days_old(setup):
     stale_catalog(6.9)  # refreshed in last Monday's slot, finished a little after it began
     assert g.catalog_freshness(setup)["fresh"]  # the review alone would accept it
     assert ci.main(["catalog-fresh", "--max-age", "6"]) == 3
     stale_catalog(1)  # a retry later in the same weekly cycle keeps it
     assert ci.main(["catalog-fresh", "--max-age", "6"]) == 0
-    workflow = (ROOT / ".github/workflows/garden.yml").read_text()
+    workflow = (ROOT / ".github/workflows/catalog.yml").read_text()
     assert "ci catalog-fresh --max-age 6" in workflow
 
 
@@ -315,3 +315,45 @@ def test_summary_reports_pending_approvals(setup):
     assert "pending approvals in `weekly/" in text and ": 1" in text
     assert "**Overall: complete**" in text
     assert json.loads(json.dumps(reports.moves(setup))) == {}
+
+
+def test_catalog_work_cannot_gate_gardening_or_publish_partial_editions():
+    garden = yaml.safe_load((ROOT / ".github/workflows/garden.yml").read_text())
+    catalog = yaml.safe_load((ROOT / ".github/workflows/catalog.yml").read_text())
+    job = garden["jobs"]["garden"]
+    refresh = catalog["jobs"]["catalog"]
+    assert "needs" not in job and "needs" not in garden["jobs"]["catalog"]
+    assert job["concurrency"] == {"group": "cairn-garden", "cancel-in-progress": False}
+    assert refresh["concurrency"] == {"group": "cairn-catalog", "cancel-in-progress": False}
+    assert refresh["permissions"] == {"contents": "read"}
+    assert not any("cairn-catalog update" in step.get("run", "") for step in job["steps"])
+    assert not any(
+        step.get("uses", "").startswith("actions/cache/save")
+        and "catalog" in step.get("with", {}).get("path", "")
+        for step in job["steps"]
+    )
+    steps = refresh["steps"]
+    phases = [i for i, step in enumerate(steps) if "--phase" in step.get("run", "")]
+    assert len(phases) == 3
+    for i in phases:
+        assert "--keep-notes" in steps[i]["run"]
+        assert steps[i + 1]["uses"].startswith("actions/cache/save@")
+    restores = [
+        step["with"]
+        for step in job["steps"]
+        if step.get("uses", "").startswith("actions/cache/restore@")
+        and "catalog" in step["with"]["path"]
+    ]
+    checkpoint = next(
+        step["with"]
+        for step in steps
+        if step.get("name") == "Restore the last completed refresh phase"
+    )
+    for restore in restores:
+        assert not checkpoint["key"].startswith(restore["restore-keys"])
+    published = next(
+        step["with"] for step in steps if step.get("name") == "Save the published edition"
+    )
+    assert published["path"] == restores[0]["path"]
+    assert "!${{ github.workspace }}/catalog/.refresh-checkpoint" in published["path"]
+    assert "github.run_attempt" in published["key"] and "github.run_attempt" in checkpoint["key"]

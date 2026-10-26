@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import fcntl
 import gzip
+import hashlib
 import json
 import os
 import re
@@ -38,6 +39,33 @@ def cache_version(root):
         for p in (root / "raw").rglob("*")
         if p.is_file()
     }
+
+
+def checkpoint_base(root):
+    """A portable fingerprint: restored caches do not preserve inode timestamps."""
+    digest = hashlib.sha256()
+    files = [root / name for name in ("update-state.json", "coverage.json", "journals.json")]
+    files.extend(sorted((root / "raw").rglob("*")))
+    for path in files:
+        if path.is_file():
+            digest.update(str(path.relative_to(root)).encode())
+            with path.open("rb") as source:
+                for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                    digest.update(chunk)
+    digest.update(json.dumps(paths.journals(root), sort_keys=True).encode())
+    return digest.hexdigest()
+
+
+def save_checkpoint(run, base, phase, report):
+    catalog.atomic_json(
+        run / "checkpoint.json",
+        {"schema": 1, "base": base, "phase": phase, "report": report},
+    )
+    print(json.dumps({"checkpoint": phase, "directory": str(run)}), flush=True)
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+            output.write(f"checkpoint={phase}\n")
+    return report
 
 
 def read_cache(folder, service):
@@ -288,7 +316,9 @@ def sync_entrypoints(root):
     coverage = json.loads((root / "coverage.json").read_text())
     graph = json.loads((root / "entity-coverage.json").read_text())
     if os.environ.get("GITHUB_ACTIONS") == "true":
-        run_url = (
+        report_path = root / "update-report.json"
+        report = json.loads(report_path.read_text()) if report_path.exists() else {}
+        run_url = report.get("run_url") or (
             f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}"
             f"/actions/runs/{os.environ['GITHUB_RUN_ID']}"
         )
@@ -334,9 +364,13 @@ def sync_entrypoints(root):
             )
 
 
-def refresh(root=ROOT, rebuild_only=False, notes=True):
+def refresh(root=ROOT, rebuild_only=False, notes=True, phase=None):
     """`notes=False` leaves the catalog notes' status block to another refresh, such as the
     cloud gardener's for a knowledge base gardened on GitHub Actions."""
+    if phase not in (None, "sources", "build", "publish"):
+        raise ValueError(f"Unknown refresh phase: {phase}")
+    if phase and rebuild_only:
+        raise ValueError("Phased refreshes cannot use --rebuild-only")
     root = Path(root).resolve()
     root.mkdir(parents=True, exist_ok=True)
     with (root / "update.lock").open("a") as lock:
@@ -345,14 +379,37 @@ def refresh(root=ROOT, rebuild_only=False, notes=True):
         except BlockingIOError:
             raise RuntimeError("Another catalog refresh is already running") from None
         recover_pending(root)
-        run = root / ".refreshes" / datetime.now(UTC).strftime("%Y%m%dT%H%M%S-%fZ")
+        run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S-%fZ")
+        run = root / ".refresh-checkpoint" if phase else root / ".refreshes" / run_id
+        base = checkpoint_base(root) if phase else None
+        checkpoint_file = run / "checkpoint.json"
+        checkpoint = json.loads(checkpoint_file.read_text()) if checkpoint_file.exists() else {}
+        valid = checkpoint.get("schema") == 1 and checkpoint.get("base") == base
+        if phase and not valid:
+            if phase != "sources":
+                raise RuntimeError("No compatible source checkpoint; run --phase sources first")
+            if run.exists():
+                shutil.rmtree(run)  # Only the disposable staged checkpoint, never the live edition.
+            checkpoint = {}
+        completed = checkpoint.get("phase")
+        if phase == "sources" and completed in ("sources", "build"):
+            return checkpoint["report"]
+        if phase == "build" and completed == "build":
+            return checkpoint["report"]
+        if phase == "publish" and completed != "build":
+            raise RuntimeError("No completed build checkpoint; run --phase build first")
         stage = run / "staged"
-        stage.mkdir(parents=True)
+        stage.mkdir(parents=True, exist_ok=True)
         live_cache_version = cache_version(root)
-        if (root / "raw").exists():
+        if not completed and (root / "raw").exists():
             shutil.copytree(root / "raw", stage / "raw")
+        if phase == "build":
+            # A killed build can leave partial derived files. Rebuild them from saved sources.
+            for path in stage.iterdir():
+                if path.name not in ("raw", "journals.json"):
+                    shutil.rmtree(path) if path.is_dir() else path.unlink()
         # Atomic note replacement means unchanged files may share storage safely.
-        if (root / "cairn-library").exists():
+        if phase not in ("sources", "publish") and (root / "cairn-library").exists():
             shutil.copytree(root / "cairn-library", stage / "cairn-library", copy_function=os.link)
         catalog.atomic_json(stage / "journals.json", paths.journals(root))
         today = datetime.now(ZoneInfo("America/Chicago")).date()
@@ -375,8 +432,18 @@ def refresh(root=ROOT, rebuild_only=False, notes=True):
             "sources": [],
             "warnings": [],
         }
+        if completed:
+            report = checkpoint["report"]
+            report["run_directory"] = str(run)
+            today = date.fromisoformat(report["as_of"])
+            upper = report["crossref_until"]
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            report["run_url"] = (
+                f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}"
+                f"/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+            )
         try:
-            if not rebuild_only:
+            if not rebuild_only and not completed:
                 with ThreadPoolExecutor(max_workers=2) as pool:
                     futures = [
                         pool.submit(refresh_service, service, stage, lower, upper, recent)
@@ -413,10 +480,17 @@ def refresh(root=ROOT, rebuild_only=False, notes=True):
                         report["warnings"].append(
                             "AEA issue index unavailable; previous index retained: " + str(exc)
                         )
-            with build_at(stage, today.isoformat()):
-                catalog.build(SimpleNamespace())
-                catalog.validate(SimpleNamespace())
-            browser = build_browser.build(stage, source_root=root)
+            if phase == "sources":
+                report["sources_completed_at"] = catalog.now()
+                return save_checkpoint(run, base, "sources", report)
+            if phase != "publish":
+                with build_at(stage, today.isoformat()):
+                    catalog.build(SimpleNamespace())
+                    catalog.validate(SimpleNamespace())
+                report["browser"] = build_browser.build(stage, source_root=root)
+            browser = report["browser"]
+            if phase == "build":
+                return save_checkpoint(run, base, "build", report)
             verified_queries = verify_offline.verify(stage)
             report["offline_verification"] = (
                 f"passed; network disabled; {verified_queries} SQLite parity queries"
@@ -432,7 +506,7 @@ def refresh(root=ROOT, rebuild_only=False, notes=True):
             report["entry_change"] = coverage["total_entries"] - previous.get("total_entries", 0)
             report["added_source_records"] = sum(s["added"] for s in report["sources"])
             report["changed_source_records"] = sum(s["changed"] for s in report["sources"])
-            backup = run / "previous"
+            backup = root / ".refreshes" / run_id / "previous" if phase else run / "previous"
             if cache_version(root) != live_cache_version:
                 raise RuntimeError(
                     "The live source cache changed during this staged refresh. The previous edition and checkpoint were preserved; rebuild again to include the newer metadata."
@@ -454,7 +528,8 @@ def refresh(root=ROOT, rebuild_only=False, notes=True):
                 catalog.atomic_json(
                     state_file,
                     {
-                        "last_success_at": catalog.now(),
+                        # Resuming an old checkpoint must not make old metadata look fresh.
+                        "last_success_at": report.get("sources_completed_at") or catalog.now(),
                         "crossref_until": upper,
                         "snapshot_date": today.isoformat(),
                         "run_directory": str(run),
@@ -463,6 +538,8 @@ def refresh(root=ROOT, rebuild_only=False, notes=True):
             report.update(
                 status="success", completed_at=catalog.now(), backup_directory=str(backup)
             )
+            if phase:
+                checkpoint_file.unlink()
             if notes and root == ROOT.resolve():
                 try:
                     sync_entrypoints(root)

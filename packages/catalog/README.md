@@ -255,6 +255,17 @@ The updater retrieves Crossref records indexed since the last successful refresh
 
 Provider records are replaced by source ID; unchanged records keep their previous retrieval dates. Deletions from provider feeds are not inferred. Public-source coverage remains incomplete. Each run stages the accumulated raw metadata, rebuilds normalized JSONL, SQLite and the author/institution graph, regenerates native Cairn paper/issue/topic notes, validates Cairn parsing and links, and builds and checks the saved HTML. Only a completed build is published. Immutable browser assets publish before all five HTML entrypoints, with `catalog.html` last. Previous asset directories are retained for already-open offline pages. Local API requests carry an edition ID and ask the user to reload after a refresh instead of mixing editions. Failed fetches or validation preserve the previous edition and checkpoint. An interrupted publication is rolled back at the beginning of the next run. A lock prevents overlapping refreshes.
 
+For hosted runners, `cairn-catalog update --phase sources --keep-notes`, followed by
+`--phase build --keep-notes` and `--phase publish --keep-notes`, separates the refresh into
+resumable phases. Persist `.refresh-checkpoint/` after the source and build commands return
+successfully. Each phase recognizes compatible completed work after restoring that directory
+alongside the same published baseline, even at a different filesystem path. A failed build can
+be repeated from its saved sources; failed verification retains the completed build. The final
+phase alone verifies and publishes the edition and advances freshness. Checkpoints are separate
+from the live catalog and must never be treated as published editions. `--phase` cannot be
+combined with `--rebuild-only`; ordinary `update` retains its existing single-command behavior.
+`cairn-catalog sync-notes` updates existing catalog notes from a previously published edition.
+
 `update-state.json` records the last successful checkpoint; `update-report.json` records results and warnings. Recovery editions remain in `.refreshes/<run>/previous/`; these retained snapshots consume disk space and are not automatically pruned. Existing generated note creation dates are preserved. Only the marked status blocks in the two active catalog entrypoints are updated, and
 `cairn-catalog update --keep-notes` leaves them alone: use it for a local refresh when another
 refresh, such as the cloud gardener's, maintains those notes. Personal reading notes and imported author/institution profiles retain their bodies; the generated historical library is metadata-only.
