@@ -440,17 +440,13 @@ def main(argv: list[str]) -> int:
                 with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as handle:
                     handle.write(text)
             print(text, end="")
-            # Surface paused writes on the run page; the summary alone was easy to miss.
-            from .workflow import WRITES_PAUSED
+            # Surface paused writes on the run page; the summary alone was easy to miss. Ask the
+            # gate, not old manifests: a later run may have re-verified writes since.
+            from .workflow import WRITES_PAUSED, scheduled_writes_enabled, write_gate_closed
 
-            paused = {
-                warning
-                for manifest in latest_runs(cfg).values()
-                for warning in manifest.get("warnings", [])
-                if warning.startswith(WRITES_PAUSED)
-            }
-            for warning in sorted(paused):
-                print(f"::warning title=Zotero writes paused::{warning}")
+            paused = None if scheduled_writes_enabled(cfg) else write_gate_closed(cfg)
+            if paused:
+                print(f"::warning title=Zotero writes paused::{WRITES_PAUSED}: {paused}")
             return 0 if "**Overall: complete**" in text else 1
         elif args.cmd == "state-export":
             result = export_state(cfg, args.dir)

@@ -313,3 +313,23 @@ def test_paused_writes_are_reported_distinctly(web, monkeypatch):
     )
     assert any(x.startswith(w.WRITES_PAUSED) for x in result["warnings"])
     assert web.posts() == 0
+
+
+def test_run_page_flags_writes_paused_now_not_in_an_old_run(web, capsys):
+    from cairn_garden import ci
+
+    cfg = g.config()
+    old = g.state_dir(cfg) / "runs" / "20261019T140007-weekly-old" / "manifest.json"
+    old.parent.mkdir(parents=True)
+    warning = f"{w.WRITES_PAUSED}: the Zotero write code changed since they were enabled"
+    g.atomic_json(old, {"id": old.parent.name, "mode": "weekly", "warnings": [warning]})
+    # A later run re-verified writes: the old weekly's warning is history, not news.
+    g.atomic_json(g.state_dir(cfg) / w.GATE, {"bridge": {"user_id": 1}})
+    ci.main(["summary", "--mode", "daily"])
+    assert "::warning" not in capsys.readouterr().out
+    g.atomic_json(g.state_dir(cfg) / w.GATE, {"bridge": {"user_id": 1}, "paused": "a test"})
+    ci.main(["summary", "--mode", "daily"])
+    assert (
+        f"::warning title=Zotero writes paused::{w.WRITES_PAUSED}: a test"
+        in capsys.readouterr().out
+    )
