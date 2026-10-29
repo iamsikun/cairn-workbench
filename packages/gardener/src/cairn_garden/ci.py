@@ -416,12 +416,16 @@ def main(argv: list[str]) -> int:
         print(template(args.version), end="")
         return 0
     cfg = g.config()
-    repo = getattr(args, "repo", None) or g.workspace(cfg)
+    # Only restore and publish touch the knowledge base. The catalog job checks freshness
+    # without one.
+    repo = getattr(args, "repo", None)
     publication_file = g.HOME / "ci-publication.json"
     try:
         if args.cmd == "restore":
+            repo = repo or g.workspace(cfg)
             result = restore(cfg, repo, args.branch, args.remote, args.allow_empty)
         elif args.cmd == "publish":
+            repo = repo or g.workspace(cfg)
             result = publish(cfg, repo, args.branch, args.remote, args.target)
             g.atomic_json(publication_file, result)
         elif args.cmd == "due":

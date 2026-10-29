@@ -309,6 +309,17 @@ def test_catalog_refreshes_independently_when_six_days_old(setup):
     assert "ci catalog-fresh --max-age 6" in workflow
 
 
+def test_catalog_freshness_needs_no_knowledge_base(setup, monkeypatch):
+    # The catalog job sets no workspace. A crash here read as "stale" and refreshed every run.
+    def unset(cfg):
+        raise ValueError("set `workspace`")
+
+    monkeypatch.setattr(ci.g, "workspace", unset)
+    stale_catalog(1)
+    assert ci.main(["catalog-fresh", "--max-age", "6"]) == 0
+    assert ci.main(["restore", "--branch", "garden-state"]) == 1
+
+
 def test_summary_reports_pending_approvals(setup):
     w.run(setup, "weekly", renderer=draft)
     text = ci.summary(setup, None, {"published": True, "pushed": []})
