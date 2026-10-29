@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.8.7 — a catalog refresh that finishes
+
+The journal catalog refreshes in its own job again and now completes on a hosted runner. Every
+refresh since 26 October was killed during the entity build, and the catalog job started a full
+refresh on every scheduled run. Callers should remove their top-level `concurrency` block. The
+MCP tools, the note format and the Zotero write code are unchanged, so scheduled writes that
+were enabled stay enabled without re-verification.
+
+- The reusable garden workflow runs catalog refreshes in a separate job,
+  `.github/workflows/catalog.yml`, with its own concurrency group, so a long refresh no longer
+  holds up a daily or weekly run. The refresh runs in three resumable phases (`cairn-catalog
+  update --phase sources|build|publish`), each cached on completion, and only the final phase
+  publishes an edition. **Remove the caller workflow's top-level `concurrency` block**, or it
+  still serializes the whole run.
+- The entity build uses far less memory. Each credit's evidence is now a compact record with
+  shared affiliations, and author, authorship and affiliation rows go to temporary SQLite tables
+  rather than Python lists. On a synthetic catalog of 160,000 credits, the memory the build adds
+  falls from 931 MB to 345 MB, and every exported file is byte-identical. The build had outgrown
+  the runner once OpenAlex author credits grew from 372,000 to 1.38 million.
+- `cairn-garden ci catalog-fresh` no longer needs a knowledge-base workspace. In the catalog job
+  it crashed, the crash read as "stale", and every scheduled run refreshed the catalog.
+- The run page's "Zotero writes paused" annotation asks the write gate whether writes are
+  paused now. It used to repeat a warning from the latest weekly run even after a later run had
+  re-verified writes.
+
 ## 0.8.6 — proposals that reach you
 
 Weekly proposals now arrive as a GitHub issue in the knowledge base's repository, where ticking
