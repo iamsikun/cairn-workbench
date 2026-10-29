@@ -10,9 +10,10 @@ import hashlib
 import json
 import re
 import sqlite3
+import sys
 import time
 import unicodedata
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, namedtuple
 from contextlib import closing
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -252,6 +253,56 @@ def authors_for_work(work, provider):
     return result
 
 
+# The graph holds every byline credit and its aligned source evidence at once: millions of
+# items. Compact records with shared affiliation tuples keep that within a hosted runner's memory.
+Evidence = namedtuple("Evidence", "provider name identifiers affiliations meta")
+Affiliation = namedtuple("Affiliation", "identity name ror openalex_id country_code type")
+
+
+class Credit:
+    __slots__ = ("paper_id", "position", "name", "evidence", "identifiers")
+
+    def __init__(self, paper_id, position, name):
+        self.paper_id, self.position, self.name = paper_id, position, name
+        self.evidence, self.identifiers = [], []
+
+
+def compact_evidence(evidence, meta, shared):
+    """An evidence item reduced to what the graph uses; equal affiliations share one tuple."""
+    affiliations = []
+    for i in evidence["affiliations"]:
+        identity = (
+            i["ror"]
+            or i["openalex_id"]
+            or "unresolved-institution:" + digest(normalized_name(i["name"]))
+        )
+        item = Affiliation(
+            identity, i["name"], i["ror"], i["openalex_id"], i["country_code"], i["type"]
+        )
+        affiliations.append(shared.setdefault(item, item))
+    ids = tuple(
+        v
+        for v in [evidence.get("raw_orcid"), evidence.get("orcid"), evidence.get("openalex_id")]
+        if v
+    )
+    # Provenance is recorded only on affiliation rows.
+    return Evidence(
+        sys.intern(evidence["provider"]),
+        evidence["name"],
+        ids,
+        tuple(affiliations),
+        meta if affiliations else None,
+    )
+
+
+def evidence_json(meta):
+    """The provenance an affiliation row records: the matched work, or the catalog credit."""
+    if meta is None:
+        return json.dumps({"match_basis": "catalog_author_credit"})
+    work_id, raw_file, basis = meta
+    return json.dumps({"work_id": work_id, "raw_file": raw_file, "match_basis": basis})
+
+
 def build_entities(db=DB):
     started = time.perf_counter()
     con = connect(db=db)
@@ -288,7 +339,7 @@ def build_entities(db=DB):
         for source in record.get("sources", []):
             key = source["id"].lower() if source["provider"] == "crossref" else source["id"]
             admitted_sources.add((row["id"], source["provider"], key))
-    credits, paper_credits = {}, defaultdict(list)
+    credits, paper_credits, shared = [], defaultdict(list), {}
     for a in con.execute("SELECT * FROM authors ORDER BY paper_id,position"):
         details = json.loads(a["details_json"] or "{}")
         provider = "openalex" if details.get("openalex_id") else "catalog"
@@ -298,17 +349,11 @@ def build_entities(db=DB):
             "orcid": identifier(details.get("orcid"), "orcid"),
             "openalex_id": identifier(details.get("openalex_id"), "openalex"),
             "affiliations": affiliation_objects(details.get("affiliations"), provider),
-            "raw_affiliations": [],
-            "match_basis": "catalog_author_credit",
         }
-        c = {
-            "paper_id": a["paper_id"],
-            "position": a["position"],
-            "name": a["name"],
-            "evidence": [evidence],
-        }
-        credits[(a["paper_id"], a["position"])] = c
-        paper_credits[a["paper_id"]].append(c)
+        c = Credit(sys.intern(a["paper_id"]), a["position"], a["name"])
+        c.evidence.append(compact_evidence(evidence, None, shared))
+        credits.append(c)
+        paper_credits[c.paper_id].append(c)
     matched, unmatched = Counter(), Counter()
     for provider in ["crossref", "openalex"]:
         for folder in sorted((ROOT / "raw" / provider).glob("*")):
@@ -322,6 +367,7 @@ def build_entities(db=DB):
                 raise RuntimeError(f"Incomplete source harvest: {folder}")
             for n in range(1, state["pages"] + 1):
                 raw = folder / f"page-{n:05d}.json.gz"
+                raw_file = str(raw.relative_to(ROOT))
                 with gzip.open(raw, "rt", encoding="utf-8") as f:
                     payload = json.load(f)
                 items = (
@@ -354,7 +400,7 @@ def build_entities(db=DB):
                     # existing ambiguity and byline-position rules.
                     by_name, by_family_initial = defaultdict(list), defaultdict(list)
                     for credit in current:
-                        name = normalized_name(credit["name"])
+                        name = normalized_name(credit.name)
                         by_name[name].append(credit)
                         parts = name.split()
                         key = (parts[-1], parts[0][0]) if len(parts) > 1 else ("", name)
@@ -365,7 +411,7 @@ def build_entities(db=DB):
                         if len(exact) == 1:
                             target, basis = exact[0], "same_paper_exact_author_name"
                         elif len(current) == len(observed) and names_compatible(
-                            current[pos]["name"], evidence["name"]
+                            current[pos].name, evidence["name"]
                         ):
                             target, basis = (
                                 current[pos],
@@ -377,7 +423,7 @@ def build_entities(db=DB):
                             alternatives = [
                                 c
                                 for c in by_family_initial.get(key, [])
-                                if names_compatible(c["name"], evidence["name"])
+                                if names_compatible(c.name, evidence["name"])
                             ]
                             if len(alternatives) != 1:
                                 unmatched[provider] += 1
@@ -386,14 +432,9 @@ def build_entities(db=DB):
                                 alternatives[0],
                                 "same_paper_unique_compatible_author_name",
                             )
-                        evidence.update(
-                            {
-                                "work_id": work_id,
-                                "raw_file": str(raw.relative_to(ROOT)),
-                                "match_basis": basis,
-                            }
+                        target.evidence.append(
+                            compact_evidence(evidence, (work_id, raw_file, basis), shared)
                         )
-                        target["evidence"].append(evidence)
                         matched[provider] += 1
         print(
             f"Author evidence recovered from {provider}: {matched[provider]:,} aligned credits; {unmatched[provider]:,} unmatched",
@@ -401,29 +442,31 @@ def build_entities(db=DB):
         )
     groups = IdentityGroups()
     institution_candidates = {}
-    for c in credits.values():
+    for c in credits:
         ids = []
-        for e in c["evidence"]:
-            ids.extend(v for v in [e.get("raw_orcid"), e.get("orcid"), e.get("openalex_id")] if v)
-            for i in e["affiliations"]:
-                identity = (
-                    i["ror"]
-                    or i["openalex_id"]
-                    or "unresolved-institution:" + digest(normalized_name(i["name"]))
-                )
+        for e in c.evidence:
+            ids.extend(e.identifiers)
+            for i in e.affiliations:
                 institution_candidates.setdefault(
-                    identity, {**i, "id": identity, "aliases": set()}
-                )["aliases"].add(i["name"])
+                    i.identity,
+                    {
+                        "id": i.identity,
+                        "name": i.name,
+                        "ror": i.ror,
+                        "openalex_id": i.openalex_id,
+                        "country_code": i.country_code,
+                        "type": i.type,
+                        "aliases": set(),
+                    },
+                )["aliases"].add(i.name)
         ids = list(dict.fromkeys(ids))
         for value in ids:
             groups.root(value)
         if ids:
             preferred = sorted(ids, key=lambda x: (not x.startswith("orcid:"), x))[0]
             for other in ids:
-                groups.join(
-                    preferred, other, {"paper_id": c["paper_id"], "position": c["position"]}
-                )
-        c["identifiers"] = ids
+                groups.join(preferred, other, {"paper_id": c.paper_id, "position": c.position})
+        c.identifiers = ids
     # Map an unstructured institution label only when it exactly identifies one known entity.
     named_institutions = defaultdict(set)
     for identity, i in institution_candidates.items():
@@ -445,11 +488,34 @@ def build_entities(db=DB):
             if identity.startswith("unresolved-") and len(exact) == 1
             else identity
         )
+    # Rows go to temporary tables as they are derived, not into lists of millions of tuples;
+    # they are copied in the original order once the people they name exist.
+    con.executescript("""
+    DROP TABLE IF EXISTS temp.staged_aliases;
+    DROP TABLE IF EXISTS temp.staged_authorships;
+    DROP TABLE IF EXISTS temp.staged_affiliations;
+    CREATE TEMP TABLE staged_aliases(author_id,name,normalized_name,provider,PRIMARY KEY(author_id,name,normalized_name,provider)) WITHOUT ROWID;
+    CREATE TEMP TABLE staged_authorships(paper_id,position,author_id,observed_name,link_basis);
+    CREATE TEMP TABLE staged_affiliations(paper_id,position,institution_id,provider,link_basis,raw_name,evidence_json);
+    """)
+    staged = {"aliases": [], "authorships": [], "affiliations": []}
+    counts = Counter()
+
+    def stage(table, row, flush=False):
+        rows = staged[table]
+        if row is not None:
+            rows.append(row)
+            counts[table] += 1
+        if rows and (flush or len(rows) >= 50000):
+            marks = ",".join("?" * len(rows[0]))
+            verb = "INSERT OR IGNORE" if table == "aliases" else "INSERT"
+            con.executemany(f"{verb} INTO temp.staged_{table} VALUES({marks})", rows)
+            rows.clear()
+
     persons = {}
-    affiliation_rows, authorship_rows, alias_rows = [], [], set()
-    for c in credits.values():
+    for c in credits:
         roots = sorted(
-            {groups.root(v) for v in c["identifiers"]},
+            {groups.root(v) for v in c.identifiers},
             key=lambda x: (not x.startswith("orcid:"), x),
         )
         # Conflicting source identifiers stay outside either person's bibliography.
@@ -457,7 +523,7 @@ def build_entities(db=DB):
         identity = (
             roots[0]
             if len(roots) == 1
-            else "unresolved-author:" + digest(c["paper_id"] + ":" + str(c["position"]))
+            else "unresolved-author:" + digest(c.paper_id + ":" + str(c.position))
         )
         p = persons.setdefault(
             identity,
@@ -471,56 +537,50 @@ def build_entities(db=DB):
                 else "unresolved_credit",
             },
         )
-        for e in c["evidence"]:
-            p["names"][e["name"]] += 1
-            alias_rows.add((identity, e["name"], normalized_name(e["name"]), e["provider"]))
-            for i in e["affiliations"]:
-                original = (
-                    i["ror"]
-                    or i["openalex_id"]
-                    or "unresolved-institution:" + digest(normalized_name(i["name"]))
-                )
-                inst_id = institution_map[original]
-                affiliation_rows.append(
+        for e in c.evidence:
+            p["names"][e.name] += 1
+            stage("aliases", (identity, e.name, normalized_name(e.name), e.provider))
+            provenance = evidence_json(e.meta) if e.affiliations else None
+            for i in e.affiliations:
+                inst_id = institution_map[i.identity]
+                stage(
+                    "affiliations",
                     (
-                        c["paper_id"],
-                        c["position"],
+                        c.paper_id,
+                        c.position,
                         inst_id,
-                        e["provider"],
+                        e.provider,
                         "asserted_identifier"
-                        if i["ror"] or i["openalex_id"]
+                        if i.ror or i.openalex_id
                         else "exact_name_to_identifier"
-                        if inst_id != original
+                        if inst_id != i.identity
                         else "unresolved_label",
-                        i["name"],
-                        json.dumps(
-                            {
-                                k: v
-                                for k, v in e.items()
-                                if k in ["work_id", "raw_file", "match_basis"]
-                            }
-                        ),
-                    )
+                        i.name,
+                        provenance,
+                    ),
                 )
-        authorship_rows.append(
+        stage(
+            "authorships",
             (
-                c["paper_id"],
-                c["position"],
+                c.paper_id,
+                c.position,
                 identity,
-                c["name"],
+                c.name,
                 "identifier_conflict"
                 if conflict
                 else "source_identifiers"
                 if roots
                 else "unresolved_paper_credit",
-            )
+            ),
         )
-    # Evidence dictionaries are no longer needed once the SQL rows and identity
-    # groups are derived. Release them before bulk insertion to avoid swapping.
-    del credits, paper_credits, doi_papers, oa_papers, admitted_sources, membership_gated
+    for table in staged:
+        stage(table, None, flush=True)
+    # Evidence is no longer needed once the SQL rows and identity groups are derived.
+    # Release it before bulk insertion to avoid swapping.
+    del credits, paper_credits, doi_papers, oa_papers, admitted_sources, membership_gated, shared
     current = observed = payload = work = credit = c = e = by_name = by_family_initial = None
     print(
-        f"Writing graph: {len(persons):,} author identities, {len(authorship_rows):,} credits, {len(affiliation_rows):,} affiliation assertions",
+        f"Writing graph: {len(persons):,} author identities, {counts['authorships']:,} credits, {counts['affiliations']:,} affiliation assertions",
         flush=True,
     )
     con.executescript("""
@@ -562,10 +622,15 @@ def build_entities(db=DB):
             for p in persons.values()
         ],
     )
-    con.executemany("INSERT INTO author_aliases VALUES(?,?,?,?)", sorted(alias_rows))
+    con.execute(
+        "INSERT INTO author_aliases SELECT * FROM temp.staged_aliases"
+        " ORDER BY author_id,name,normalized_name,provider"
+    )
     id_rows = [(v, groups.root(v)) for v in groups.parents if groups.root(v) in persons]
     con.executemany("INSERT INTO author_identifiers VALUES(?,?)", id_rows)
-    used_institutions = {a[2] for a in affiliation_rows}
+    used_institutions = {
+        i for (i,) in con.execute("SELECT DISTINCT institution_id FROM temp.staged_affiliations")
+    }
     for identity in sorted(used_institutions):
         i = institution_candidates[identity]
         con.execute(
@@ -589,14 +654,21 @@ def build_entities(db=DB):
                 "INSERT OR IGNORE INTO institution_aliases VALUES(?,?,?)",
                 [(target, alias, normalized_name(alias)) for alias in i["aliases"]],
             )
-    con.executemany("INSERT INTO authorships VALUES(?,?,?,?,?)", authorship_rows)
+    con.execute("INSERT INTO authorships SELECT * FROM temp.staged_authorships ORDER BY rowid")
     con.execute(
         "INSERT INTO entity_names SELECT DISTINCT 'author',author_id,name FROM author_aliases"
     )
     con.execute(
         "INSERT INTO entity_names SELECT DISTINCT 'institution',institution_id,name FROM institution_aliases"
     )
-    con.executemany("INSERT OR IGNORE INTO affiliations VALUES(?,?,?,?,?,?,?)", affiliation_rows)
+    con.execute(
+        "INSERT OR IGNORE INTO affiliations SELECT * FROM temp.staged_affiliations ORDER BY rowid"
+    )
+    con.executescript("""
+    DROP TABLE temp.staged_aliases;
+    DROP TABLE temp.staged_authorships;
+    DROP TABLE temp.staged_affiliations;
+    """)
     con.executemany("INSERT INTO publication_events VALUES(?,?,?,?,?,?,?)", events)
     con.executemany(
         "INSERT INTO identity_conflicts(details_json) VALUES(?)",
@@ -620,7 +692,7 @@ def build_entities(db=DB):
         "unresolved_author_credits": con.execute(
             "SELECT COUNT(*) FROM author_entities WHERE identity_status!='source_identified'"
         ).fetchone()[0],
-        "authorships": len(authorship_rows),
+        "authorships": counts["authorships"],
         "institution_entities": len(used_institutions),
         "identified_institutions": con.execute(
             "SELECT COUNT(*) FROM institution_entities WHERE identity_status='source_identified'"
