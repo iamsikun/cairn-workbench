@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.8.9 — room to refresh
+
+The catalog refresh gets enough disk space on a hosted runner, and a refresh that runs short
+stops cleanly instead of taking the runner down with it. The MCP tools, the note format and the
+Zotero write code are unchanged, so scheduled writes that were enabled stay enabled without
+re-verification.
+
+- A refresh stages a whole new edition beside the restored one, about twice the edition's size
+  (roughly 14 GB unpacked). The first refresh to start from a full-size edition ran out of disk
+  during the build. The catalog job now also removes the runner's preinstalled Go, Ruby, PyPy,
+  Java, GHC, Julia, Boost, PowerShell and Chromium, Microsoft, Google and Azure tools and its
+  Docker images, and it puts SQLite and Python temporary files on the runner's second disk
+  (`/mnt`) when that has at least 10 GB free.
+- Each refresh phase runs beside a guard that logs disk use every five minutes and stops the
+  phase when under 2 GiB is left. A full disk used to kill the runner and lose the job log;
+  now the job fails with its log, summary and diagnostics, and the next run resumes the last
+  completed phase.
+
 ## 0.8.8 — less repetition, less waiting
 
 Catalog jobs stop downloading the journal catalog when it is fresh, and daily digests stop
