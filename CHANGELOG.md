@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.8.8 — less repetition, less waiting
+
+Catalog jobs stop downloading the journal catalog when it is fresh, and daily digests stop
+showing the same passed-over candidates every day. The MCP tools, the note format and the Zotero
+write code are unchanged, so scheduled writes that were enabled stay enabled without
+re-verification.
+
+- The catalog job downloads the 4.7 GB published edition only to refresh it. Beside each
+  edition it saves the edition's `update-state.json` as a small cache, confirms the edition is
+  still cached without downloading it, and judges freshness from that record with the new
+  `cairn-garden ci catalog-fresh --record FILE`. Most runs found the catalog fresh and spent 4–8
+  minutes on the download. An edition saved by an older version has no record: the job restores
+  and judges it as before, then saves its record.
+- A discovery candidate that a daily digest reviewed and passed over rests for
+  `discovery_rest_days` (default 7) before the queue shows it again. A short queue used to put the
+  same rejected papers in front of every daily draft. Resting candidates stay queued and counted,
+  and the Discovery line reports them, as in `catalog 5 pending (5 recently passed over)`.
+
 ## 0.8.7 — a catalog refresh that finishes
 
 The journal catalog refreshes in its own job again and now completes on a hosted runner. Every
