@@ -368,3 +368,41 @@ def test_catalog_work_cannot_gate_gardening_or_publish_partial_editions():
     assert published["path"] == restores[0]["path"]
     assert "!${{ github.workspace }}/catalog/.refresh-checkpoint" in published["path"]
     assert "github.run_attempt" in published["key"] and "github.run_attempt" in checkpoint["key"]
+
+
+def test_catalog_job_downloads_the_edition_only_to_refresh_or_judge_it():
+    catalog = yaml.safe_load((ROOT / ".github/workflows/catalog.yml").read_text())
+    steps = catalog["jobs"]["catalog"]["steps"]
+    names = [step.get("name") for step in steps]
+    by_name = {step.get("name"): step for step in steps}
+    lookup = by_name["Look up the last published edition"]["with"]
+    edition = by_name["Restore the last published edition"]
+    record = by_name["Restore the published edition's update record"]["with"]
+    assert lookup["lookup-only"] is True
+    assert lookup["restore-keys"] == edition["with"]["restore-keys"]
+    # A gardening or edition restore can never pick up a record, nor a record an edition.
+    assert not record["key"].startswith(edition["with"]["restore-keys"])
+    assert not edition["with"]["key"].startswith(record["restore-keys"])
+    assert (
+        names.index("Look up the last published edition")
+        < names.index("Restore the published edition's update record")
+        < names.index("Decide whether to refresh")
+        < names.index("Reserve space for the journal catalog")
+        < names.index("Restore the last published edition")
+    )
+    assert "CATALOG_RESTORE" in edition["if"] and "CATALOG_REFRESH" in edition["if"]
+    assert "--record" in by_name["Decide whether to refresh"]["run"]
+    # A record is saved only after the edition it describes, or for one already in the cache.
+    assert names.index("Save the published edition") < names.index(
+        "Save the edition's update record"
+    )
+    assert "steps.save_edition.outcome" in by_name["Copy the edition's update record"]["if"]
+
+
+def test_catalog_freshness_from_a_saved_record(setup, tmp_path):
+    record = tmp_path / "update-state.json"
+    assert ci.main(["catalog-fresh", "--max-age", "6", "--record", str(record)]) == 3
+    stamp = (datetime.now(ZoneInfo("UTC")) - timedelta(days=2)).isoformat()
+    record.write_text(json.dumps({"last_success_at": stamp}))
+    assert ci.main(["catalog-fresh", "--max-age", "6", "--record", str(record)]) == 0
+    assert ci.main(["catalog-fresh", "--max-age", "1", "--record", str(record)]) == 3

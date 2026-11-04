@@ -9,7 +9,8 @@ its state or the other way round. Nothing is force-pushed.
     cairn-garden ci restore [--branch B] [--allow-empty]
     cairn-garden ci publish [--branch B] [--target BRANCH] [--remote origin]
     cairn-garden ci due daily|weekly            exit 0 when due (and set a step output)
-    cairn-garden ci catalog-fresh [--max-age D] exit 0 when the journal catalog is fresh
+    cairn-garden ci catalog-fresh [--max-age D] [--record FILE]
+                                                exit 0 when the journal catalog is fresh
     cairn-garden ci summary [--mode M]          execution, publication and completion
     cairn-garden ci state-export DIR | state-import DIR [--allow-empty]
     cairn-garden ci template [--version vX.Y.Z] the caller workflow for the knowledge base
@@ -402,6 +403,7 @@ def main(argv: list[str]) -> int:
     p.add_argument("mode", choices=("daily", "weekly"))
     p = sub.add_parser("catalog-fresh")
     p.add_argument("--max-age", type=float, help="days; default catalog_max_age_days")
+    p.add_argument("--record", type=Path, help="a published edition's update-state.json")
     p = sub.add_parser("summary")
     p.add_argument("--mode")
     p = sub.add_parser("state-export")
@@ -436,7 +438,7 @@ def main(argv: list[str]) -> int:
         elif args.cmd == "catalog-fresh":
             if args.max_age is not None:
                 cfg["catalog_max_age_days"] = args.max_age
-            result = g.catalog_freshness(cfg)
+            result = g.catalog_freshness(cfg, args.record)
             output("fresh", str(result["fresh"]).lower())
         elif args.cmd == "summary":
             text = summary(cfg, args.mode, g.read_json(publication_file, None))

@@ -1537,17 +1537,24 @@ def fts_query(terms: list[str]) -> str:
     return " OR ".join(p for p in phrases if p != '""')
 
 
-def catalog_freshness(cfg) -> dict:
-    """Whether the journal catalog exists and its last successful update is recent enough."""
+def catalog_freshness(cfg, record=None) -> dict:
+    """Whether the journal catalog exists and its last successful update is recent enough.
+
+    With `record`, judge a published edition by its saved update-state.json alone, without
+    the edition itself (a CI job that has only looked the edition up in its cache).
+    """
     folder = catalog_dir()
-    state = read_json(folder / "update-state.json", {}) if folder.exists() else {}
+    if record is not None:
+        state = read_json(Path(record), {})
+    else:
+        state = read_json(folder / "update-state.json", {}) if folder.exists() else {}
     last = state.get("last_success_at")
     age = None
     if last:
         stamp = datetime.fromisoformat(str(last).replace("Z", "+00:00"))
         stamp = stamp if stamp.tzinfo else stamp.replace(tzinfo=UTC)
         age = round((datetime.now(UTC) - stamp).total_seconds() / 86400, 2)
-    available = (folder / "catalog.sqlite").exists()
+    available = bool(last) if record is not None else (folder / "catalog.sqlite").exists()
     limit = cfg.get("catalog_max_age_days", 8)
     return {
         "available": available,

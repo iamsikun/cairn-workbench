@@ -47,7 +47,49 @@ jobs:
           uv tool install "cairn-garden @ $WORKBENCH#subdirectory=packages/gardener" \
             --with-executables-from cairn-catalog
 
+      # Most runs find the catalog fresh. Decide from the published edition's update record, a
+      # small cache saved beside it, and download the multi-gigabyte edition only to refresh it.
+      - name: Look up the last published edition
+        id: lookup
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ github.workspace }}/catalog
+            !${{ github.workspace }}/catalog/.refreshes/**
+            !${{ github.workspace }}/catalog/.refresh-checkpoint/**
+          key: cairn-edition-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: cairn-edition-v1-
+          lookup-only: true
+
+      - name: Restore the published edition's update record
+        id: record
+        if: steps.lookup.outputs.cache-matched-key != ''
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ github.workspace }}/edition-record
+          key: cairn-edition-record-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: cairn-edition-record-v1-
+
+      # Without a record (an edition saved before records existed, or one evicted), restore the
+      # edition and judge it as before.
+      - name: Decide whether to refresh
+        env:
+          FORCE: ${{ inputs.force }}
+          RECORD: ${{ steps.record.outputs.cache-matched-key != '' }}
+        run: |
+          if [ "$FORCE" = true ]; then
+            echo "CATALOG_REFRESH=true" >> "$GITHUB_ENV"
+          elif [ "$RECORD" = true ]; then
+            if ! cairn-garden ci catalog-fresh --max-age 6 \
+                --record "$GITHUB_WORKSPACE/edition-record/update-state.json" > /dev/null; then
+              echo "CATALOG_REFRESH=true" >> "$GITHUB_ENV"
+            fi
+          else
+            echo "CATALOG_RESTORE=true" >> "$GITHUB_ENV"
+          fi
+
       - name: Reserve space for the journal catalog
+        if: env.CATALOG_REFRESH == 'true' || env.CATALOG_RESTORE == 'true'
         run: |
           sudo rm -rf -- /usr/local/lib/android /usr/share/dotnet /usr/share/swift /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
           python3 - <<'PY'
@@ -60,6 +102,7 @@ jobs:
 
       - name: Restore the last published edition
         id: edition
+        if: env.CATALOG_REFRESH == 'true' || env.CATALOG_RESTORE == 'true'
         uses: actions/cache/restore@v6
         with:
           path: |
@@ -70,26 +113,26 @@ jobs:
           restore-keys: cairn-edition-v1-
 
       - name: Restore a legacy catalog
-        if: steps.edition.outputs.cache-matched-key == ''
+        if: >-
+          (env.CATALOG_REFRESH == 'true' || env.CATALOG_RESTORE == 'true')
+          && steps.edition.outputs.cache-matched-key == ''
         uses: actions/cache/restore@v6
         with:
           path: ${{ github.workspace }}/catalog
           key: cairn-catalog-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: cairn-catalog-
 
-      - name: Decide whether to refresh
-        id: due
-        env:
-          FORCE: ${{ inputs.force }}
+      - name: Judge the restored edition
+        if: env.CATALOG_RESTORE == 'true'
         run: |
-          if [ "$FORCE" = true ] || ! cairn-garden ci catalog-fresh --max-age 6 > /dev/null; then
-            echo "refresh=true" >> "$GITHUB_OUTPUT"
+          if ! cairn-garden ci catalog-fresh --max-age 6 > /dev/null; then
+            echo "CATALOG_REFRESH=true" >> "$GITHUB_ENV"
           fi
 
       # This namespace can never match a gardening job's published-edition restore.
       # A version-specific key prevents resuming derived data built by different code.
       - name: Restore the last completed refresh phase
-        if: steps.due.outputs.refresh == 'true'
+        if: env.CATALOG_REFRESH == 'true'
         uses: actions/cache/restore@v6
         with:
           path: ${{ github.workspace }}/catalog/.refresh-checkpoint
@@ -98,7 +141,7 @@ jobs:
 
       - name: Collect source metadata
         id: sources
-        if: steps.due.outputs.refresh == 'true'
+        if: env.CATALOG_REFRESH == 'true'
         run: cairn-catalog update --phase sources --keep-notes
 
       - name: Save source progress before building
@@ -110,7 +153,7 @@ jobs:
 
       - name: Build the catalog
         id: build
-        if: steps.due.outputs.refresh == 'true'
+        if: env.CATALOG_REFRESH == 'true'
         run: cairn-catalog update --phase build --keep-notes
 
       - name: Save build progress before verification
@@ -122,11 +165,12 @@ jobs:
 
       - name: Verify and publish the edition
         id: publish
-        if: steps.due.outputs.refresh == 'true'
+        if: env.CATALOG_REFRESH == 'true'
         run: cairn-catalog update --phase publish --keep-notes
 
       # Save immediately, before summaries or any other work can fail.
       - name: Save the published edition
+        id: save_edition
         if: steps.publish.outcome == 'success'
         uses: actions/cache/save@v6
         with:
@@ -136,10 +180,29 @@ jobs:
             !${{ github.workspace }}/catalog/.refresh-checkpoint/**
           key: cairn-edition-v1-${{ github.run_id }}-${{ github.run_attempt }}
 
+      # Only for an edition in the cache: a record must never describe a missing edition. A run
+      # that had to restore a fresh edition records it too, so the next run can skip the download.
+      - name: Copy the edition's update record
+        id: copy_record
+        if: >-
+          steps.save_edition.outcome == 'success'
+          || (env.CATALOG_RESTORE == 'true' && env.CATALOG_REFRESH != 'true'
+              && steps.edition.outputs.cache-matched-key != '')
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/edition-record"
+          cp "$CAIRN_CATALOG_DIR/update-state.json" "$GITHUB_WORKSPACE/edition-record/"
+
+      - name: Save the edition's update record
+        if: steps.copy_record.outcome == 'success'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ github.workspace }}/edition-record
+          key: cairn-edition-record-v1-${{ github.run_id }}-${{ github.run_attempt }}
+
       - name: Catalog summary
         if: always()
         env:
-          REFRESH: ${{ steps.due.outputs.refresh }}
+          REFRESH: ${{ env.CATALOG_REFRESH }}
           PUBLISHED: ${{ steps.publish.outcome }}
         run: |
           python3 - <<'PY'

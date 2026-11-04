@@ -152,6 +152,12 @@ resumes the last completed phase without refetching sources or rebuilding a comp
 An interrupted phase is repeated; work since the last successfully uploaded checkpoint can be lost
 when the runner disappears. These caches remain best effort and may be evicted by GitHub.
 
+Most catalog jobs find the edition fresh. Beside each published edition the job saves its
+`update-state.json` as a small cache of its own, and it judges freshness from that record after
+confirming, without downloading, that the edition is still cached. It downloads the edition only
+to refresh it. Without a record (an edition saved by an older version, or an evicted record) it restores
+the edition and judges it as before, then saves the missing record.
+
 Checkpoints carry a content fingerprint of the baseline and journal registry, so moving between
 runner paths is safe and a changed baseline cannot silently receive an outdated staged build.
 Partial builds and failed verification never replace the previous verified edition or advance its
