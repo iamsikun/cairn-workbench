@@ -23,4 +23,6 @@ Preserve annotations, attribution, versioned citations and reading positions.
 The runner owns persistence in `gardening/daily/garden-digest-YYYY-MM-DD.md` and records the run
 in `gardening/index.md`. A rerun appends an update and
 preserves previous observations. A draft that fails validation is redone once, with the reason. Discovery and delivery are separate: failed reports do not lose
-papers, and undelivered candidates remain in the queue. The weekly window includes daily picks.
+papers, and undelivered candidates remain in the queue. A candidate a digest reviewed and passed
+over rests for `discovery_rest_days` (7) before the queue shows it again, so a short queue does
+not repeat the same papers every day. The weekly window includes daily picks.

@@ -76,6 +76,7 @@ DEFAULTS = {
     "exclude_topics": ["research-catalogs"],
     "candidate_limit": 60,
     "discovery_page_limit": 10,
+    "discovery_rest_days": 7,
     "timezone": "America/Chicago",
     "agent_timeout_seconds": 1800,
     "html_max_age_days": 8,
@@ -1906,6 +1907,9 @@ def cmd_new_papers(args, cfg):
     if args.record:
         atomic_json(path, ledger)  # Discovery is durable, but delivery is not acknowledged here.
     result = {"since": since, "interest_terms": terms, "pending_total": 0}
+    # A candidate a digest reviewed and passed over rests before it is shown again. Otherwise a
+    # short queue puts the same rejected papers in front of every daily draft.
+    rest = (now(cfg) - timedelta(days=cfg.get("discovery_rest_days", 7))).isoformat()
     for source in status:
         entries = [
             entry
@@ -1920,11 +1924,16 @@ def cmd_new_papers(args, cfg):
         # Prefer never-reviewed discoveries, then rotate the least recently reviewed backlog.
         entries.sort(key=lambda e: (e["discovered_at"], e["identity"]), reverse=True)
         entries.sort(key=lambda e: e.get("reviewed_at", ""))
+        resting = {
+            e["identity"] for e in entries if args.record and e.get("reviewed_at", "") > rest
+        }
+        shown = [e for e in entries if e["identity"] not in resting]
         result[source] = {
             **status[source],
-            "candidates": [e["candidate"] for e in entries[:limit]],
+            "candidates": [e["candidate"] for e in shown[:limit]],
             "pending_count": len(entries),
-            "truncated": len(entries) > limit,
+            "resting_count": len(resting),
+            "truncated": len(shown) > limit,
         }
         result["pending_total"] += len(entries)
     out(result)

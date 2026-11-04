@@ -399,7 +399,11 @@ def run_facts(mode, facts, warnings):
         elif not block.get("complete", True):
             found.append(f"{source} incomplete, resumes next run")
         else:
-            found.append(f"{source} {block.get('pending_count', 0)} pending")
+            resting = block.get("resting_count", 0)
+            found.append(
+                f"{source} {block.get('pending_count', 0)} pending"
+                + (f" ({resting} recently passed over)" if resting else "")
+            )
     lines.append("- **Discovery**: " + " · ".join(found))
     if mode == "weekly":
         catalog = facts.get("catalog", {})

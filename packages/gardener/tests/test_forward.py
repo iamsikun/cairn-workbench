@@ -128,3 +128,40 @@ def test_failure_saving_completion_receipt_does_not_suppress_retry(setup, monkey
 def test_doi_trailing_v_digits_are_identity_not_arxiv_version(ws):
     note = save_paper(source="doi:10.1234/studyv2", title="A DOI ending v2")
     assert g.note_ids(note) == {"doi:10.1234/studyv2"}
+
+
+def test_passed_over_candidates_rest_before_they_return(setup, monkeypatch):
+    day = [datetime(2026, 10, 29, 8, tzinfo=ZoneInfo("America/Chicago"))]
+    monkeypatch.setattr(g, "now", lambda cfg: day[0])
+    rows = [
+        {
+            "source": "catalog",
+            "id": f"off{n}",
+            "title": f"Off-topic paper {n}",
+            "doi": f"10.1234/off{n}",
+            "url": f"https://doi.org/10.1234/off{n}",
+        }
+        for n in range(3)
+    ]
+    monkeypatch.setattr(
+        g,
+        "catalog_candidates",
+        lambda *a, **k: {"available": True, "complete": True, "candidates": rows},
+    )
+
+    def passed_over(*args, **kwargs):
+        return {
+            "body": "No relevant papers were found today; continue the existing reading chain.",
+            "selected": [],
+        }, {"agent": "claude"}
+
+    w.run(g.config(), "daily", renderer=passed_over)
+    # The next day the queue holds the same three papers: the draft does not see them again.
+    day[0] += timedelta(days=1)
+    tomorrow = invoke("new-papers", "--record")["catalog"]
+    assert tomorrow["candidates"] == []
+    assert tomorrow["pending_count"] == 3 and tomorrow["resting_count"] == 3
+    # After a week they come back for another look.
+    day[0] += timedelta(days=7)
+    later = invoke("new-papers", "--record")["catalog"]
+    assert len(later["candidates"]) == 3 and later["resting_count"] == 0
