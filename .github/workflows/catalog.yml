@@ -31,6 +31,22 @@ jobs:
       CAIRN_CATALOG_DIR: ${{ github.workspace }}/catalog
       OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
       WORKBENCH: git+https://github.com/iamsikun/cairn-workbench@${{ inputs.version }}
+      # Runs beside each refresh phase. It logs disk use every five minutes and stops the phase
+      # before the disk fills: a full disk also kills the runner, losing the job log.
+      DISK_GUARD: |
+        n=0
+        while kill -0 "$WORK" 2>/dev/null && sleep 30; do
+          free=$(df --output=avail -BM / | tail -1 | tr -dc 0-9)
+          if [ $((n % 10)) -eq 0 ]; then df -h / /mnt 2>/dev/null | sed 's/^/disk: /'; fi
+          n=$((n + 1))
+          if [ "$free" -lt 2048 ]; then
+            echo "::error::Stopping the catalog refresh: under 2 GiB left on the runner's disk"
+            df -h / /mnt 2>/dev/null
+            du -xsh "$CAIRN_CATALOG_DIR"/* "$CAIRN_CATALOG_DIR"/.refresh* 2>/dev/null | sort -h | tail
+            kill "$WORK"
+            exit
+          fi
+        done
     steps:
       - uses: actions/checkout@v7
         with:
@@ -91,7 +107,22 @@ jobs:
       - name: Reserve space for the journal catalog
         if: env.CATALOG_REFRESH == 'true' || env.CATALOG_RESTORE == 'true'
         run: |
-          sudo rm -rf -- /usr/local/lib/android /usr/share/dotnet /usr/share/swift /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          # A refresh stages a whole new edition beside the restored one: about twice its size.
+          # The Python and Node tool caches stay; the installed tools run on them.
+          sudo rm -rf -- /usr/local/lib/android /usr/share/dotnet /usr/share/swift /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL /opt/hostedtoolcache/go /opt/hostedtoolcache/Ruby \
+            /opt/hostedtoolcache/PyPy /opt/hostedtoolcache/Java_* /opt/ghc /opt/microsoft /opt/google \
+            /opt/az /usr/lib/jvm /usr/local/share/boost /usr/local/share/powershell \
+            /usr/local/share/chromium /usr/local/julia*
+          sudo docker image prune --all --force > /dev/null 2>&1 || true
+          # SQLite's sort and temporary-table files go to the second disk when it has room.
+          if [ -d /mnt ] && sudo mkdir -p /mnt/cairn-tmp && sudo chown "$(id -u)" /mnt/cairn-tmp; then
+            if [ "$(df --output=avail -BG /mnt | tail -1 | tr -dc 0-9)" -ge 10 ]; then
+              echo "SQLITE_TMPDIR=/mnt/cairn-tmp" >> "$GITHUB_ENV"
+              echo "TMPDIR=/mnt/cairn-tmp" >> "$GITHUB_ENV"
+            fi
+          fi
+          df -h / /mnt 2>/dev/null || true
           python3 - <<'PY'
           import os, shutil
           free = shutil.disk_usage(os.environ['GITHUB_WORKSPACE']).free / 2**30
@@ -142,7 +173,12 @@ jobs:
       - name: Collect source metadata
         id: sources
         if: env.CATALOG_REFRESH == 'true'
-        run: cairn-catalog update --phase sources --keep-notes
+        run: |
+          cairn-catalog update --phase sources --keep-notes &
+          work=$!
+          WORK=$work bash -c "$DISK_GUARD" &
+          trap "kill $! 2>/dev/null" EXIT
+          wait "$work"
 
       - name: Save source progress before building
         if: steps.sources.outputs.checkpoint == 'sources'
@@ -154,7 +190,12 @@ jobs:
       - name: Build the catalog
         id: build
         if: env.CATALOG_REFRESH == 'true'
-        run: cairn-catalog update --phase build --keep-notes
+        run: |
+          cairn-catalog update --phase build --keep-notes &
+          work=$!
+          WORK=$work bash -c "$DISK_GUARD" &
+          trap "kill $! 2>/dev/null" EXIT
+          wait "$work"
 
       - name: Save build progress before verification
         if: steps.build.outputs.checkpoint == 'build'
@@ -166,7 +207,12 @@ jobs:
       - name: Verify and publish the edition
         id: publish
         if: env.CATALOG_REFRESH == 'true'
-        run: cairn-catalog update --phase publish --keep-notes
+        run: |
+          cairn-catalog update --phase publish --keep-notes &
+          work=$!
+          WORK=$work bash -c "$DISK_GUARD" &
+          trap "kill $! 2>/dev/null" EXIT
+          wait "$work"
 
       # Save immediately, before summaries or any other work can fail.
       - name: Save the published edition

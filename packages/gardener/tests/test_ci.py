@@ -406,3 +406,22 @@ def test_catalog_freshness_from_a_saved_record(setup, tmp_path):
     record.write_text(json.dumps({"last_success_at": stamp}))
     assert ci.main(["catalog-fresh", "--max-age", "6", "--record", str(record)]) == 0
     assert ci.main(["catalog-fresh", "--max-age", "1", "--record", str(record)]) == 3
+
+
+def test_catalog_refresh_phases_run_under_a_disk_guard():
+    catalog = yaml.safe_load((ROOT / ".github/workflows/catalog.yml").read_text())
+    job = catalog["jobs"]["catalog"]
+    guard = job["env"]["DISK_GUARD"]
+    assert 'kill "$WORK"' in guard and "pkill" not in guard
+    phases = [s for s in job["steps"] if "--phase" in s.get("run", "")]
+    assert len(phases) == 3
+    for step in phases:
+        run = step["run"]
+        assert 'WORK=$work bash -c "$DISK_GUARD" &' in run and 'wait "$work"' in run
+    reserve = next(
+        s for s in job["steps"] if s.get("name") == "Reserve space for the journal catalog"
+    )
+    assert "SQLITE_TMPDIR=/mnt/cairn-tmp" in reserve["run"]
+    # The installed tools run on the Python and Node tool caches.
+    assert "/opt/hostedtoolcache/Python" not in reserve["run"]
+    assert "/opt/hostedtoolcache/node" not in reserve["run"]
