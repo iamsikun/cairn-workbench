@@ -81,6 +81,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     permissions:
+      actions: write  # removes superseded Aster caches; the repository holds 10 GB of them
       contents: write
       issues: write
     env:
@@ -232,11 +233,27 @@ jobs:
           echo "saved=true" >> "$GITHUB_OUTPUT"
 
       - name: Save Aster's data
+        id: save_aster
         if: always() && steps.aster.outputs.saved == 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ github.workspace }}/aster-data
           key: aster-data-${{ github.run_id }}
+
+      # Each run saves a new copy. Older ones would fill the repository's cache storage, and
+      # GitHub would then evict caches regardless of use, the journal catalog among them.
+      - name: Remove older copies of Aster's data
+        if: always() && steps.save_aster.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prune() {  # delete the caches under a key prefix, except the one to keep
+            gh cache list -R "$GITHUB_REPOSITORY" --key "$1" --limit 100 --json key --jq '.[].key' |
+              { grep -vxF "${2:-}" || true; } |
+              while read -r key; do gh cache delete "$key" -R "$GITHUB_REPOSITORY"; done
+          }
+          prune aster-data- "aster-data-${{ github.run_id }}"
 
       - name: Install the agent CLI
         if: steps.due.outputs.daily == 'true' || steps.due.outputs.weekly == 'true' || inputs.mode == 'enable-zotero-writes'

@@ -274,7 +274,11 @@ def test_reusable_workflow_declares_its_interface():
     steps = [s.get("name") for s in spec["jobs"]["garden"]["steps"]]
     assert steps.index("Restore garden state") < steps.index("Daily digest")
     assert steps.index("Weekly review") < steps.index("Publish reports and state")
-    assert spec["jobs"]["garden"]["permissions"] == {"contents": "write", "issues": "write"}
+    assert spec["jobs"]["garden"]["permissions"] == {
+        "actions": "write",
+        "contents": "write",
+        "issues": "write",
+    }
 
 
 # Catalog ----------------------------------------------------------------------------------------
@@ -336,7 +340,7 @@ def test_catalog_work_cannot_gate_gardening_or_publish_partial_editions():
     assert "needs" not in job and "needs" not in garden["jobs"]["catalog"]
     assert job["concurrency"] == {"group": "cairn-garden", "cancel-in-progress": False}
     assert refresh["concurrency"] == {"group": "cairn-catalog", "cancel-in-progress": False}
-    assert refresh["permissions"] == {"contents": "read"}
+    assert refresh["permissions"] == {"actions": "write", "contents": "read"}
     assert not any("cairn-catalog update" in step.get("run", "") for step in job["steps"])
     assert not any(
         step.get("uses", "").startswith("actions/cache/save")
@@ -425,3 +429,27 @@ def test_catalog_refresh_phases_run_under_a_disk_guard():
     # The installed tools run on the Python and Node tool caches.
     assert "/opt/hostedtoolcache/Python" not in reserve["run"]
     assert "/opt/hostedtoolcache/node" not in reserve["run"]
+
+
+def test_superseded_caches_are_removed_only_after_their_replacement_is_saved():
+    garden = yaml.safe_load((ROOT / ".github/workflows/garden.yml").read_text())
+    catalog = yaml.safe_load((ROOT / ".github/workflows/catalog.yml").read_text())
+    for steps, name, saved, keeps in [
+        (
+            catalog["jobs"]["catalog"]["steps"],
+            "Remove superseded catalog caches",
+            "steps.save_edition.outcome == 'success'",
+            ['prune cairn-edition-v1- "cairn-edition-v1-', "prune cairn-refresh-v1-\n"],
+        ),
+        (
+            garden["jobs"]["garden"]["steps"],
+            "Remove older copies of Aster's data",
+            "steps.save_aster.outcome == 'success'",
+            ['prune aster-data- "aster-data-${{ github.run_id }}"'],
+        ),
+    ]:
+        step = next(s for s in steps if s.get("name") == name)
+        assert saved in step["if"] and step["continue-on-error"] is True
+        assert step["env"]["GH_TOKEN"] == "${{ github.token }}"
+        for keep in keeps:
+            assert keep in step["run"]

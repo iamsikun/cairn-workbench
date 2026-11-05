@@ -350,6 +350,7 @@ on:
 # Do not add workflow-level concurrency here; a long catalog build would block later digests.
 
 permissions:
+  actions: write  # removes superseded caches: an edition of the journal catalog takes about 7 GB
   contents: write
   issues: write  # the weekly review's issue, where ticking a box approves a proposal
 

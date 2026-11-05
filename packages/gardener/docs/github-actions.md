@@ -83,8 +83,11 @@ Two notes on the agent and the token:
 - **Agent usage:** each daily run is one agent call with the daily model, and each weekly run is
   one call with the weekly model. A not-due trigger installs nothing and calls no model.
 - **Repository token:** the workflow pushes with the run's `GITHUB_TOKEN` and asks only for
-  `contents: write` and `issues: write`, the second for the weekly review's issue. The caller
-  workflow must grant both; a caller that grants less stops the run before it starts. If the
+  `contents: write`, `issues: write` for the weekly review's issue, and `actions: write` to
+  remove superseded caches. A repository holds 10 GB of Actions caches and a catalog edition
+  takes about 7 GB, so once a new edition or copy of Aster's data is saved, the jobs delete the
+  ones it replaces, and the catalog's refresh checkpoints. The caller workflow must grant all
+  three; a caller that grants less stops the run before it starts. If the
   default branch is protected, allow GitHub Actions to push to it, or garden a branch instead.
 
 The gardener checks the Zotero key against `/keys/current` before writing. A key for another

@@ -151,7 +151,7 @@ def test_ci_issue_needs_a_repository_and_token(setup, monkeypatch):
 def test_workflow_and_template_grant_issue_access():
     spec = yaml.safe_load((ROOT / ".github/workflows/garden.yml").read_text())
     job = spec["jobs"]["garden"]
-    assert job["permissions"] == {"contents": "write", "issues": "write"}
+    assert job["permissions"] == {"actions": "write", "contents": "write", "issues": "write"}
     steps = [s.get("name") for s in job["steps"]]
     assert (
         steps.index("Restore garden state")
@@ -160,6 +160,7 @@ def test_workflow_and_template_grant_issue_access():
     )
     assert steps.index("Publish reports and state") < steps.index("Open the review issue")
     assert yaml.safe_load(ci.template("v9.9.9"))["permissions"] == {
+        "actions": "write",
         "contents": "write",
         "issues": "write",
     }

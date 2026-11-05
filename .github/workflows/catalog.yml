@@ -25,6 +25,7 @@ jobs:
       group: cairn-catalog
       cancel-in-progress: false
     permissions:
+      actions: write  # removes superseded editions and checkpoints from the cache
       contents: read
     env:
       CAIRN_WORKBENCH_CONFIG: ${{ github.workspace }}/kb/${{ inputs.config }}
@@ -244,6 +245,25 @@ jobs:
         with:
           path: ${{ github.workspace }}/edition-record
           key: cairn-edition-record-v1-${{ github.run_id }}-${{ github.run_attempt }}
+
+      # The repository holds 10 GB of caches, and an edition takes about 7 GB. Once the new
+      # edition and its record are saved, earlier editions, records and checkpoints only invite
+      # GitHub to evict caches that are still needed.
+      - name: Remove superseded catalog caches
+        if: always() && steps.save_edition.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prune() {  # delete the caches under a key prefix, except the one to keep
+            gh cache list -R "$GITHUB_REPOSITORY" --key "$1" --limit 100 --json key --jq '.[].key' |
+              { grep -vxF "${2:-}" || true; } |
+              while read -r key; do gh cache delete "$key" -R "$GITHUB_REPOSITORY"; done
+          }
+          prune cairn-edition-v1- "cairn-edition-v1-${{ github.run_id }}-${{ github.run_attempt }}"
+          prune cairn-edition-record-v1- "cairn-edition-record-v1-${{ github.run_id }}-${{ github.run_attempt }}"
+          prune cairn-refresh-v1-
+          prune cairn-catalog-
 
       - name: Catalog summary
         if: always()
