@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.10 — caches that fit
+
+The workflows remove Actions caches that a newer save has replaced, so the repository's 10 GB of
+cache storage keeps what gardening still needs. **The caller workflow must grant
+`actions: write`.** The MCP tools, the note format and the Zotero write code are unchanged, so
+scheduled writes that were enabled stay enabled without re-verification.
+
+- A catalog edition now takes about 7 GB of a repository's 10 GB of Actions caches. With the
+  previous edition, refresh checkpoints and a copy of Aster's data from every run kept too,
+  GitHub evicted caches that were still in use: the latest Aster data went first, and the
+  published edition could go next, in the middle of a refresh. Once a new edition and its update
+  record are saved, the catalog job deletes earlier editions and records, all refresh
+  checkpoints and legacy catalogs. After saving Aster's data, the garden job deletes its older
+  copies. Both steps only warn if a deletion fails.
+- **The caller workflow must grant `actions: write`** beside `contents: write` and
+  `issues: write`; `cairn-garden ci template` now does.
+
 ## 0.8.9 — room to refresh
 
 The catalog refresh gets enough disk space on a hosted runner, and a refresh that runs short
