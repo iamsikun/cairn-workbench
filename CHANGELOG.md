@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.8.11 — one edition per cache
+
+The published catalog edition no longer carries the editions before it, and neither job restores
+an edition it has no room for. The MCP tools, the note format and the Zotero write code are
+unchanged, so scheduled writes that were enabled stay enabled without re-verification.
+
+- `actions/cache` archives a listed folder whole; the patterns meant to leave out `.refreshes`
+  and `.refresh-checkpoint` never applied. Every saved edition therefore carried the replaced
+  edition's backup and the staged build, and editions grew with each refresh. The 4 November
+  edition was 7.1 GB compressed and about 50 GB unpacked, and gardening ran out of disk
+  restoring it before any gardening began. Once an edition is published, the catalog job now
+  deletes those folders, so the cache holds the live edition alone. Delete an oversized edition
+  cache saved by an earlier version; the next catalog run rebuilds it.
+- Before restoring, gardening and catalog jobs compare the newest edition's compressed size
+  with the free disk. Gardening skips an edition that cannot fit and runs with the catalog
+  reported as unavailable; the catalog job rebuilds the catalog from scratch instead of
+  restoring it. The garden job also frees the same preinstalled tools as the catalog job.
+- The catalog job no longer moves temporary files to `/mnt`: on hosted runners `/mnt` is on the
+  root disk, so 0.8.9's move gained no space.
+
 ## 0.8.10 — caches that fit
 
 The workflows remove Actions caches that a newer save has replaced, so the repository's 10 GB of
