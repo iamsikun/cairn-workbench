@@ -425,7 +425,6 @@ def test_catalog_refresh_phases_run_under_a_disk_guard():
     reserve = next(
         s for s in job["steps"] if s.get("name") == "Reserve space for the journal catalog"
     )
-    assert "SQLITE_TMPDIR=/mnt/cairn-tmp" in reserve["run"]
     # The installed tools run on the Python and Node tool caches.
     assert "/opt/hostedtoolcache/Python" not in reserve["run"]
     assert "/opt/hostedtoolcache/node" not in reserve["run"]
@@ -453,3 +452,27 @@ def test_superseded_caches_are_removed_only_after_their_replacement_is_saved():
         assert step["env"]["GH_TOKEN"] == "${{ github.token }}"
         for keep in keeps:
             assert keep in step["run"]
+
+
+def test_only_the_live_edition_is_saved_and_only_a_fitting_one_restored():
+    garden = yaml.safe_load((ROOT / ".github/workflows/garden.yml").read_text())
+    catalog = yaml.safe_load((ROOT / ".github/workflows/catalog.yml").read_text())
+    steps = {s.get("name"): s for s in catalog["jobs"]["catalog"]["steps"]}
+    # actions/cache archives a listed folder whole, so the leftovers go before the save.
+    publish = steps["Verify and publish the edition"]["run"]
+    assert publish.index('wait "$work"') < publish.index(
+        'rm -rf "$CAIRN_CATALOG_DIR/.refreshes" "$CAIRN_CATALOG_DIR/.refresh-checkpoint"'
+    )
+    for job, name in [
+        (garden["jobs"]["garden"], "Reserve space for the journal catalog"),
+        (catalog["jobs"]["catalog"], "Reserve space for the journal catalog"),
+    ]:
+        reserve = next(s for s in job["steps"] if s.get("name") == name)
+        assert reserve["continue-on-error"] is True
+        assert "--key', 'cairn-edition-v1-'" in reserve["run"]
+        assert "CATALOG_SPACE_FACTOR" in reserve["env"]
+    for name in ["Restore the last published edition", "Restore a legacy catalog"]:
+        assert "steps.catalog_space.outcome == 'success'" in steps[name]["if"]
+    rebuild = steps["Rebuild a catalog that cannot be restored"]
+    assert rebuild["if"] == "steps.catalog_space.outcome == 'failure'"
+    assert "CATALOG_REFRESH=true" in rebuild["run"]

@@ -164,8 +164,11 @@ the edition and judges it as before, then saves the missing record.
 Checkpoints carry a content fingerprint of the baseline and journal registry, so moving between
 runner paths is safe and a changed baseline cannot silently receive an outdated staged build.
 Partial builds and failed verification never replace the previous verified edition or advance its
-freshness timestamp. Recovery snapshots and unfinished checkpoints are excluded from the published
-cache, so they no longer return after gardening's storage cleanup. Existing legacy caches can seed
+freshness timestamp. Before the verified edition is saved, the job deletes the replaced edition's backup and the
+staged build from its copy: `actions/cache` archives a listed folder whole, so its exclusion
+patterns cannot leave them out. Before restoring, gardening and catalog jobs compare the newest
+edition's compressed size with the free disk. Gardening skips an edition that cannot fit and
+reports the catalog as unavailable; the catalog job rebuilds it from scratch instead. Existing legacy caches can seed
 the first refresh after upgrading.
 
 On its next run, gardening updates the generated status block in existing catalog notes from

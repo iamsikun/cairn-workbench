@@ -105,8 +105,15 @@ jobs:
             echo "CATALOG_RESTORE=true" >> "$GITHUB_ENV"
           fi
 
+      # An edition too large to restore here is rebuilt from scratch instead.
       - name: Reserve space for the journal catalog
+        id: catalog_space
         if: env.CATALOG_REFRESH == 'true' || env.CATALOG_RESTORE == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # A refresh stages a new edition beside the restored one; judging only unpacks it.
+          CATALOG_SPACE_FACTOR: ${{ env.CATALOG_REFRESH == 'true' && 11 || 8 }}
         run: |
           # A refresh stages a whole new edition beside the restored one: about twice its size.
           # The Python and Node tool caches stay; the installed tools run on them.
@@ -116,25 +123,43 @@ jobs:
             /opt/az /usr/lib/jvm /usr/local/share/boost /usr/local/share/powershell \
             /usr/local/share/chromium /usr/local/julia*
           sudo docker image prune --all --force > /dev/null 2>&1 || true
-          # SQLite's sort and temporary-table files go to the second disk when it has room.
-          if [ -d /mnt ] && sudo mkdir -p /mnt/cairn-tmp && sudo chown "$(id -u)" /mnt/cairn-tmp; then
-            if [ "$(df --output=avail -BG /mnt | tail -1 | tr -dc 0-9)" -ge 10 ]; then
-              echo "SQLITE_TMPDIR=/mnt/cairn-tmp" >> "$GITHUB_ENV"
-              echo "TMPDIR=/mnt/cairn-tmp" >> "$GITHUB_ENV"
-            fi
-          fi
-          df -h / /mnt 2>/dev/null || true
+          df -h /
           python3 - <<'PY'
-          import os, shutil
+          import json, os, shutil, subprocess
+          # An edition unpacks to about five times its compressed size, and actions/cache keeps
+          # the archive until extraction ends. Restoring one that cannot fit fills the disk and
+          # takes the runner down with it, so judge the newest edition by its size first.
           free = shutil.disk_usage(os.environ['GITHUB_WORKSPACE']).free / 2**30
-          print(f'Available space for catalog: {free:.1f} GiB')
-          if free < 30:
-              raise SystemExit('Catalog requires at least 30 GiB free for a staged edition')
+          factor = float(os.environ['CATALOG_SPACE_FACTOR'])
+          try:
+              listed = json.loads(subprocess.run(
+                  ['gh', 'cache', 'list', '-R', os.environ['GITHUB_REPOSITORY'],
+                   '--key', 'cairn-edition-v1-', '--sort', 'created_at', '--order', 'desc',
+                   '--limit', '1', '--json', 'sizeInBytes'],
+                  capture_output=True, text=True, check=True).stdout)
+              size = listed[0]['sizeInBytes'] / 2**30 if listed else 0.0
+          except Exception as error:
+              print(f'::warning::Could not read the edition size, so judging by free space only: {error}')
+              size = 0.0
+          need = max(30.0, size * factor + 5)
+          print(f'Available space for catalog: {free:.1f} GiB; the newest edition is {size:.1f} GiB '
+                f'compressed and needs about {need:.0f} GiB')
+          if free < need:
+              print(f'::warning::Not restoring the journal catalog: {need:.0f} GiB needed, {free:.1f} GiB free')
+              raise SystemExit(1)
           PY
+
+      - name: Rebuild a catalog that cannot be restored
+        if: steps.catalog_space.outcome == 'failure'
+        run: |
+          echo "CATALOG_REFRESH=true" >> "$GITHUB_ENV"
+          echo "CATALOG_RESTORE=" >> "$GITHUB_ENV"
 
       - name: Restore the last published edition
         id: edition
-        if: env.CATALOG_REFRESH == 'true' || env.CATALOG_RESTORE == 'true'
+        if: >-
+          steps.catalog_space.outcome == 'success'
+          && (env.CATALOG_REFRESH == 'true' || env.CATALOG_RESTORE == 'true')
         uses: actions/cache/restore@v6
         with:
           path: |
@@ -146,7 +171,8 @@ jobs:
 
       - name: Restore a legacy catalog
         if: >-
-          (env.CATALOG_REFRESH == 'true' || env.CATALOG_RESTORE == 'true')
+          steps.catalog_space.outcome == 'success'
+          && (env.CATALOG_REFRESH == 'true' || env.CATALOG_RESTORE == 'true')
           && steps.edition.outputs.cache-matched-key == ''
         uses: actions/cache/restore@v6
         with:
@@ -214,6 +240,15 @@ jobs:
           WORK=$work bash -c "$DISK_GUARD" &
           trap "kill $! 2>/dev/null" EXIT
           wait "$work"
+          # actions/cache archives a listed folder whole; its exclusion patterns apply only to
+          # files a wildcard lists. Remove the replaced edition's backup and the staged build
+          # here, or every saved edition carries the previous one with it.
+          mkdir -p "$RUNNER_TEMP/catalog-diagnostics"
+          cp "$CAIRN_CATALOG_DIR"/.refresh-checkpoint/{checkpoint,report}.json \
+            "$RUNNER_TEMP/catalog-diagnostics/" 2>/dev/null || true
+          du -sh "$CAIRN_CATALOG_DIR"/.refreshes "$CAIRN_CATALOG_DIR"/.refresh-checkpoint 2>/dev/null || true
+          rm -rf "$CAIRN_CATALOG_DIR/.refreshes" "$CAIRN_CATALOG_DIR/.refresh-checkpoint"
+          du -sh "$CAIRN_CATALOG_DIR"
 
       # Save immediately, before summaries or any other work can fail.
       - name: Save the published edition
@@ -292,6 +327,7 @@ jobs:
             ${{ github.workspace }}/catalog/update-report.json
             ${{ github.workspace }}/catalog/.refresh-checkpoint/checkpoint.json
             ${{ github.workspace }}/catalog/.refresh-checkpoint/report.json
+            ${{ runner.temp }}/catalog-diagnostics/*.json
           include-hidden-files: true
           retention-days: 14
           if-no-files-found: ignore
