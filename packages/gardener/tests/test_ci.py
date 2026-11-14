@@ -430,6 +430,27 @@ def test_catalog_refresh_phases_run_under_a_disk_guard():
     assert "/opt/hostedtoolcache/node" not in reserve["run"]
 
 
+@pytest.mark.parametrize("work, code", [("true", 0), ("exit 7", 7)])
+def test_refresh_phase_exit_status_is_the_works_once_the_guard_has_left(tmp_path, work, code):
+    # The guard exits by itself once the work ends. When the step outlives it (the publish
+    # step removes ~14 GB afterwards), stopping it again must not fail the step.
+    catalog = yaml.safe_load((ROOT / ".github/workflows/catalog.yml").read_text())
+    phases = [s for s in catalog["jobs"]["catalog"]["steps"] if "--phase" in s.get("run", "")]
+    (tmp_path / "catalog").mkdir()
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "DISK_GUARD": "exit 0",
+        "CAIRN_CATALOG_DIR": str(tmp_path / "catalog"),
+        "RUNNER_TEMP": str(tmp_path),
+    }
+    for step in phases:
+        lines = step["run"].splitlines()
+        assert lines[0].startswith("cairn-catalog update --phase ")
+        script = "\n".join([f"({work}) &", *lines[1:], "sleep 0.3"])
+        result = subprocess.run(["bash", "-e", "-c", script], env=env, capture_output=True)
+        assert result.returncode == code, (step["name"], result.stderr)
+
+
 def test_superseded_caches_are_removed_only_after_their_replacement_is_saved():
     garden = yaml.safe_load((ROOT / ".github/workflows/garden.yml").read_text())
     catalog = yaml.safe_load((ROOT / ".github/workflows/catalog.yml").read_text())

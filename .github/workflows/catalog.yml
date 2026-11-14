@@ -204,7 +204,10 @@ jobs:
           cairn-catalog update --phase sources --keep-notes &
           work=$!
           WORK=$work bash -c "$DISK_GUARD" &
-          trap "kill $! 2>/dev/null" EXIT
+          guard=$!
+          # The guard exits by itself once the work ends; under bash -e a failed kill here
+          # would become the step's exit status, so ignore it.
+          trap 'kill "$guard" 2>/dev/null || :' EXIT
           wait "$work"
 
       - name: Save source progress before building
@@ -221,7 +224,10 @@ jobs:
           cairn-catalog update --phase build --keep-notes &
           work=$!
           WORK=$work bash -c "$DISK_GUARD" &
-          trap "kill $! 2>/dev/null" EXIT
+          guard=$!
+          # The guard exits by itself once the work ends; under bash -e a failed kill here
+          # would become the step's exit status, so ignore it.
+          trap 'kill "$guard" 2>/dev/null || :' EXIT
           wait "$work"
 
       - name: Save build progress before verification
@@ -238,7 +244,10 @@ jobs:
           cairn-catalog update --phase publish --keep-notes &
           work=$!
           WORK=$work bash -c "$DISK_GUARD" &
-          trap "kill $! 2>/dev/null" EXIT
+          guard=$!
+          # The guard exits by itself once the work ends; under bash -e a failed kill here
+          # would become the step's exit status, so ignore it.
+          trap 'kill "$guard" 2>/dev/null || :' EXIT
           wait "$work"
           # actions/cache archives a listed folder whole; its exclusion patterns apply only to
           # files a wildcard lists. Remove the replaced edition's backup and the staged build
