@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.12 — a published edition counts as published
+
+The catalog job no longer reports a verified, published edition as a failure. The MCP tools, the
+note format and the Zotero write code are unchanged, so scheduled writes that were enabled stay
+enabled without re-verification.
+
+- Each refresh phase stops its disk guard when the step exits. The guard leaves by itself within
+  30 seconds of the work ending, and the publish step then spends a minute or two removing the
+  replaced edition's backup and the staged build. Under `bash -e` the second, failed `kill`
+  became the step's exit status, so the edition was verified but never saved, and each later
+  run redid the publish phase from the checkpoint. Stopping a guard that has already left is
+  now ignored; a failing refresh still fails the step.
+
 ## 0.8.11 — one edition per cache
 
 The published catalog edition no longer carries the editions before it, and neither job restores
