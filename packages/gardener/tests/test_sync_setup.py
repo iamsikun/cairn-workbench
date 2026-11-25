@@ -89,9 +89,9 @@ def test_setup_status_remove_and_upgrade_use_packaged_command(sync_repo, fake_la
     assert path.exists() and sync.settings(cfg)["times"] == ["07:15", "13:15"]
     state = sync_schedule.status(cfg)
     assert state["installed"] and state["loaded"] and state["last_run"] is None
-    # Installing a new time replaces one job instead of creating another.
+    # Installing a new time replaces the daily and quick jobs instead of adding more.
     sync_schedule.install(cfg, at="06:45")
-    assert len(fake_launchd) == 1
+    assert len(fake_launchd) == 2
     spec = plistlib.loads(path.read_bytes())
     assert spec["StartCalendarInterval"] == [{"Hour": 6, "Minute": 45}]
     assert sync_schedule.remove(cfg)["removed"]
@@ -189,7 +189,7 @@ def test_explicit_legacy_replacement_keeps_its_files(sync_repo, fake_launchd):
     assert old.exists() and preview["replace_plist"] == str(old)
     sync_schedule.install(cfg, replace_plist=old)
     assert not old.exists() and old.with_suffix(".plist.disabled").exists()
-    assert len(fake_launchd) == 1
+    assert len(fake_launchd) == 2  # the daily job and the quick job
 
 
 def test_cli_setup_preview_and_missing_setup_error(sync_repo, capsys):
@@ -239,7 +239,7 @@ def test_failed_schedule_update_restores_previous_install(sync_repo, fake_launch
         sync_schedule.install(cfg, at="06:30")
     assert path.read_bytes() == original_plist
     assert sync.settings(cfg) == old_settings
-    assert sync_schedule.status(cfg)["loaded"] and len(fake_launchd) == 1
+    assert sync_schedule.status(cfg)["loaded"] and len(fake_launchd) == 2  # daily and quick
 
 
 def test_changed_remote_requires_setup_before_publish(sync_repo):

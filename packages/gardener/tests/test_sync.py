@@ -205,6 +205,47 @@ class IntegrationTests(unittest.TestCase):
         self.assertTrue((self.local / "research/new.md").exists())
         self.assertTrue((self.local / "gardening/daily/test.md").exists())
 
+    def test_unpushed_commits_are_replayed_on_the_remote_without_a_merge(self):
+        (self.local / "research/new.md").write_text("---\ntitle: Local paper\n---\nText\n")
+        original = self.job.git
+
+        def offline(*args, **kwargs):
+            if args[0] == "push":
+                raise sync.SyncError("Simulated offline push")
+            return original(*args, **kwargs)
+
+        self.job.git = offline
+        with self.assertRaisesRegex(sync.SyncError, "offline"):
+            self.job.run()
+        self.job.git = original
+        (self.local / "research/reading.md").write_text("Edited after the failed push\n")
+        self.publish_cloud()
+        result = self.job.run()
+        self.assertTrue(result["pushed"])
+        self.assert_clean_and_synced()
+        self.assertEqual(git(self.local, "rev-list", "--merges", "HEAD"), "")
+        log = git(self.local, "log", "--format=%s", "-3").splitlines()
+        self.assertEqual(log, ["note: reading", "note: Local paper", "Cloud gardener update"])
+        self.assertEqual(
+            (self.local / "research/reading.md").read_text(), "Edited after the failed push\n"
+        )
+        self.assertTrue((self.local / "gardening/daily/test.md").exists())
+        # Recorded commits follow the replay.
+        self.assertIn(git(self.local, "rev-parse", "HEAD"), result["commits_created"])
+
+    def test_commit_that_cannot_be_replayed_alone_keeps_a_merge(self):
+        # A local change and its revert merge cleanly with the remote as a whole, but the
+        # first commit conflicts when replayed on its own: keep a merge, never markers.
+        (self.local / "research/reading.md").write_text("Local attempt\n")
+        git(self.local, "commit", "-am", "Try a wording")
+        (self.local / "research/reading.md").write_text("Original note\n")
+        git(self.local, "commit", "-am", "Revert the wording")
+        self.publish_cloud("research/reading.md", "Cloud version\n")
+        self.assertTrue(self.job.run()["pushed"])
+        self.assert_clean_and_synced()
+        self.assertNotEqual(git(self.local, "rev-list", "--merges", "HEAD"), "")
+        self.assertEqual((self.local / "research/reading.md").read_text(), "Cloud version\n")
+
     def test_distinct_push_remote_is_rejected(self):
         git(self.local, "config", "remote.origin.pushurl", "/unintended/repository")
         with self.assertRaisesRegex(sync.SyncError, "Push remote differs"):

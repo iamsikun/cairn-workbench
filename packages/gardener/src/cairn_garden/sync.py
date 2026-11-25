@@ -1,4 +1,4 @@
-"""Local Git synchronization and daily scheduling for a knowledge base."""
+"""Local Git synchronization for a knowledge base: quick sync after edits, and daily slots."""
 
 from __future__ import annotations
 
@@ -9,7 +9,9 @@ import fcntl
 import json
 import logging
 import logging.handlers
+import math
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -25,8 +27,29 @@ class Busy(SyncError):
     """Another writer owns a lock; defer without changing its files."""
 
 
-def timestamp():
-    return datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds")
+# Quick sync pushes once edits have been quiet this long (seconds); settings may change it.
+QUIET_SECONDS = 120
+# Wait after each consecutive failure, in seconds; the last value repeats.
+BACKOFF = (120, 240, 480, 960, 1800)
+# While a sync keeps failing, repeat the failure in the log at most this often.
+REMINDER_SECONDS = 86400
+# Commit message labels by note kind, in the order a message lists them.
+LABELS = {"paper": "reading", "idea": "idea", "note": "note", "topic": "topic"}
+ORDER = ("reading", "idea", "note", "topic", "report", "file")
+
+
+def timestamp(at=None):
+    moment = datetime.datetime.now(datetime.UTC) if at is None else at
+    return moment.astimezone(datetime.UTC).isoformat(timespec="seconds")
+
+
+def epoch(value):
+    return datetime.datetime.fromisoformat(value).timestamp()
+
+
+def short(title, limit=72):
+    title = " ".join(str(title).split())
+    return title if len(title) <= limit else title[: limit - 1].rstrip() + "…"
 
 
 def state_dir(cfg):
@@ -94,11 +117,12 @@ class Sync:
             self.env.pop(key, None)
         self.created = []
 
-    def git(self, *args, check=True, timeout=60):
+    def git(self, *args, check=True, timeout=60, input=None, env=None):
         try:
             result = subprocess.run(
                 ["git", "-C", str(self.repo), *args],
-                env=self.env,
+                env={**self.env, **(env or {})},
+                input=input,
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -111,8 +135,8 @@ class Sync:
             raise SyncError(f"git {args[0]}: {(result.stderr or result.stdout).strip()[-3000:]}")
         return result
 
-    def output(self, *args):
-        return self.git(*args).stdout.strip()
+    def output(self, *args, **kwargs):
+        return self.git(*args, **kwargs).stdout.strip()
 
     def validate(self):
         if Path(self.output("rev-parse", "--show-toplevel")).resolve() != self.repo:
@@ -175,10 +199,148 @@ class Sync:
         if changed.returncode not in (0, 1):
             raise SyncError("Could not inspect staged snapshot")
         if changed.returncode:
-            self.git("commit", "-m", f"sync: local knowledge base changes ({timestamp()}).")
+            self.git("commit", "-F", "-", input=self.message())
             head = self.output("rev-parse", "HEAD")
             self.created.append(head)
             self.logger.info("Saved local changes in %s", head)
+
+    def describe(self, status, path):
+        """A staged path as (label, title): note kind and front-matter title when it has them."""
+        store = g.cairn()
+        parts = path.split("/")
+        removed = status == "D"
+        if not path.endswith(".md"):
+            return "file", path + (" (removed)" if removed else "")
+        meta = {}
+        if not removed:
+            with contextlib.suppress(OSError, UnicodeDecodeError):
+                meta = store.parse(self.repo / path).meta
+        kind = meta.get("kind")
+        if kind not in LABELS:
+            folders = {folder: name for name, folder in store.FOLDERS.items()}
+            if parts[0] in store.COLLECTIONS:
+                kind = folders.get(parts[1] if len(parts) > 2 else "", "note")
+            elif path.startswith(tuple(self.config.get("note_folders", []))):
+                kind = "report"
+            else:
+                kind = "file"
+        title = short(meta.get("title") or Path(path).stem)
+        return LABELS.get(kind, kind), title + (" (removed)" if removed else "")
+
+    def message(self):
+        """Say what changed: one note by kind and title, several by their first titles."""
+        fields = self.git("diff", "--cached", "--name-status", "--no-renames", "-z").stdout
+        fields = [f for f in fields.split("\0") if f]
+        items = [
+            self.describe(code[0], path)
+            for code, path in zip(fields[::2], fields[1::2], strict=True)
+        ]
+        items.sort(key=lambda item: ORDER.index(item[0]) if item[0] in ORDER else len(ORDER))
+        if len(items) == 1:
+            return f"{items[0][0]}: {items[0][1]}\n"
+        noun = "files" if all(label == "file" for label, _ in items) else "notes"
+        titles = [title for _, title in items]
+        if len(titles) == 2:
+            subject = f"{noun}: {titles[0]} and {titles[1]}"
+        else:
+            subject = f"{noun}: {titles[0]}, {titles[1]} and {len(titles) - 2} more"
+        lines = [f"- {label}: {title}" for label, title in items[:100]]
+        if len(items) > 100:
+            lines.append(f"- and {len(items) - 100} more")
+        return subject + "\n\n" + "\n".join(lines) + "\n"
+
+    def changes(self):
+        """Modified, deleted and new files in the note folders, from a local status check."""
+        listing = self.git(
+            "--no-optional-locks",
+            "status",
+            "--porcelain=v1",
+            "-z",
+            "--untracked-files=all",
+            "--",
+            *self.config["note_folders"],
+        ).stdout.split("\0")
+        paths, skip = [], False
+        for record in listing:
+            if skip or not record:
+                skip = False
+                continue
+            # A rename or copy record is followed by its original path.
+            skip = record[0] in "RC"
+            paths.append(record[3:])
+        return paths
+
+    def newest(self, paths):
+        """When the newest change happened: file times, or the folder time for a deletion."""
+        times = []
+        for path in paths:
+            target = self.repo / path
+            while True:
+                with contextlib.suppress(OSError):
+                    times.append(target.lstat().st_mtime)
+                    break
+                if target == self.repo:
+                    break
+                target = target.parent
+        return max(times, default=0.0)
+
+    def ahead(self):
+        """Whether local commits have not reached the remote branch, without a network call."""
+        listed = self.git("rev-list", "-n1", f"{self.target}..HEAD", check=False)
+        return listed.returncode != 0 or bool(listed.stdout.strip())
+
+    def replay(self, merged_tree):
+        """Rebase unpushed commits onto the remote branch, without touching the checkout.
+
+        Each commit is replayed as a three-way merge in Git's object store, so a conflict
+        never reaches the working tree. Returns the new head and a map of old to new commits,
+        or None to keep a merge: Git older than 2.40, merge commits among the unpushed ones,
+        a commit that conflicts on its own, or a result that differs from the merge.
+        """
+        version = re.search(r"(\d+)\.(\d+)", self.output("version"))
+        if not version or tuple(map(int, version.groups())) < (2, 40):
+            return None, "Git 2.40 or newer replays commits"
+        base = self.output("rev-parse", self.target)
+        listed = self.output("rev-list", "--reverse", "--topo-order", "--parents", f"{base}..HEAD")
+        replaced = {}
+        for line in listed.splitlines():
+            commit, *parents = line.split()
+            if len(parents) != 1:
+                return None, "unpushed history contains a merge"
+            tree = self.git(
+                "merge-tree",
+                "--write-tree",
+                f"--merge-base={parents[0]}",
+                base,
+                commit,
+                check=False,
+            )
+            if tree.returncode:
+                return None, f"commit {commit} conflicts when replayed alone"
+            tree = tree.stdout.split("\n", 1)[0].strip()
+            if tree == self.output("rev-parse", base + "^{tree}"):
+                replaced[commit] = None  # The remote already has this change.
+                continue
+            name, email, date = (
+                self.git("log", "-1", "--format=%an%x00%ae%x00%aI", commit)
+                .stdout.rstrip("\n")
+                .split("\0")
+            )
+            message = self.git("log", "-1", "--format=%B", commit).stdout
+            base = self.output(
+                "commit-tree",
+                tree,
+                "-p",
+                base,
+                "-F",
+                "-",
+                input=message,
+                env=dict(GIT_AUTHOR_NAME=name, GIT_AUTHOR_EMAIL=email, GIT_AUTHOR_DATE=date),
+            )
+            replaced[commit] = base
+        if self.output("rev-parse", base + "^{tree}") != merged_tree:
+            return None, "replayed result differs from the merge"
+        return base, replaced
 
     @contextlib.contextmanager
     def writing(self):
@@ -209,6 +371,24 @@ class Sync:
                         f"Merge needs manual attention; local {head} and remote {remote_head} "
                         f"are preserved. {detail}"
                     )
+                # Unpushed commits go on top of the remote ones, so history stays linear.
+                new, replaced = self.replay(preview.stdout.split("\n", 1)[0].strip())
+                if new:
+                    # The checkout is clean here; --keep refuses rather than overwrite a file.
+                    self.git(
+                        "reset",
+                        "--keep",
+                        new,
+                        env=dict(GIT_REFLOG_ACTION=f"cairn sync: rebase onto {remote_head}"),
+                    )
+                    self.created = [replaced.get(c, c) for c in self.created if replaced.get(c, c)]
+                    self.logger.info(
+                        "Replayed %d local commits onto remote commit %s",
+                        len(replaced),
+                        remote_head,
+                    )
+                    return
+                self.logger.info("Keeping a merge: %s", replaced)
             self.git("merge", "--ff", "--no-edit", "--no-stat", "--no-autostash", self.target)
             self.logger.info("Integrated remote commit %s", remote_head)
 
@@ -252,35 +432,98 @@ class Sync:
         raise SyncError("The remote kept advancing; retry on the next scheduled run")
 
 
-def run(cfg, scheduled=False, stamp=None):
+def quick_due(config, status, now):
+    """Why a quick tick has nothing to do, or None when it should sync. No network calls."""
+    if not config.get("quick", True):
+        return "quick sync is off"
+    retry = (status.get("backoff") or {}).get("retry_at")
+    if retry and now < epoch(retry):
+        return "waiting to retry after a failure"
+    worker = Sync(config)
+    paths = worker.changes()
+    if not paths:
+        return None if worker.ahead() else "no local changes"
+    age = now - worker.newest(paths)
+    if 0 <= age < config.get("quiet_seconds", QUIET_SECONDS):
+        return "waiting for edits to settle"
+    return None
+
+
+def failed(status, logger, now, error):
+    """Back off after a failure; log the first, the slowest interval, then once a day."""
+    backoff = status.get("backoff") or {}
+    count = backoff.get("failures", 0) + 1
+    delay = BACKOFF[min(count, len(BACKOFF)) - 1]
+    backoff.update(failures=count, retry_at=timestamp(stamp_of(math.ceil(now + delay))))
+    message = None
+    if count == 1:
+        backoff["since"] = timestamp(stamp_of(now))
+        message = f"Sync stopped: {error}; retrying in {delay // 60} minutes"
+    elif count == len(BACKOFF):
+        message = (
+            f"Still failing after {count} attempts; retrying every {delay // 60} minutes: {error}"
+        )
+    elif now - epoch(backoff.get("logged_at", backoff["since"])) >= REMINDER_SECONDS:
+        message = f"Still failing since {backoff['since']} after {count} attempts: {error}"
+    if message:
+        backoff["logged_at"] = timestamp(stamp_of(now))
+        logger.error(message)
+    status["backoff"] = backoff
+
+
+def stamp_of(seconds):
+    return datetime.datetime.fromtimestamp(seconds, datetime.UTC)
+
+
+def run(cfg, scheduled=False, stamp=None, quick=False):
     config = settings(cfg)
     config["writer_locks"] = [
         str(g.workspace_state(cfg) / f"{name}.lock") for name in ("run", "engine", "reports")
     ]
     state = state_dir(cfg)
     stamp = stamp or datetime.datetime.now().astimezone()
+    now = stamp.timestamp()
     logger = logging.getLogger(__name__ + "." + g.workspace_key(cfg))
-    log = logging.handlers.RotatingFileHandler(
-        state / "sync.log", maxBytes=1024 * 1024, backupCount=3
-    )
-    log.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-    logger.addHandler(log)
-    logger.setLevel(logging.INFO)
+    log = None
     status_path = state / "status.json"
     try:
         with lock(state / "sync.lock"):
             # Read under the lock: another process may have just completed today's sync.
             status = g.read_json(status_path, {})
+            reason = None
+            if quick:
+                # An idle tick ends here, after local checks only: no fetch, no log line.
+                try:
+                    reason = quick_due(config, status, now)
+                except SyncError as error:
+                    reason = str(error)
+                    log = open_log(logger, state)
+                    failed(status, logger, now, error)
+                    status.update(status="needs_attention", error=reason, trigger="quick")
+                    status["finished_at"] = timestamp()
+                    g.atomic_json(status_path, status)
+                    return status
             # Each daily time is one slot; hourly retries run until the latest slot succeeds.
             past = [t for t in times(config) if t <= stamp.strftime("%H:%M")]
             slot = f"{stamp.date().isoformat()}T{past[-1]}" if past else None
             if scheduled and (not slot or status.get("last_scheduled_slot") == slot):
-                return {"status": "skipped", "reason": "not due or already synchronized"}
-            status.update(started_at=timestamp(), status="running")
+                reason = "not due or already synchronized"
+            if reason:
+                return {"status": "skipped", "reason": reason}
+            log = open_log(logger, state)
+            trigger = "quick" if quick else "scheduled" if scheduled else "manual"
+            status.update(started_at=timestamp(), status="running", trigger=trigger)
             g.atomic_json(status_path, status)
             worker = Sync(config, logger)
             try:
                 result = worker.run()
+                backoff = status.pop("backoff", None)
+                if backoff:
+                    logger.info(
+                        "Recovered after %d failed attempts since %s",
+                        backoff["failures"],
+                        backoff["since"],
+                    )
                 status.update(
                     result,
                     status="success",
@@ -293,20 +536,32 @@ def run(cfg, scheduled=False, stamp=None):
                 logger.info("Synchronized at %s; pushed=%s", result["head"], result["pushed"])
             except Busy as error:
                 status.update(status="busy", error=str(error))
-                logger.info("Deferred: %s", error)
+                if not quick:  # The next quick tick retries within a minute.
+                    logger.info("Deferred: %s", error)
             except (SyncError, OSError) as error:
                 status.update(
                     status="needs_attention", error=str(error), commits_created=worker.created
                 )
-                logger.error("Sync stopped: %s", error)
+                failed(status, logger, now, error)
             status["finished_at"] = timestamp()
             g.atomic_json(status_path, status)
             return status
     except Busy:
         return {"status": "busy", "reason": "another sync instance is running"}
     finally:
-        logger.removeHandler(log)
-        log.close()
+        if log:
+            logger.removeHandler(log)
+            log.close()
+
+
+def open_log(logger, state):
+    log = logging.handlers.RotatingFileHandler(
+        state / "sync.log", maxBytes=1024 * 1024, backupCount=3
+    )
+    log.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.addHandler(log)
+    logger.setLevel(logging.INFO)
+    return log
 
 
 def main(argv=None):
@@ -314,7 +569,7 @@ def main(argv=None):
 
     parser = argparse.ArgumentParser(prog="cairn-garden sync", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    setup = sub.add_parser("setup", help="configure and enable the scheduled macOS sync")
+    setup = sub.add_parser("setup", help="configure and enable quick and daily macOS sync")
     setup.add_argument("--remote", default="origin")
     setup.add_argument("--branch", default="main")
     setup.add_argument(
@@ -323,14 +578,27 @@ def main(argv=None):
         metavar="HH:MM",
         help="daily Mac local time; repeat for several (default: 07:15 and 13:15)",
     )
+    setup.add_argument(
+        "--quiet-minutes",
+        type=float,
+        default=QUIET_SECONDS / 60,
+        metavar="N",
+        help="quick sync pushes after N minutes without edits (default: 2)",
+    )
+    setup.add_argument(
+        "--no-quick", action="store_true", help="keep only the daily times; no quick sync"
+    )
     setup.add_argument("--dry-run", action="store_true")
     setup.add_argument(
         "--replace-plist", type=Path, help="retire an explicitly selected old sync job"
     )
     once = sub.add_parser("run", help="commit, fetch, merge and push once")
     once.add_argument("--scheduled", action="store_true", help="run only if a sync time is due")
+    once.add_argument(
+        "--quick", action="store_true", help="run only if notes changed and edits have settled"
+    )
     sub.add_parser("status", help="show settings, schedule and latest run")
-    sub.add_parser("remove", help="disable the schedule; preserve settings and history")
+    sub.add_parser("remove", help="disable quick and daily sync; preserve settings and history")
     args = parser.parse_args(argv)
     try:
         cfg = g.config()
@@ -342,13 +610,15 @@ def main(argv=None):
                 args.at or sync_schedule.DEFAULT_TIMES,
                 args.dry_run,
                 args.replace_plist,
+                quick=not args.no_quick,
+                quiet=round(args.quiet_minutes * 60),
             )
         elif args.command == "remove":
             result = sync_schedule.remove(cfg)
         elif args.command == "status":
             result = sync_schedule.status(cfg)
         else:
-            result = run(cfg, args.scheduled)
+            result = run(cfg, args.scheduled, quick=args.quick)
     except (SyncError, OSError, ValueError, subprocess.SubprocessError) as error:
         result = {"status": "needs_attention", "error": str(error)}
     print(json.dumps(result, indent=2, ensure_ascii=False, default=str))
