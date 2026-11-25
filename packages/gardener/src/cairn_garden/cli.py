@@ -22,7 +22,7 @@ migrate-reports [--dry-run] [--maintenance SLUG ...] | migrate-reports --rollbac
 ci restore | publish | due | catalog-fresh | summary | state-export | state-import | template
                                unattended runs on GitHub Actions (`cairn-garden ci -h`)
 sync setup | run | status | remove
-                               local Git sync and a daily macOS calendar schedule
+                               local Git sync: quick after edits settle, and daily on macOS
 """
 
 from __future__ import annotations

@@ -158,13 +158,14 @@ tools never read that folder.
 If GitHub Actions gardens your private KB, add local Git sync during setup:
 
 ```sh
-cairn-garden sync setup --dry-run       # preview the existing repo/remote and the job
-cairn-garden sync setup                 # 07:15 and 13:15, around the cloud daily run
+cairn-garden sync setup --dry-run       # preview the existing repo/remote and the jobs
+cairn-garden sync setup                 # quick sync, plus 07:15 and 13:15
 cairn-garden sync status
 ```
 
-This optional macOS job commits local edits, merges cloud changes and pushes, with
-conflicts left for review. It catches up after sleep and runs without Codex open.
+These optional macOS jobs push notes a few minutes after you stop editing, one commit per
+editing burst, and pull cloud changes at the daily times, with conflicts left for review.
+They catch up after sleep and run without Codex open. `--no-quick` keeps only the daily times.
 See [local sync setup and controls](packages/gardener/docs/local-sync.md).
 
 ## Development

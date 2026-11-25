@@ -1,4 +1,4 @@
-"""Install the scheduled Git sync as part of the optional gardener setup."""
+"""Install quick and scheduled Git sync as part of the optional gardener setup."""
 
 from __future__ import annotations
 
@@ -18,6 +18,8 @@ PREFIX = "org.cairn-workbench.sync"
 DEFAULT_TIMES = ("07:15", "13:15")
 # Hourly retries after sleep, a busy gardener or a network failure. Due slots decide what runs.
 RETRY_SECONDS = 3600
+# The quick job looks for settled edits this often; an idle look stays local and silent.
+QUICK_SECONDS = 60
 
 
 def label(cfg):
@@ -26,6 +28,14 @@ def label(cfg):
 
 def plist_path(cfg):
     return schedule.agents_folder() / f"{label(cfg)}.plist"
+
+
+def quick_label(cfg):
+    return f"{label(cfg)}.quick"
+
+
+def quick_plist_path(cfg):
+    return schedule.agents_folder() / f"{quick_label(cfg)}.plist"
 
 
 def launchctl(*args, check=True):
@@ -65,9 +75,24 @@ def job(cfg, at):
     }
 
 
-def plan(cfg, remote, branch, at, replace_plist=None):
+def quick_job(cfg):
+    spec = job(cfg, DEFAULT_TIMES)
+    del spec["StartCalendarInterval"]
+    spec.update(
+        Label=quick_label(cfg),
+        ProgramArguments=[*spec["ProgramArguments"][:-1], "--quick"],
+        StartInterval=QUICK_SECONDS,
+        # It runs every minute: failures go to the rotating sync log, never to a growing file.
+        StandardErrorPath="/dev/null",
+    )
+    return spec
+
+
+def plan(cfg, remote, branch, at, replace_plist=None, quick=True, quiet=sync.QUIET_SECONDS):
     if not at or not all(re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", t) for t in at):
         raise sync.SyncError("--at must be a time such as 07:15 in the Mac's local timezone")
+    if not 30 <= quiet <= 3600:
+        raise sync.SyncError("--quiet-minutes must be between 0.5 and 60")
     root = g.kb_open(cfg).root
     worker = sync.Sync({"workspace": str(root), "remote": remote, "branch": branch})
     # Never let user-supplied remote/branch names become command-line options.
@@ -85,6 +110,8 @@ def plan(cfg, remote, branch, at, replace_plist=None):
         "branch": branch,
         "expected_remote_url": url,
         "times": sorted(set(at)),
+        "quick": bool(quick),
+        "quiet_seconds": int(quiet),
         "note_folders": [f"{name}/" for name in g.cairn().COLLECTIONS]
         + [reports.root(cfg).resolve().relative_to(root).as_posix() + "/"],
     }
@@ -122,17 +149,28 @@ def unload(label):
 
 
 def install(
-    cfg, remote="origin", branch="main", at=DEFAULT_TIMES, dry_run=False, replace_plist=None
+    cfg,
+    remote="origin",
+    branch="main",
+    at=DEFAULT_TIMES,
+    dry_run=False,
+    replace_plist=None,
+    quick=True,
+    quiet=sync.QUIET_SECONDS,
 ):
     at = [at] if isinstance(at, str) else list(at)
-    value, replacement = plan(cfg, remote, branch, at, replace_plist)
+    value, replacement = plan(cfg, remote, branch, at, replace_plist, quick, quiet)
     spec = job(cfg, at)
+    fast = quick_job(cfg) if quick else None
     project = schedule.project_environment()
     result = {
         "dry_run": dry_run,
         "settings": value,
         "plist": str(plist_path(cfg)),
         "job": spec,
+        "quick_plist": str(quick_plist_path(cfg)),
+        "quick_job": fast,
+        "quiet_minutes": value["quiet_seconds"] / 60 if quick else None,
         "replace_plist": str(replacement) if replacement else None,
     }
     if project:
@@ -146,36 +184,49 @@ def install(
     state = sync.state_dir(cfg)
     state.mkdir(parents=True, exist_ok=True, mode=0o700)
     with sync.lock(state / "sync.lock"):
-        path = plist_path(cfg)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        # The daily job and, unless quick sync is off, the quick job; re-running setup
+        # replaces both in place.
+        jobs = {plist_path(cfg): spec, quick_plist_path(cfg): fast}
+        for path in jobs:
+            path.parent.mkdir(parents=True, exist_ok=True)
         settings_path = state / "settings.json"
-        previous = {p: p.read_bytes() if p.exists() else None for p in (path, settings_path)}
+        previous = {p: p.read_bytes() if p.exists() else None for p in (*jobs, settings_path)}
         domain = f"gui/{os.getuid()}"
-        service = f"{domain}/{spec['Label']}"
-        was_loaded = launchctl("print", service, check=False).returncode == 0
+        names = {plist_path(cfg): label(cfg), quick_plist_path(cfg): quick_label(cfg)}
+        was_loaded = {
+            path: launchctl("print", f"{domain}/{name}", check=False).returncode == 0
+            for path, name in names.items()
+        }
         old = plistlib.loads(replacement.read_bytes()) if replacement else None
         old_loaded = (
             old and launchctl("print", f"{domain}/{old['Label']}", check=False).returncode == 0
         )
-        unload(spec["Label"])
+        for name in names.values():
+            unload(name)
         try:
             g.atomic_json(settings_path, value)
-            path.write_bytes(plistlib.dumps(spec))
-            launchctl("bootstrap", domain, str(path))
-            launchctl("print", service)
+            for path, content in jobs.items():
+                if content is None:
+                    path.unlink(missing_ok=True)
+                    continue
+                path.write_bytes(plistlib.dumps(content))
+                launchctl("bootstrap", domain, str(path))
+                launchctl("print", f"{domain}/{content['Label']}")
             if replacement:
                 unload(old["Label"])
                 replacement.rename(replacement.with_suffix(".plist.disabled"))
         except Exception:
             # Restore the prior installation if registration or migration fails.
-            unload(spec["Label"])
+            for name in names.values():
+                unload(name)
             for target, content in previous.items():
                 if content is None:
                     target.unlink(missing_ok=True)
                 else:
                     target.write_bytes(content)
-            if was_loaded:
-                launchctl("bootstrap", domain, str(path))
+            for path, loaded in was_loaded.items():
+                if loaded:
+                    launchctl("bootstrap", domain, str(path))
             if (
                 old_loaded
                 and launchctl("print", f"{domain}/{old['Label']}", check=False).returncode
@@ -188,13 +239,19 @@ def install(
 def status(cfg):
     state = sync.state_dir(cfg)
     path = plist_path(cfg)
-    loaded = None
+    loaded = quick_loaded = None
     if sys.platform == "darwin":
-        loaded = launchctl("print", f"gui/{os.getuid()}/{label(cfg)}", check=False).returncode == 0
+        domain = f"gui/{os.getuid()}"
+        loaded = launchctl("print", f"{domain}/{label(cfg)}", check=False).returncode == 0
+        quick_loaded = (
+            launchctl("print", f"{domain}/{quick_label(cfg)}", check=False).returncode == 0
+        )
     return {
         "installed": path.exists(),
         "loaded": loaded,
         "plist": str(path),
+        "quick_installed": quick_plist_path(cfg).exists(),
+        "quick_loaded": quick_loaded,
         "settings": g.read_json(state / "settings.json", None),
         "last_run": g.read_json(state / "status.json", None),
         "log": str(state / "sync.log"),
@@ -204,8 +261,9 @@ def status(cfg):
 def remove(cfg):
     if sys.platform != "darwin":
         raise sync.SyncError("Removing the local calendar schedule requires macOS")
-    unload(label(cfg))
-    path = plist_path(cfg)
-    existed = path.exists()
-    path.unlink(missing_ok=True)
+    existed = False
+    for name, path in ((label(cfg), plist_path(cfg)), (quick_label(cfg), quick_plist_path(cfg))):
+        unload(name)
+        existed = path.exists() or existed
+        path.unlink(missing_ok=True)
     return {"removed": existed, "settings_preserved": True}

@@ -129,18 +129,23 @@ A knowledge base that is its own private GitHub repository can be gardened by Gi
 runners, without a Mac, the Zotero app or a home folder: see
 [docs/github-actions.md](docs/github-actions.md).
 
-For a Mac checkout of that private KB, enable the optional scheduled Git sync during setup:
+For a Mac checkout of that private KB, enable the optional Git sync during setup:
 
 ```sh
 cairn-garden sync setup --dry-run
-cairn-garden sync setup                 # 07:15 and 13:15 Mac local time
+cairn-garden sync setup                 # quick sync, plus 07:15 and 13:15 Mac local time
 cairn-garden sync status
-cairn-garden sync run                   # manual commit/fetch/merge/push
-cairn-garden sync remove                # disable just the sync job
+cairn-garden sync run                   # manual commit/fetch/rebase/push
+cairn-garden sync setup --no-quick      # daily times only
+cairn-garden sync remove                # disable both sync jobs
 ```
 
-It preserves staged work, detects merge conflicts before changing live notes, keeps
-rotating logs, and retries hourly after sleep, a busy gardener or a network failure. It does not enable local gardening or require
+Quick sync pushes notes about two minutes after edits settle (`--quiet-minutes`), one
+commit per editing burst with a message naming the notes, and stays local and silent
+while nothing changes. It preserves staged work, detects conflicts before changing live
+notes, keeps history linear where it safely can, backs off after failures (2 up to 30
+minutes) with a few log lines rather than one per attempt, and keeps the daily times as a
+safety net that also retries hourly after sleep, a busy gardener or a network failure. It does not enable local gardening or require
 agent/Zotero readiness. See [local sync](docs/local-sync.md) for remote/time settings,
 offline behavior and replacing an older custom scheduler.
 
