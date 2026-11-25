@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased — quick sync
+
+Notes reach GitHub a few minutes after you stop editing, instead of at the next daily sync
+time. Re-run `cairn-garden sync setup` to enable it. The MCP tools, the note format and the
+Zotero write code are unchanged, so scheduled writes that were enabled stay enabled without
+re-verification.
+
+- `cairn-garden sync setup` installs a second job, `org.cairn-workbench.sync.<key>.quick`, that
+  checks every minute for changed notes and syncs once they have been quiet for two minutes
+  (`--quiet-minutes`). Saves closer together than that become one commit. An idle check is a
+  local `git status` of the note folders: no network call and no log line.
+  `sync setup --no-quick` keeps only the daily times; `sync remove` removes both jobs.
+- Commit messages name what changed, such as `reading: <title>` or
+  `notes: <title A>, <title B> and 2 more`, instead of a timestamp.
+- When the remote has advanced, unpushed local commits are replayed on top of it instead of
+  merged, so history stays linear. A merge is still kept when a commit cannot be replayed on
+  its own without a conflict, when the unpushed commits include a merge, or on Git older than
+  2.40.
+- After a failed sync, quick sync waits 2, 4, 8, 16, then 30 minutes between attempts and
+  returns to normal on success. The log records the first failure, the switch to 30-minute
+  retries, a daily reminder and the recovery, not every attempt; this applies to the daily
+  times too.
+- The daily times at 07:15 and 13:15 and their hourly retries are unchanged.
+
 ## 0.8.12 — a published edition counts as published
 
 The catalog job no longer reports a verified, published edition as a failure. The MCP tools, the
