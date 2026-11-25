@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — quick sync
+## 0.8.13 — quick sync
 
 Notes reach GitHub a few minutes after you stop editing, instead of at the next daily sync
 time. Re-run `cairn-garden sync setup` to enable it. The MCP tools, the note format and the
